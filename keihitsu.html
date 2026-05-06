@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>経費・出張報告 - 結城健太</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F8FA;--surface:#fff;--s2:#F0F2F5;--bdr:#E2E5EA;--bdr2:#D0D5DD;--acc:#3B82F6;--acc2:#1D4ED8;--tx:#1E293B;--tx2:#64748B;--tx3:#94A3B8;--in:#059669;--out:#DC2626;--warn:#F59E0B;--lv:#7C3AED;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:"Noto Sans JP",sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;}
+#loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+.lcard{background:var(--surface);border:1px solid var(--bdr);border-radius:20px;padding:40px 32px;width:100%;max-width:360px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.08);}
+.llogo{font-family:"DM Mono",monospace;font-size:13px;color:var(--acc);letter-spacing:4px;text-transform:uppercase;margin-bottom:32px;}
+.ltitle{font-size:22px;font-weight:700;margin-bottom:8px;}
+.lsub{font-size:13px;color:var(--tx3);margin-bottom:32px;}
+.lfield{margin-bottom:16px;text-align:left;}
+.lfield label{display:block;font-size:11px;color:var(--tx2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600;}
+.lfield input{width:100%;background:var(--s2);border:1px solid var(--bdr2);border-radius:8px;padding:12px 14px;color:var(--tx);font-size:15px;outline:none;}
+.lfield input:focus{border-color:var(--acc);}
+.lerr{font-size:12px;color:var(--out);margin-top:10px;min-height:16px;}
+.lbtn{width:100%;padding:14px;background:var(--acc);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;}
+#appScreen{display:none;}
+.wrap{max-width:680px;margin:0 auto;padding:24px 16px 80px;}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--bdr);}
+.logo{font-family:"DM Mono",monospace;font-size:13px;color:var(--acc);letter-spacing:3px;text-transform:uppercase;font-weight:500;}
+.uinfo{display:flex;align-items:center;gap:10px;}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;}
+.obtn{font-size:11px;color:var(--tx3);background:transparent;border:1px solid var(--bdr);border-radius:6px;padding:4px 10px;cursor:pointer;}
+.tab-nav{display:flex;background:var(--s2);border:1px solid var(--bdr);border-radius:10px;padding:4px;gap:4px;margin-bottom:24px;}
+.tab-btn{flex:1;padding:10px;background:transparent;border:none;border-radius:7px;color:var(--tx2);font-size:13px;cursor:pointer;font-weight:500;}
+.tab-btn.active{background:var(--surface);color:var(--acc);box-shadow:0 1px 3px rgba(0,0,0,0.08);}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+.section-title{font-size:11px;color:var(--tx3);letter-spacing:2px;text-transform:uppercase;font-weight:600;margin:20px 0 10px;}
+.card{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:20px;margin-bottom:12px;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.field-row.single{grid-template-columns:1fr;}
+.field-row.triple{grid-template-columns:1fr 1fr 1fr;}
+.field{display:flex;flex-direction:column;gap:4px;}
+.field label{font-size:11px;color:var(--tx2);letter-spacing:1px;text-transform:uppercase;font-weight:600;}
+.field input,.field select,.field textarea{background:var(--s2);border:1px solid var(--bdr2);border-radius:8px;padding:10px 12px;color:var(--tx);font-size:14px;outline:none;font-family:inherit;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--acc);}
+.field textarea{resize:vertical;min-height:72px;}
+.total-bar{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.total-label{font-size:13px;color:var(--acc2);font-weight:600;}
+.total-amount{font-family:"DM Mono",monospace;font-size:28px;color:var(--acc);font-weight:700;}
+.btn-add{width:100%;padding:11px;background:var(--s2);border:1.5px dashed var(--bdr2);border-radius:9px;color:var(--tx2);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:12px;}
+.btn-add:hover{background:var(--bdr);border-color:var(--acc);color:var(--acc);}
+.btn-submit{width:100%;padding:14px;background:var(--acc);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;}
+.btn-submit:hover{background:var(--acc2);}
+.btn-del{background:transparent;border:none;color:var(--tx3);cursor:pointer;font-size:18px;padding:4px;line-height:1;}
+.btn-del:hover{color:var(--out);}
+.item-card{background:var(--s2);border:1px solid var(--bdr);border-radius:10px;padding:14px;margin-bottom:8px;position:relative;}
+.item-card .del-btn{position:absolute;top:10px;right:10px;background:transparent;border:none;color:var(--tx3);cursor:pointer;font-size:16px;}
+.item-card .del-btn:hover{color:var(--out);}
+.item-row{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:start;}
+.item-date{font-family:"DM Mono",monospace;font-size:12px;color:var(--tx3);white-space:nowrap;}
+.item-desc{font-size:13px;color:var(--tx);}
+.item-amount{font-family:"DM Mono",monospace;font-size:14px;color:var(--out);font-weight:600;white-space:nowrap;}
+.status-badge{display:inline-block;border-radius:4px;padding:3px 10px;font-size:11px;font-weight:600;}
+.s-draft{background:#F1F5F9;color:var(--tx2);border:1px solid var(--bdr);}
+.s-pending{background:#FFFBEB;color:#92400E;border:1px solid #FDE68A;}
+.s-approved{background:#ECFDF5;color:var(--in);border:1px solid #A7F3D0;}
+.s-rejected{background:#FEF2F2;color:var(--out);border:1px solid #FECACA;}
+.report-card{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:18px;margin-bottom:12px;cursor:pointer;}
+.report-card:hover{border-color:var(--acc);}
+.report-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+.report-title{font-size:15px;font-weight:700;}
+.report-meta{font-size:12px;color:var(--tx2);margin-top:2px;}
+.no-data{text-align:center;padding:40px;color:var(--tx3);font-size:13px;}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px;}
+.overlay.open{display:flex;}
+.modal{background:var(--surface);border-radius:16px;padding:28px;width:100%;max-width:600px;margin:auto;box-shadow:0 8px 32px rgba(0,0,0,0.15);}
+.modal-title{font-size:18px;font-weight:700;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;}
+.mbtns{display:flex;gap:10px;margin-top:20px;}
+.mbtn2{flex:1;padding:13px;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;}
+.mb-cancel{background:var(--s2);color:var(--tx2);border:1px solid var(--bdr);}
+.mb-save{background:var(--acc);color:#fff;}
+.mb-submit{background:var(--in);color:#fff;}
+.merr{font-size:12px;color:var(--out);margin-top:8px;min-height:16px;}
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--tx);color:#fff;padding:11px 24px;border-radius:100px;font-size:13px;transition:transform 0.3s;z-index:300;white-space:nowrap;font-weight:500;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.info-item{background:var(--s2);border-radius:8px;padding:10px 12px;}
+.info-label{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;font-weight:600;}
+.info-val{font-size:14px;color:var(--tx);font-weight:500;}
+.divider{height:1px;background:var(--bdr);margin:16px 0;}
+.receipt-check{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;}
+.receipt-check input{width:18px;height:18px;cursor:pointer;}
+@media(max-width:480px){.field-row{grid-template-columns:1fr;}.field-row.triple{grid-template-columns:1fr 1fr;}.info-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="lcard">
+    <div class="llogo">DUBSTOCK</div>
+    <div class="ltitle">経費・出張報告</div>
+    <div class="lsub">アカウントでログイン</div>
+    <div class="lfield"><label>メールアドレス</label><input type="email" id="loginEmail" placeholder="example@email.com"></div>
+    <div class="lfield"><label>パスワード</label><input type="password" id="loginPass" placeholder="password"></div>
+    <div class="lerr" id="loginErr"></div>
+    <button class="lbtn" id="loginBtn">ログイン</button>
+  </div>
+</div>
+
+<div id="appScreen">
+<div class="wrap">
+  <header>
+    <div class="logo">DUBSTOCK</div>
+    <div class="uinfo">
+      <div class="avatar">結</div>
+      <span style="font-size:14px;font-weight:500;">結城 健太</span>
+      <button class="obtn" id="logoutBtn">ログアウト</button>
+    </div>
+  </header>
+
+  <div class="tab-nav">
+    <button class="tab-btn active" data-tab="expense">&#x1F4B0; 経費精算</button>
+    <button class="tab-btn" data-tab="travel">&#x2708;&#xFE0F; 出張報告</button>
+  </div>
+
+  <!-- 経費精算タブ -->
+  <div class="tab-content active" id="tab-expense">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div>
+        <div style="font-size:18px;font-weight:700;">経費精算書</div>
+        <div style="font-size:12px;color:var(--tx3);margin-top:2px;" id="expMonthLabel"></div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="obtn" id="expPrevBtn">&#8249; 前月</button>
+        <button class="obtn" id="expNextBtn">翌月 &#8250;</button>
+      </div>
+    </div>
+    <div class="total-bar">
+      <div class="total-label">当月合計</div>
+      <div class="total-amount" id="expTotal">¥ 0</div>
+    </div>
+    <button class="btn-add" id="addExpBtn">＋ 明細を追加</button>
+    <div id="expList"><div class="no-data">明細がありません</div></div>
+    <div style="margin-top:16px;" id="expSubmitArea"></div>
+  </div>
+
+  <!-- 出張報告タブ -->
+  <div class="tab-content" id="tab-travel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div style="font-size:18px;font-weight:700;">出張報告書</div>
+      <button class="lbtn" style="width:auto;padding:10px 20px;font-size:13px;" id="addTravelBtn">＋ 新規作成</button>
+    </div>
+    <div id="travelList"><div class="no-data">出張報告がありません</div></div>
+  </div>
+</div>
+</div>
+
+<!-- 経費明細 入力モーダル -->
+<div class="overlay" id="expModal">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="expModalTitle">経費明細を追加</span>
+      <button style="background:transparent;border:none;font-size:22px;cursor:pointer;color:var(--tx3);" id="expModalCloseBtn">&times;</button>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>日付</label><input type="date" id="expDate"></div>
+      <div class="field"><label>支払方法</label>
+        <select id="expMethod">
+          <option value="現金">現金</option>
+          <option value="カード">カード</option>
+          <option value="振込">振込</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row single">
+      <div class="field"><label>内容・目的</label><input type="text" id="expDesc" placeholder="例：交通費（行き先：東京ビッグサイト）"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>支払先</label><input type="text" id="expPayee" placeholder="例：JR東日本"></div>
+      <div class="field"><label>金額（円）</label><input type="number" id="expAmount" placeholder="0" min="0"></div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>領収書</label>
+        <label class="receipt-check"><input type="checkbox" id="expReceipt"> あり</label>
+      </div>
+      <div class="field"><label>備考</label><input type="text" id="expNote" placeholder="任意"></div>
+    </div>
+    <div class="merr" id="expModalErr"></div>
+    <div class="mbtns">
+      <button class="mbtn2 mb-cancel" id="expModalCancelBtn">キャンセル</button>
+      <button class="mbtn2 mb-save" id="expModalSaveBtn">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 出張報告 入力モーダル -->
+<div class="overlay" id="travelModal">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="travelModalTitle">出張報告書</span>
+      <button style="background:transparent;border:none;font-size:22px;cursor:pointer;color:var(--tx3);" id="travelModalCloseBtn">&times;</button>
+    </div>
+
+    <div class="section-title">基本情報</div>
+    <div class="field-row">
+      <div class="field"><label>出張先</label><input type="text" id="tvDest" placeholder="例：鳥栖"></div>
+      <div class="field"><label>目的</label><input type="text" id="tvPurpose" placeholder="例：PO引き渡し前確認"></div>
+    </div>
+    <div class="field-row triple">
+      <div class="field"><label>出発日</label><input type="date" id="tvFrom"></div>
+      <div class="field"><label>帰着日</label><input type="date" id="tvTo"></div>
+      <div class="field"><label>報告日</label><input type="date" id="tvReportDate"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>交通手段</label><input type="text" id="tvTransport" placeholder="例：飛行機"></div>
+      <div class="field"><label>同行者</label><input type="text" id="tvCompanion" placeholder="なし"></div>
+    </div>
+
+    <div class="section-title">出張内容・日程</div>
+    <div id="tvScheduleList"></div>
+    <button class="btn-add" id="addScheduleBtn">＋ 日程を追加</button>
+
+    <div class="section-title">交通費・宿泊費</div>
+    <div id="tvCostList"></div>
+    <button class="btn-add" id="addCostBtn">＋ 費用を追加</button>
+    <div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;margin-top:8px;margin-bottom:16px;">
+      <span style="font-size:13px;color:var(--in);font-weight:600;">交通費・宿泊費 合計</span>
+      <span style="font-family:'DM Mono',monospace;font-size:16px;color:var(--in);font-weight:700;" id="tvCostTotal">¥ 0</span>
+    </div>
+
+    <div class="section-title">所見・報告事項</div>
+    <div class="field-row single">
+      <div class="field"><textarea id="tvReport" rows="4" placeholder="出張の所見・報告事項を入力してください"></textarea></div>
+    </div>
+
+    <div class="merr" id="travelModalErr"></div>
+    <div class="mbtns">
+      <button class="mbtn2 mb-cancel" id="travelModalCancelBtn">キャンセル</button>
+      <button class="mbtn2 mb-save" id="travelModalSaveBtn">下書き保存</button>
+      <button class="mbtn2 mb-submit" id="travelModalSubmitBtn">提出する</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {getFirestore,doc,setDoc,getDoc,collection,getDocs,deleteDoc,updateDoc,query,where} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const FB={apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",authDomain:"kintai-dubstock.firebaseapp.com",projectId:"kintai-dubstock",storageBucket:"kintai-dubstock.firebasestorage.app",messagingSenderId:"1030065146975",appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"};
+const app=initializeApp(FB);
+const auth=getAuth(app);
+const db=getFirestore(app);
+
+const UID="yuuki_kenta",UNAME="結城 健太";
+let expMonth=new Date();
+let editingExpId=null;
+let editingTravelId=null;
+let tvSchedules=[];
+let tvCosts=[];
+
+function p2(n){return String(n).padStart(2,"0");}
+function fmtYen(n){return "¥ "+Number(n||0).toLocaleString();}
+function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2500);}
+
+// Firestore helpers
+async function getAllByUser(col){
+  const sn=await getDocs(collection(db,col));
+  const r=[];sn.forEach(d=>{if(d.data().userId===UID)r.push({id:d.id,...d.data()});});
+  return r;
+}
+
+// ══ 経費精算 ══
+async function renderExpenses(){
+  const y=expMonth.getFullYear(),m=expMonth.getMonth();
+  const r=y-2018;
+  document.getElementById("expMonthLabel").textContent="R"+r+"年"+(m+1)+"月";
+  const all=await getAllByUser("expenses");
+  const pfx=y+"-"+p2(m+1);
+  const items=all.filter(e=>e.date&&e.date.startsWith(pfx)).sort((a,b)=>a.date.localeCompare(b.date));
+  const total=items.reduce((s,e)=>s+(Number(e.amount)||0),0);
+  document.getElementById("expTotal").textContent=fmtYen(total);
+
+  const el=document.getElementById("expList");
+  if(!items.length){el.innerHTML="<div class='no-data'>明細がありません</div>";renderExpSubmit([]);return;}
+  el.innerHTML="";
+  items.forEach(item=>{
+    const div=document.createElement("div");div.className="item-card";
+    div.innerHTML=
+      "<button class='del-btn' data-id='"+item.id+"'>&times;</button>"+
+      "<div class='item-row'>"+
+      "<span class='item-date'>"+item.date.slice(5)+"</span>"+
+      "<div><div class='item-desc'>"+item.desc+"</div><div style='font-size:11px;color:var(--tx3);margin-top:2px;'>"+item.payee+"　"+item.method+(item.receipt?" &#x1F9FE;":"")+(item.note?" / "+item.note:"")+"</div></div>"+
+      "<span class='item-amount'>"+fmtYen(item.amount)+"</span>"+
+      "</div>";
+    div.querySelector(".del-btn").addEventListener("click",async()=>{
+      if(!confirm("この明細を削除しますか？"))return;
+      await deleteDoc(doc(db,"expenses",item.id));
+      showToast("削除しました");renderExpenses();
+    });
+    div.addEventListener("click",e=>{if(e.target.classList.contains("del-btn"))return;openExpModal(item);});
+    el.appendChild(div);
+  });
+  renderExpSubmit(items);
+}
+
+function renderExpSubmit(items){
+  const el=document.getElementById("expSubmitArea");
+  if(!items.length){el.innerHTML="";return;}
+  const submitted=items.some(i=>i.submitted);
+  if(submitted){
+    el.innerHTML="<div style='text-align:center;padding:16px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;color:var(--in);font-weight:600;'>&#x2705; 提出済み</div>";
+  } else {
+    el.innerHTML="<button class='btn-submit' id='submitExpBtn'>&#x1F4E4; この月の経費を提出する</button>";
+    document.getElementById("submitExpBtn").addEventListener("click",async()=>{
+      if(!confirm("この月の経費精算を提出しますか？提出後は編集できません。"))return;
+      const y=expMonth.getFullYear(),m=expMonth.getMonth();
+      const pfx=y+"-"+p2(m+1);
+      const all=await getAllByUser("expenses");
+      const targets=all.filter(e=>e.date&&e.date.startsWith(pfx));
+      for(const t of targets){await updateDoc(doc(db,"expenses",t.id),{submitted:true,submittedAt:new Date().toISOString()});}
+      showToast("提出しました ✓");renderExpenses();
+    });
+  }
+}
+
+function openExpModal(item=null){
+  editingExpId=item?item.id:null;
+  document.getElementById("expModalTitle").textContent=item?"明細を編集":"経費明細を追加";
+  document.getElementById("expDate").value=item?item.date:new Date().toISOString().slice(0,10);
+  document.getElementById("expDesc").value=item?item.desc:"";
+  document.getElementById("expPayee").value=item?item.payee:"";
+  document.getElementById("expAmount").value=item?item.amount:"";
+  document.getElementById("expMethod").value=item?item.method:"現金";
+  document.getElementById("expReceipt").checked=item?!!item.receipt:false;
+  document.getElementById("expNote").value=item?item.note||"":"";
+  document.getElementById("expModalErr").textContent="";
+  document.getElementById("expModal").classList.add("open");
+}
+function closeExpModal(){document.getElementById("expModal").classList.remove("open");editingExpId=null;}
+
+async function saveExp(){
+  const date=document.getElementById("expDate").value;
+  const desc=document.getElementById("expDesc").value.trim();
+  const payee=document.getElementById("expPayee").value.trim();
+  const amount=document.getElementById("expAmount").value;
+  const er=document.getElementById("expModalErr");er.textContent="";
+  if(!date||!desc||!amount){er.textContent="日付・内容・金額は必須です";return;}
+  const data={userId:UID,userName:UNAME,date,desc,payee,amount:Number(amount),method:document.getElementById("expMethod").value,receipt:document.getElementById("expReceipt").checked,note:document.getElementById("expNote").value.trim(),submitted:false,createdAt:new Date().toISOString()};
+  const id=editingExpId||(UID+"_exp_"+Date.now());
+  await setDoc(doc(db,"expenses",id),data);
+  closeExpModal();showToast(editingExpId?"更新しました ✓":"追加しました ✓");renderExpenses();
+}
+
+// ══ 出張報告 ══
+async function renderTravelList(){
+  const all=await getAllByUser("travels");
+  all.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  const el=document.getElementById("travelList");
+  if(!all.length){el.innerHTML="<div class='no-data'>出張報告がありません</div>";return;}
+  el.innerHTML="";
+  all.forEach(t=>{
+    const div=document.createElement("div");div.className="report-card";
+    const statusMap={draft:"<span class='status-badge s-draft'>下書き</span>",pending:"<span class='status-badge s-pending'>提出済</span>",approved:"<span class='status-badge s-approved'>承認済</span>",rejected:"<span class='status-badge s-rejected'>差し戻し</span>"};
+    const totalCost=(t.costs||[]).reduce((s,c)=>s+(Number(c.amount)||0),0);
+    div.innerHTML=
+      "<div class='report-header'>"+
+      "<div><div class='report-title'>"+t.dest+"出張　"+( t.from||"")+(t.to&&t.to!==t.from?" 〜 "+t.to:"")+"</div>"+
+      "<div class='report-meta'>目的："+( t.purpose||"")+" / 費用："+fmtYen(totalCost)+"</div></div>"+
+      (statusMap[t.status]||"")+
+      "</div>"+
+      "<div style='font-size:11px;color:var(--tx3);'>"+( t.submittedAt?new Date(t.submittedAt).toLocaleDateString("ja-JP")+"提出":new Date(t.createdAt).toLocaleDateString("ja-JP")+"作成")+"</div>";
+    div.addEventListener("click",()=>openTravelModal(t));
+    el.appendChild(div);
+  });
+}
+
+function calcTvTotal(){
+  const total=tvCosts.reduce((s,c)=>s+(Number(c.amount)||0),0);
+  document.getElementById("tvCostTotal").textContent=fmtYen(total);
+}
+
+function renderTvSchedules(){
+  const el=document.getElementById("tvScheduleList");
+  if(!tvSchedules.length){el.innerHTML="";return;}
+  el.innerHTML="";
+  tvSchedules.forEach((s,i)=>{
+    const div=document.createElement("div");div.className="item-card";
+    div.innerHTML=
+      "<button class='del-btn'>×</button>"+
+      "<div style='display:grid;grid-template-columns:80px 120px 1fr;gap:8px;'>"+
+      "<input type='date' value='"+( s.date||"")+"' placeholder='日付' style='background:var(--surface);border:1px solid var(--bdr2);border-radius:6px;padding:6px 8px;font-size:12px;outline:none;'>"+
+      "<input type='text' value='"+( s.time||"")+"' placeholder='時間（例：14:00〜18:00）' style='background:var(--surface);border:1px solid var(--bdr2);border-radius:6px;padding:6px 8px;font-size:12px;outline:none;'>"+
+      "<input type='text' value='"+( s.place||"")+"' placeholder='訪問先・場所' style='background:var(--surface);border:1px solid var(--bdr2);border-radius:6px;padding:6px 8px;font-size:12px;outline:none;'>"+
+      "</div>"+
+      "<div style='display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:6px;'>"+
+      "<input type='text' value='"+( s.content||"")+"' placeholder='内容・目的' style='background:var(--surface);border:1px solid var(--bdr2);border-radius:6px;padding:6px 8px;font-size:12px;outline:none;'>"+
+      "<input type='text' value='"+( s.contact||"")+"' placeholder='対応者' style='background:var(--surface);border:1px solid var(--bdr2);border-radius:6px;padding:6px 8px;font-size:12px;outline:none;'>"+
+      "<input type='text' value='"+( s.result||"")+"' placeholder='結果・所感' style='background:var(--surface);border:1px solid var(--bdr2);border-radius:6px;padding:6px 8px;font-size:12px;outline:none;'>"+
+      "</div>";
+    const inputs=div.querySelectorAll("input");
+    inputs[0].addEventListener("change",()=>{tvSchedules[i].date=inputs[0].value;});
+    inputs[1].addEventListener("change",()=>{tvSchedules[i].time=inputs[1].value;});
+    inputs[2].addEventListener("change",()=>{tvSchedules[i].place=inputs[2].value;});
+    inputs[3].addEventListener("change",()=>{tvSchedules[i].content=inputs[3].value;});
+    inputs[4].addEventListener("change",()=>{tvSchedules[i].contact=inputs[4].value;});
+    inputs[5].addEventListener("change",()=>{tvSchedules[i].result=inputs[5].value;});
+    div.querySelector(".del-btn").addEventListener("click",()=>{tvSchedules.splice(i,1);renderTvSchedules();});
+    el.appendChild(div);
+  });
+}
+
+function renderTvCosts(){
+  const el=document.getElementById("tvCostList");
+  if(!tvCosts.length){el.innerHTML="";calcTvTotal();return;}
+  el.innerHTML="";
+  tvCosts.forEach((c,i)=>{
+    const div=document.createElement("div");div.className="item-card";
+    div.innerHTML=
+      "<button class='del-btn'>×</button>"+
+      "<div style='display:grid;grid-template-columns:80px 1fr 1fr;gap:8px;'>"+
+      "<input type='date' value='"+( c.date||"")+"' style='background:var(--surface);border:1px solid var(--bdr2);border-radius:6px;padding:6px 8px;font-size:12px;outline:none;'>"+
+      "<input type='text' value='"+( c.route||"")+"' placeholder='区間・内容（例：羽田〜福岡）' style='background:var(--surface);border:1px solid var(--bdr2);border-radius:6px;padding:6px 8px;font-size:12px;outline:none;'>"+
+      "<input type='text' value='"+( c.transport||"")+"' placeholder='交通手段（例：飛行機）' style='background:var(--surface);border:1px solid var(--bdr2);border-radius:6px;padding:6px 8px;font-size:12px;outline:none;'>"+
+      "</div>"+
+      "<div style='display:grid;grid-template-columns:80px 80px 1fr;gap:8px;margin-top:6px;align-items:center;'>"+
+      "<input type='number' value='"+( c.amount||"")+"' placeholder='金額' min='0' style='background:var(--surface);border:1px solid var(--bdr2);border-radius:6px;padding:6px 8px;font-size:12px;outline:none;'>"+
+      "<label style='display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;'><input type='checkbox'"+(c.receipt?" checked":"")+" style='width:16px;height:16px;'> 領収書</label>"+
+      "<input type='text' value='"+( c.note||"")+"' placeholder='備考（例：往復）' style='background:var(--surface);border:1px solid var(--bdr2);border-radius:6px;padding:6px 8px;font-size:12px;outline:none;'>"+
+      "</div>";
+    const inputs=div.querySelectorAll("input");
+    inputs[0].addEventListener("change",()=>{tvCosts[i].date=inputs[0].value;calcTvTotal();});
+    inputs[1].addEventListener("change",()=>{tvCosts[i].route=inputs[1].value;});
+    inputs[2].addEventListener("change",()=>{tvCosts[i].transport=inputs[2].value;});
+    inputs[3].addEventListener("change",()=>{tvCosts[i].amount=inputs[3].value;calcTvTotal();});
+    inputs[4].addEventListener("change",()=>{tvCosts[i].receipt=inputs[4].checked;});
+    inputs[5].addEventListener("change",()=>{tvCosts[i].note=inputs[5].value;});
+    div.querySelector(".del-btn").addEventListener("click",()=>{tvCosts.splice(i,1);renderTvCosts();});
+    el.appendChild(div);
+  });
+  calcTvTotal();
+}
+
+function openTravelModal(t=null){
+  editingTravelId=t?t.id:null;
+  document.getElementById("travelModalTitle").textContent=t?"出張報告書を編集":"出張報告書 - 新規作成";
+  document.getElementById("tvDest").value=t?t.dest||"":"";
+  document.getElementById("tvPurpose").value=t?t.purpose||"":"";
+  document.getElementById("tvFrom").value=t?t.from||"":"";
+  document.getElementById("tvTo").value=t?t.to||"":"";
+  document.getElementById("tvReportDate").value=t?t.reportDate||new Date().toISOString().slice(0,10):new Date().toISOString().slice(0,10);
+  document.getElementById("tvTransport").value=t?t.transport||"":"";
+  document.getElementById("tvCompanion").value=t?t.companion||"":"";
+  document.getElementById("tvReport").value=t?t.report||"":"";
+  tvSchedules=t?JSON.parse(JSON.stringify(t.schedules||[])):[{date:"",time:"",place:"",content:"",contact:"",result:""}];
+  tvCosts=t?JSON.parse(JSON.stringify(t.costs||[])):[{date:"",route:"",transport:"",amount:"",receipt:false,note:""}];
+  renderTvSchedules();renderTvCosts();
+  document.getElementById("travelModalErr").textContent="";
+  document.getElementById("travelModal").classList.add("open");
+}
+function closeTravelModal(){document.getElementById("travelModal").classList.remove("open");editingTravelId=null;}
+
+async function saveTravel(submit=false){
+  const dest=document.getElementById("tvDest").value.trim();
+  const er=document.getElementById("travelModalErr");er.textContent="";
+  if(!dest){er.textContent="出張先を入力してください";return;}
+  const id=editingTravelId||(UID+"_travel_"+Date.now());
+  const data={userId:UID,userName:UNAME,dest,purpose:document.getElementById("tvPurpose").value.trim(),from:document.getElementById("tvFrom").value,to:document.getElementById("tvTo").value,reportDate:document.getElementById("tvReportDate").value,transport:document.getElementById("tvTransport").value.trim(),companion:document.getElementById("tvCompanion").value.trim(),report:document.getElementById("tvReport").value.trim(),schedules:tvSchedules,costs:tvCosts,status:submit?"pending":"draft",createdAt:editingTravelId?undefined:new Date().toISOString(),updatedAt:new Date().toISOString()};
+  if(submit)data.submittedAt=new Date().toISOString();
+  if(editingTravelId){await updateDoc(doc(db,"travels",id),data);}
+  else{data.createdAt=new Date().toISOString();await setDoc(doc(db,"travels",id),data);}
+  closeTravelModal();showToast(submit?"提出しました ✓":"保存しました ✓");renderTravelList();
+}
+
+// タブ切替
+function showTab(name){
+  document.querySelectorAll(".tab-content").forEach(e=>e.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(e=>e.classList.remove("active"));
+  document.getElementById("tab-"+name).classList.add("active");
+  document.querySelector("[data-tab="+name+"]").classList.add("active");
+  if(name==="expense")renderExpenses();
+  if(name==="travel")renderTravelList();
+}
+
+onAuthStateChanged(auth,async user=>{
+  if(!user){document.getElementById("loginScreen").style.display="flex";document.getElementById("appScreen").style.display="none";return;}
+  document.getElementById("loginScreen").style.display="none";
+  document.getElementById("appScreen").style.display="block";
+  if(window._expInitialized)return;
+  window._expInitialized=true;
+
+  document.querySelectorAll(".tab-btn").forEach(btn=>{btn.addEventListener("click",()=>showTab(btn.dataset.tab));});
+  document.getElementById("logoutBtn").addEventListener("click",()=>signOut(auth));
+  document.getElementById("expPrevBtn").addEventListener("click",()=>{expMonth.setMonth(expMonth.getMonth()-1);renderExpenses();});
+  document.getElementById("expNextBtn").addEventListener("click",()=>{expMonth.setMonth(expMonth.getMonth()+1);renderExpenses();});
+  document.getElementById("addExpBtn").addEventListener("click",()=>openExpModal());
+  document.getElementById("expModalCloseBtn").addEventListener("click",closeExpModal);
+  document.getElementById("expModalCancelBtn").addEventListener("click",closeExpModal);
+  document.getElementById("expModalSaveBtn").addEventListener("click",saveExp);
+  document.getElementById("expModal").addEventListener("click",e=>{if(e.target===e.currentTarget)closeExpModal();});
+  document.getElementById("addTravelBtn").addEventListener("click",()=>openTravelModal());
+  document.getElementById("travelModalCloseBtn").addEventListener("click",closeTravelModal);
+  document.getElementById("travelModalCancelBtn").addEventListener("click",closeTravelModal);
+  document.getElementById("travelModalSaveBtn").addEventListener("click",()=>saveTravel(false));
+  document.getElementById("travelModalSubmitBtn").addEventListener("click",()=>saveTravel(true));
+  document.getElementById("travelModal").addEventListener("click",e=>{if(e.target===e.currentTarget)closeTravelModal();});
+  document.getElementById("addScheduleBtn").addEventListener("click",()=>{tvSchedules.push({date:"",time:"",place:"",content:"",contact:"",result:""});renderTvSchedules();});
+  document.getElementById("addCostBtn").addEventListener("click",()=>{tvCosts.push({date:"",route:"",transport:"",amount:"",receipt:false,note:""});renderTvCosts();});
+
+  await renderExpenses();
+});
+
+document.getElementById("loginBtn").addEventListener("click",async()=>{
+  const em=document.getElementById("loginEmail").value.trim();
+  const pw=document.getElementById("loginPass").value;
+  const er=document.getElementById("loginErr");er.textContent="";
+  try{await signInWithEmailAndPassword(auth,em,pw);}
+  catch(e){er.textContent="メールアドレスまたはパスワードが間違っています";}
+});
+document.getElementById("loginPass").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("loginBtn").click();});
+</script>
+</body>
+</html>
