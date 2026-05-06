@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>管理者画面 - KINTAI</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F8FA;--surface:#fff;--s2:#F0F2F5;--bdr:#E2E5EA;--bdr2:#D0D5DD;--acc:#3B82F6;--acc2:#1D4ED8;--tx:#1E293B;--tx2:#64748B;--tx3:#94A3B8;--in:#059669;--out:#DC2626;--warn:#F59E0B;--lv:#7C3AED;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:"Noto Sans JP",sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;}
+#loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+.lcard{background:var(--surface);border:1px solid var(--bdr);border-radius:20px;padding:40px 32px;width:100%;max-width:360px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.08);}
+.llogo{font-family:"DM Mono",monospace;font-size:13px;color:var(--acc);letter-spacing:4px;text-transform:uppercase;margin-bottom:16px;}
+.lbadge{display:inline-block;background:#EFF6FF;color:var(--acc);border:1px solid #BFDBFE;border-radius:100px;padding:4px 16px;font-size:12px;font-weight:600;margin-bottom:24px;}
+.ltitle{font-size:22px;font-weight:700;margin-bottom:8px;}
+.lsub{font-size:13px;color:var(--tx3);margin-bottom:32px;}
+.lfield{margin-bottom:16px;text-align:left;}
+.lfield label{display:block;font-size:11px;color:var(--tx2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600;}
+.lfield input{width:100%;background:var(--s2);border:1px solid var(--bdr2);border-radius:8px;padding:12px 14px;color:var(--tx);font-size:15px;outline:none;}
+.lfield input:focus{border-color:var(--acc);}
+.lbtn{width:100%;padding:14px;background:var(--acc);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;}
+.lerr{font-size:12px;color:var(--out);margin-top:10px;min-height:16px;}
+#appScreen{display:none;}
+.wrap{max-width:960px;margin:0 auto;padding:24px 16px 60px;}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;padding-bottom:16px;border-bottom:1px solid var(--bdr);}
+.hlogo{font-family:"DM Mono",monospace;font-size:13px;color:var(--acc);letter-spacing:3px;text-transform:uppercase;font-weight:500;}
+.htitle{font-size:20px;font-weight:700;}
+.hright{display:flex;align-items:center;gap:12px;}
+.obtn{font-size:11px;color:var(--tx3);background:transparent;border:1px solid var(--bdr);border-radius:6px;padding:4px 10px;cursor:pointer;}
+.nbadge{background:var(--out);color:#fff;border-radius:100px;font-size:11px;font-weight:700;padding:3px 10px;}
+.tab-nav{display:flex;gap:4px;margin-bottom:24px;border-bottom:1px solid var(--bdr);}
+.tab-btn{padding:10px 20px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--tx2);font-size:14px;cursor:pointer;font-weight:500;margin-bottom:-1px;position:relative;}
+.tab-btn.active{color:var(--acc);border-bottom-color:var(--acc);}
+.tbadge{position:absolute;top:6px;right:4px;width:8px;height:8px;background:var(--out);border-radius:50%;display:none;}
+.tbadge.show{display:block;}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+.emp-selector{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
+.emp-btn{padding:8px 18px;background:var(--surface);border:1px solid var(--bdr);border-radius:100px;font-size:13px;cursor:pointer;font-weight:500;color:var(--tx2);}
+.emp-btn.active{background:var(--acc);border-color:var(--acc);color:#fff;}
+.req-card{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:20px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.04);}
+.req-name{font-size:16px;font-weight:700;margin-bottom:4px;}
+.req-date{font-family:"DM Mono",monospace;font-size:14px;color:var(--tx2);margin-bottom:8px;}
+.req-type{display:inline-block;background:#F5F3FF;color:var(--lv);border:1px solid #DDD6FE;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:600;margin-bottom:12px;}
+.req-reason{font-size:13px;color:var(--tx2);margin-bottom:8px;line-height:1.6;}
+.req-applied{font-size:11px;color:var(--tx3);margin-bottom:16px;}
+.req-btns{display:flex;gap:10px;}
+.rbtn{flex:1;padding:11px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;}
+.rbtn-approve{background:#ECFDF5;color:var(--in);border:1.5px solid #A7F3D0;}
+.rbtn-reject{background:#FEF2F2;color:var(--out);border:1.5px solid #FECACA;}
+.sbadge{display:inline-block;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;}
+.s-pending{background:#FFFBEB;color:#92400E;border:1px solid #FDE68A;}
+.s-approved{background:#ECFDF5;color:var(--in);border:1px solid #A7F3D0;}
+.s-rejected{background:#FEF2F2;color:var(--out);border:1px solid #FECACA;}
+.s-cancelled{background:var(--s2);color:var(--tx3);border:1px solid var(--bdr);}
+.mnav{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+.mbtn{background:var(--surface);border:1px solid var(--bdr);color:var(--tx2);width:32px;height:32px;border-radius:6px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;}
+.mlabel{font-family:"DM Mono",monospace;font-size:15px;font-weight:500;}
+.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+.sc{background:var(--surface);border:1px solid var(--bdr);border-radius:10px;padding:14px;}
+.slabel{font-size:10px;color:var(--tx3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;font-weight:600;}
+.sval{font-family:"DM Mono",monospace;font-size:18px;}
+.twrap{background:var(--surface);border:1px solid var(--bdr);border-radius:10px;overflow:hidden;}
+.ltable{width:100%;border-collapse:collapse;}
+.ltable th{font-size:10px;color:var(--tx3);letter-spacing:1px;text-transform:uppercase;padding:8px 12px;text-align:left;border-bottom:1px solid var(--bdr);background:var(--s2);font-weight:600;}
+.ltable td{padding:9px 12px;font-family:"DM Mono",monospace;font-size:12px;color:var(--tx2);border-bottom:1px solid var(--bdr);}
+.ltable tr:last-child td{border-bottom:none;}
+.ltable td:first-child{color:var(--tx);}
+.ot{color:var(--out)!important;font-weight:600;}
+.no-data{text-align:center;padding:40px;color:var(--tx3);font-size:13px;}
+.expbtn{background:var(--acc);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;}
+.emp-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:24px;}
+.emp-card{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:20px;}
+.emp-card-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+.emp-avatar{width:40px;height:40px;border-radius:50%;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;}
+.emp-card-name{font-size:15px;font-weight:700;}
+.emp-card-sub{font-size:12px;color:var(--tx3);}
+.emp-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.emp-stat{background:var(--s2);border-radius:6px;padding:8px;text-align:center;}
+.emp-stat-label{font-size:10px;color:var(--tx3);margin-bottom:2px;}
+.emp-stat-val{font-family:"DM Mono",monospace;font-size:14px;font-weight:600;}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--bdr);border-radius:16px;padding:28px;width:100%;max-width:420px;margin:16px;animation:sup 0.2s ease;}
+@keyframes sup{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+.mtitle{font-size:16px;font-weight:700;margin-bottom:4px;}
+.msub{font-size:12px;color:var(--tx3);margin-bottom:20px;}
+.mfield label{display:block;font-size:11px;color:var(--tx2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600;}
+.mfield textarea{width:100%;background:var(--s2);border:1px solid var(--bdr2);border-radius:8px;padding:11px 14px;color:var(--tx);font-size:14px;outline:none;resize:vertical;min-height:100px;}
+.mbtns{display:flex;gap:10px;margin-top:20px;}
+.mbtn2{flex:1;padding:13px;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;}
+.mb-cancel{background:var(--s2);color:var(--tx2);border:1px solid var(--bdr);}
+.mb-reject{background:var(--out);color:#fff;}
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--tx);color:#fff;padding:11px 24px;border-radius:100px;font-size:13px;transition:transform 0.3s ease;z-index:300;white-space:nowrap;font-weight:500;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+@media(max-width:600px){.sgrid{grid-template-columns:repeat(2,1fr);}.emp-cards{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="lcard">
+    <div class="llogo">KINTAI</div>
+    <div class="lbadge">管理者画面</div>
+    <div class="ltitle">谷口 管理者</div>
+    <div class="lsub">管理者アカウントでログイン</div>
+    <div class="lfield"><label>メールアドレス</label><input type="email" id="loginEmail" placeholder="admin@email.com"></div>
+    <div class="lfield"><label>パスワード</label><input type="password" id="loginPass" placeholder="password"></div>
+    <div class="lerr" id="loginErr"></div>
+    <button class="lbtn" id="loginBtn">ログイン</button>
+  </div>
+</div>
+
+<div id="appScreen">
+<div class="wrap">
+  <header>
+    <div><div class="hlogo">KINTAI</div><div class="htitle">管理者ダッシュボード</div></div>
+    <div class="hright">
+      <span id="pendingBadge"></span>
+      <button class="obtn" id="logoutBtn">ログアウト</button>
+    </div>
+  </header>
+
+  <div class="tab-nav">
+    <button class="tab-btn active" data-tab="概要">全社員概要</button>
+    <button class="tab-btn" data-tab="申請">有給申請<span class="tbadge" id="reqBadge"></span></button>
+    <button class="tab-btn" data-tab="勤怠">勤怠確認</button>
+    <button class="tab-btn" data-tab="履歴">申請履歴</button>
+    <button class="tab-btn" data-tab="打刻">打刻記録</button>
+  </div>
+
+  <div class="tab-content active" id="tab-概要">
+    <div class="emp-cards" id="empCards"><div class="no-data">読み込み中...</div></div>
+  </div>
+
+  <div class="tab-content" id="tab-申請">
+    <div id="pendingList"><div class="no-data">読み込み中...</div></div>
+  </div>
+
+  <div class="tab-content" id="tab-勤怠">
+    <div class="emp-selector" id="kintaiEmpSel"></div>
+    <div class="mnav">
+      <button class="mbtn" id="kintaiPrev">&#8249;</button>
+      <div class="mlabel" id="kintaiMonthLabel"></div>
+      <button class="mbtn" id="kintaiNext">&#8250;</button>
+      <button class="expbtn" id="exportBtn">&#x2B07; CSV出力</button>
+    </div>
+    <div class="sgrid">
+      <div class="sc"><div class="slabel">出勤日数</div><div class="sval" id="totalDays">-</div></div>
+      <div class="sc"><div class="slabel">総実労働</div><div class="sval" id="totalHours">-</div></div>
+      <div class="sc"><div class="slabel">残業時間</div><div class="sval" id="totalOT" style="color:var(--out)">-</div></div>
+      <div class="sc"><div class="slabel">有休取得</div><div class="sval" id="totalLeave" style="color:var(--lv)">-</div></div>
+    </div>
+    <div class="twrap"><table class="ltable">
+      <thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実労働</th><th>残業</th></tr></thead>
+      <tbody id="kintaiLog"><tr><td colspan="6" class="no-data">社員を選択してください</td></tr></tbody>
+    </table></div>
+  </div>
+
+  <div class="tab-content" id="tab-履歴">
+    <div class="emp-selector" id="histEmpSel"></div>
+    <div id="historyList"><div class="no-data">読み込み中...</div></div>
+  </div>
+
+  <div class="tab-content" id="tab-打刻">
+    <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#1D4ED8;">&#x1F512; 閲覧専用です。</div>
+    <div class="emp-selector" id="stampEmpSel"></div>
+    <div class="mnav">
+      <button class="mbtn" id="stampPrev">&#8249;</button>
+      <div class="mlabel" id="stampMonthLabel"></div>
+      <button class="mbtn" id="stampNext">&#8250;</button>
+    </div>
+    <div class="twrap"><table class="ltable">
+      <thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実労働</th><th>残業</th></tr></thead>
+      <tbody id="stampLog"><tr><td colspan="6" class="no-data">社員を選択してください</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+</div>
+
+<!-- 差し戻しモーダル -->
+<div class="overlay" id="rejectOverlay">
+  <div class="modal">
+    <div class="mtitle">&#x274C; 差し戻し</div>
+    <div class="msub" id="rejectSubtitle"></div>
+    <div class="mfield">
+      <label>差し戻しコメント（申請者に通知されます）</label>
+      <textarea id="rejectComment" placeholder="例：日程を再調整してください。"></textarea>
+    </div>
+    <div class="mbtns">
+      <button class="mbtn2 mb-cancel" id="rejectCancelBtn">キャンセル</button>
+      <button class="mbtn2 mb-reject" id="rejectConfirmBtn">差し戻す</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {getFirestore,doc,collection,query,where,getDocs,updateDoc} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const FB={apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",authDomain:"kintai-dubstock.firebaseapp.com",projectId:"kintai-dubstock",storageBucket:"kintai-dubstock.firebasestorage.app",messagingSenderId:"1030065146975",appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"};
+const app=initializeApp(FB);
+const auth=getAuth(app);
+const db=getFirestore(app);
+
+// ══ 社員リスト（追加時はここに追記）══
+const EMPLOYEES=[
+  {uid:"yuuki_kenta", name:"結城 健太", avatar:"結"},
+  // {uid:"yamada_taro", name:"山田 太郎", avatar:"山"},
+];
+
+const DOW=["日","月","火","水","木","金","土"];
+const EIGHT=8*3600000;
+let rejectTargetId=null;
+let kintaiMonth=new Date();
+let stampMonth=new Date();
+let selectedKintaiUid=EMPLOYEES[0].uid;
+let selectedStampUid=EMPLOYEES[0].uid;
+let selectedHistUid=EMPLOYEES[0].uid;
+
+function p2(n){return String(n).padStart(2,"0");}
+function hm(ms){const m=Math.floor(ms/60000);return Math.floor(m/60)+":"+p2(m%60);}
+function ts2hm(ts){if(!ts)return "--:--";const d=new Date(ts);return p2(d.getHours())+":"+p2(d.getMinutes());}
+function brkMs(a,b){if(!a||!b)return 0;const d=new Date(a),s=new Date(d),e=new Date(d);s.setHours(12,0,0,0);e.setHours(13,0,0,0);return Math.max(0,Math.min(b,e.getTime())-Math.max(a,s.getTime()));}
+function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2500);}
+
+// データ取得
+async function getLeavesByUid(uid){
+  const q=query(collection(db,"leaves"),where("userId","==",uid));
+  const sn=await getDocs(q);const r=[];sn.forEach(d=>r.push(d.data()));
+  return r.sort((a,b)=>new Date(b.appliedAt)-new Date(a.appliedAt));
+}
+async function getAllLeaves(){
+  const all=[];
+  for(const emp of EMPLOYEES){
+    const lvs=await getLeavesByUid(emp.uid);
+    lvs.forEach(lv=>{if(!lv.userName)lv.userName=emp.name;});
+    all.push(...lvs);
+  }
+  return all.sort((a,b)=>new Date(b.appliedAt)-new Date(a.appliedAt));
+}
+async function getRecsByUid(uid){
+  const q=query(collection(db,"kintai"),where("userId","==",uid));
+  const sn=await getDocs(q);const r={};sn.forEach(d=>{r[d.data().date]=d.data();});return r;
+}
+
+// 承認処理
+async function doApprove(id){
+  await updateDoc(doc(db,"leaves",id),{status:"approved",respondedAt:new Date().toISOString(),notifSeen:false});
+  showToast("承認しました ✓");
+  await renderPending();
+  await renderEmpCards();
+}
+
+// 差し戻しモーダル
+function openRejectModal(id,date,type,name){
+  rejectTargetId=id;
+  const dow=DOW[new Date(date.replace(/-/g,"/")).getDay()];
+  document.getElementById("rejectSubtitle").textContent=name+" / "+date.slice(5)+"("+dow+") "+type;
+  document.getElementById("rejectComment").value="";
+  document.getElementById("rejectOverlay").classList.add("open");
+}
+function closeRejectModal(){
+  document.getElementById("rejectOverlay").classList.remove("open");
+  rejectTargetId=null;
+}
+async function doReject(){
+  if(!rejectTargetId)return;
+  const comment=document.getElementById("rejectComment").value.trim();
+  await updateDoc(doc(db,"leaves",rejectTargetId),{status:"rejected",comment:comment||"",respondedAt:new Date().toISOString(),notifSeen:false});
+  closeRejectModal();
+  showToast("差し戻しました");
+  await renderPending();
+  await renderEmpCards();
+}
+
+// 全社員概要
+async function renderEmpCards(){
+  const el=document.getElementById("empCards");el.innerHTML="";
+  const y=new Date().getFullYear(),m=new Date().getMonth()+1;
+  const r=y-2018;
+  for(const emp of EMPLOYEES){
+    const allRecs=await getRecsByUid(emp.uid);
+    const pfx=y+"-"+p2(m);const recs={};Object.keys(allRecs).forEach(k=>{if(k.startsWith(pfx))recs[k]=allRecs[k];});
+    const lvs=await getLeavesByUid(emp.uid);
+    const pending=lvs.filter(lv=>lv.status==="pending").length;
+    const days=new Date(y,m,0).getDate();let tw=0,wd=0;
+    for(let d=1;d<=days;d++){
+      const date=y+"-"+p2(m)+"-"+p2(d);const rec=recs[date];
+      const shifts=rec&&rec.shifts?rec.shifts.filter(s=>s&&s.in&&s.out):[];
+      if(!shifts.length)continue;wd++;const s=shifts[0];const bms=brkMs(s.in,s.out);tw+=Math.max(0,s.out-s.in-bms);
+    }
+    const aLvs=lvs.filter(lv=>{const d=new Date(lv.date.replace(/-/g,"/"));return d.getFullYear()===y&&d.getMonth()===m-1&&lv.status==="approved";});
+    const card=document.createElement("div");card.className="emp-card";
+    card.innerHTML=
+      "<div class=\"emp-card-header\"><div class=\"emp-avatar\">"+emp.avatar+"</div><div>"+
+      "<div class=\"emp-card-name\">"+emp.name+(pending>0?" <span style=\"background:var(--out);color:#fff;border-radius:100px;font-size:10px;font-weight:700;padding:1px 7px;\">申請"+pending+"件</span>":"")+"</div>"+
+      "<div class=\"emp-card-sub\">R"+r+"年"+m+"月</div></div></div>"+
+      "<div class=\"emp-stats\">"+
+      "<div class=\"emp-stat\"><div class=\"emp-stat-label\">出勤</div><div class=\"emp-stat-val\">"+wd+"日</div></div>"+
+      "<div class=\"emp-stat\"><div class=\"emp-stat-label\">実労働</div><div class=\"emp-stat-val\" style=\"font-size:12px;\">"+hm(tw)+"</div></div>"+
+      "<div class=\"emp-stat\"><div class=\"emp-stat-label\">有休</div><div class=\"emp-stat-val\" style=\"color:var(--lv);\">"+aLvs.length+"日</div></div>"+
+      "</div>";
+    el.appendChild(card);
+  }
+}
+
+// 承認待ち一覧
+async function renderPending(){
+  const lvs=await getAllLeaves();
+  const pending=lvs.filter(lv=>lv.status==="pending");
+  document.getElementById("reqBadge").className="tbadge"+(pending.length>0?" show":"");
+  document.getElementById("pendingBadge").innerHTML=pending.length>0?"<span class=\"nbadge\">承認待ち "+pending.length+"件</span>":"";
+
+  const el=document.getElementById("pendingList");
+  if(!pending.length){el.innerHTML="<div class=\"no-data\">承認待ちの申請はありません</div>";return;}
+
+  el.innerHTML="";
+  pending.forEach(lv=>{
+    const dow=DOW[new Date(lv.date.replace(/-/g,"/")).getDay()];
+    const at=new Date(lv.appliedAt);
+    const atStr=at.getFullYear()+"/"+p2(at.getMonth()+1)+"/"+p2(at.getDate())+" "+p2(at.getHours())+":"+p2(at.getMinutes());
+    const empName=lv.userName||(EMPLOYEES.find(e=>e.uid===lv.userId)||{name:lv.userId}).name;
+
+    const card=document.createElement("div");card.className="req-card";
+    card.innerHTML=
+      "<div class=\"req-name\">"+empName+"</div>"+
+      "<div class=\"req-date\">"+lv.date.slice(5)+"("+dow+")</div>"+
+      "<span class=\"req-type\">"+lv.type+(lv.time?"・"+lv.time:"")+"</span>"+
+      "<div class=\"req-reason\">"+(lv.reason||"理由の記載なし")+"</div>"+
+      "<div class=\"req-applied\">申請日時："+atStr+"</div>"+
+      "<div class=\"req-btns\">"+
+      "<button class=\"rbtn rbtn-approve\">&#x2705; 承認する</button>"+
+      "<button class=\"rbtn rbtn-reject\">&#x274C; 差し戻す</button>"+
+      "</div>";
+
+    // ボタンにイベントを直接登録
+    card.querySelector(".rbtn-approve").addEventListener("click",async()=>{
+      if(!confirm("承認しますか？"))return;
+      await doApprove(lv.id);
+    });
+    card.querySelector(".rbtn-reject").addEventListener("click",()=>{
+      openRejectModal(lv.id,lv.date,lv.type,empName);
+    });
+
+    el.appendChild(card);
+  });
+}
+
+// 勤怠確認
+function renderEmpSelector(containerId,getUid,setUid,onSelect){
+  const el=document.getElementById(containerId);el.innerHTML="";
+  EMPLOYEES.forEach(emp=>{
+    const btn=document.createElement("button");
+    btn.className="emp-btn"+(emp.uid===getUid()?" active":"");
+    btn.textContent=emp.name;
+    btn.addEventListener("click",()=>{
+      setUid(emp.uid);
+      el.querySelectorAll(".emp-btn").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      onSelect();
+    });
+    el.appendChild(btn);
+  });
+}
+
+async function renderKintai(){
+  const y=kintaiMonth.getFullYear(),m=kintaiMonth.getMonth();const r=y-2018;
+  document.getElementById("kintaiMonthLabel").textContent="R"+r+"年"+(m+1)+"月";
+  const allRecs=await getRecsByUid(selectedKintaiUid);
+  const pfx=y+"-"+p2(m+1);const recs={};Object.keys(allRecs).forEach(k=>{if(k.startsWith(pfx))recs[k]=allRecs[k];});
+  const lvs=await getLeavesByUid(selectedKintaiUid);
+  const days=new Date(y,m+1,0).getDate();let tw=0,to=0,wd=0,tb="";
+  const aLvs=lvs.filter(lv=>{const d=new Date(lv.date.replace(/-/g,"/"));return d.getFullYear()===y&&d.getMonth()===m&&lv.status==="approved";});
+  for(let d=1;d<=days;d++){
+    const date=y+"-"+p2(m+1)+"-"+p2(d);const rec=recs[date];
+    const shifts=rec&&rec.shifts?rec.shifts.filter(s=>s&&s.in&&s.out):[];
+    const isLv=lvs.some(lv=>lv.date===date&&lv.status==="approved");
+    if(!shifts.length&&!isLv)continue;wd++;
+    if(isLv&&!shifts.length){const dow=DOW[new Date(date).getDay()];tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td colspan=\"4\" style=\"text-align:center;\"><span style=\"background:#F5F3FF;color:var(--lv);border:1px solid #DDD6FE;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;\">有給休暇</span></td><td>―</td></tr>";continue;}
+    const s=shifts[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);tw+=wms;to+=oms;
+    const dow=DOW[new Date(date).getDay()];
+    tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td>"+ts2hm(s.in)+"</td><td>"+ts2hm(s.out)+"</td><td>"+(bms>0?hm(bms):"―")+"</td><td>"+hm(wms)+"</td><td class=\""+(oms>0?"ot":"")+"\">"+(oms>0?hm(oms):"―")+"</td></tr>";
+  }
+  document.getElementById("kintaiLog").innerHTML=tb||"<tr><td colspan=\"6\" class=\"no-data\">記録なし</td></tr>";
+  document.getElementById("totalDays").textContent=wd+" 日";
+  document.getElementById("totalHours").textContent=hm(tw);
+  document.getElementById("totalOT").textContent=hm(to);
+  document.getElementById("totalLeave").textContent=aLvs.length+" 日";
+}
+
+// 申請履歴
+async function renderHistory(){
+  const lvs=await getLeavesByUid(selectedHistUid);
+  const el=document.getElementById("historyList");
+  const sm={pending:"<span class=\"sbadge s-pending\">承認待ち</span>",approved:"<span class=\"sbadge s-approved\">承認済</span>",rejected:"<span class=\"sbadge s-rejected\">差し戻し</span>",cancelled:"<span class=\"sbadge s-cancelled\">取消済</span>"};
+  if(!lvs.length){el.innerHTML="<div class=\"no-data\">申請履歴はありません</div>";return;}
+  el.innerHTML="<div class=\"twrap\"><table class=\"ltable\"><thead><tr><th>申請日</th><th>取得日</th><th>種別</th><th>理由</th><th>状態</th><th>コメント</th></tr></thead><tbody>"+
+    lvs.map(lv=>{const at=new Date(lv.appliedAt);const atStr=(at.getMonth()+1)+"/"+at.getDate()+" "+p2(at.getHours())+":"+p2(at.getMinutes());const dow=DOW[new Date(lv.date.replace(/-/g,"/")).getDay()];
+      return "<tr><td style=\"font-family:sans-serif;\">"+atStr+"</td><td>"+lv.date.slice(5)+"("+dow+")</td><td style=\"font-family:sans-serif;\">"+lv.type+(lv.time?"・"+lv.time:"")+"</td><td style=\"font-family:sans-serif;font-size:12px;\">"+( lv.reason||"―")+"</td><td>"+(sm[lv.status]||lv.status)+"</td><td style=\"font-family:sans-serif;font-size:12px;color:var(--out);\">"+( lv.comment||"―")+"</td></tr>";
+    }).join("")+"</tbody></table></div>";
+}
+
+// 打刻記録（閲覧専用）
+async function renderStamp(){
+  const y=stampMonth.getFullYear(),m=stampMonth.getMonth();const r=y-2018;
+  document.getElementById("stampMonthLabel").textContent="R"+r+"年"+(m+1)+"月";
+  const allRecs=await getRecsByUid(selectedStampUid);
+  const pfx=y+"-"+p2(m+1);const recs={};Object.keys(allRecs).forEach(k=>{if(k.startsWith(pfx))recs[k]=allRecs[k];});
+  const days=new Date(y,m+1,0).getDate();let tb="";
+  for(let d=1;d<=days;d++){
+    const date=y+"-"+p2(m+1)+"-"+p2(d);const rec=recs[date];
+    const shifts=rec&&rec.shifts?rec.shifts.filter(s=>s&&s.in&&s.out):[];
+    if(!shifts.length)continue;
+    const s=shifts[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);
+    const dow=DOW[new Date(date).getDay()];
+    tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td>"+ts2hm(s.in)+"</td><td>"+ts2hm(s.out)+"</td><td>"+(bms>0?hm(bms):"―")+"</td><td>"+hm(wms)+"</td><td class=\""+(oms>0?"ot":"")+"\">"+(oms>0?hm(oms):"―")+"</td></tr>";
+  }
+  document.getElementById("stampLog").innerHTML=tb||"<tr><td colspan=\"6\" class=\"no-data\">記録なし</td></tr>";
+}
+
+// タブ切替
+function showTab(name){
+  document.querySelectorAll(".tab-content").forEach(e=>e.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(e=>e.classList.remove("active"));
+  document.getElementById("tab-"+name).classList.add("active");
+  document.querySelector("[data-tab=\""+name+"\"]").classList.add("active");
+  if(name==="勤怠"){renderEmpSelector("kintaiEmpSel",()=>selectedKintaiUid,(v)=>{selectedKintaiUid=v;},renderKintai);renderKintai();}
+  if(name==="履歴"){renderEmpSelector("histEmpSel",()=>selectedHistUid,(v)=>{selectedHistUid=v;},renderHistory);renderHistory();}
+  if(name==="打刻"){renderEmpSelector("stampEmpSel",()=>selectedStampUid,(v)=>{selectedStampUid=v;},renderStamp);renderStamp();}
+  if(name==="申請")renderPending();
+}
+
+// ログインボタン
+document.getElementById("loginBtn").addEventListener("click",async()=>{
+  const em=document.getElementById("loginEmail").value.trim();
+  const pw=document.getElementById("loginPass").value;
+  const er=document.getElementById("loginErr");er.textContent="";
+  try{await signInWithEmailAndPassword(auth,em,pw);}
+  catch(e){er.textContent="メールアドレスまたはパスワードが間違っています";}
+});
+document.getElementById("loginPass").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("loginBtn").click();});
+
+// 初期化（全ボタンをここで登録）
+onAuthStateChanged(auth,async user=>{
+  if(!user){
+    document.getElementById("loginScreen").style.display="flex";
+    document.getElementById("appScreen").style.display="none";
+    return;
+  }
+  document.getElementById("loginScreen").style.display="none";
+  document.getElementById("appScreen").style.display="block";
+
+  // タブボタン
+  document.querySelectorAll(".tab-btn").forEach(btn=>{
+    btn.addEventListener("click",()=>showTab(btn.dataset.tab));
+  });
+
+  // ログアウト
+  document.getElementById("logoutBtn").addEventListener("click",()=>signOut(auth));
+
+  // 差し戻しモーダルボタン
+  document.getElementById("rejectCancelBtn").addEventListener("click",closeRejectModal);
+  document.getElementById("rejectConfirmBtn").addEventListener("click",doReject);
+  document.getElementById("rejectOverlay").addEventListener("click",(e)=>{if(e.target===e.currentTarget)closeRejectModal();});
+
+  // 勤怠月切替
+  document.getElementById("kintaiPrev").addEventListener("click",()=>{kintaiMonth.setMonth(kintaiMonth.getMonth()-1);renderKintai();});
+  document.getElementById("kintaiNext").addEventListener("click",()=>{kintaiMonth.setMonth(kintaiMonth.getMonth()+1);renderKintai();});
+
+  // 打刻月切替
+  document.getElementById("stampPrev").addEventListener("click",()=>{stampMonth.setMonth(stampMonth.getMonth()-1);renderStamp();});
+  document.getElementById("stampNext").addEventListener("click",()=>{stampMonth.setMonth(stampMonth.getMonth()+1);renderStamp();});
+
+  // CSV出力
+  document.getElementById("exportBtn").addEventListener("click",async()=>{
+    const y=kintaiMonth.getFullYear(),m=kintaiMonth.getMonth();
+    const emp=EMPLOYEES.find(e=>e.uid===selectedKintaiUid)||{name:selectedKintaiUid};
+    const allRecs=await getRecsByUid(selectedKintaiUid);
+    const pfx=y+"-"+p2(m+1);const recs={};Object.keys(allRecs).forEach(k=>{if(k.startsWith(pfx))recs[k]=allRecs[k];});
+    const days=new Date(y,m+1,0).getDate();
+    const rows=[["日付","曜日","出勤","退勤","休憩(min)","実労働(h)","残業(h)"]];
+    for(let d=1;d<=days;d++){const date=y+"-"+p2(m+1)+"-"+p2(d);const rec=recs[date];const shifts=rec&&rec.shifts?rec.shifts.filter(s=>s&&s.in&&s.out):[];if(!shifts.length)continue;const s=shifts[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);rows.push([date.slice(5),DOW[new Date(date).getDay()],ts2hm(s.in),ts2hm(s.out),Math.round(bms/60000),(Math.round(wms/36000)/100).toFixed(2),(Math.round(oms/36000)/100).toFixed(2)]);}
+    const csv=rows.map(r=>r.join(",")).join("
+");
+    const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}));
+    a.download=emp.name+"_R"+(y-2018)+"_"+p2(m+1)+"_勤怠.csv";a.click();
+    showToast("CSVをダウンロードしました");
+  });
+
+  // 初期表示
+  await renderEmpCards();
+  await renderPending();
+  setInterval(async()=>{await renderPending();await renderEmpCards();},30000);
+});
+
+
+</script>
+</body>
+</html>
