@@ -95,7 +95,20 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .mb-reject{background:var(--out);color:#fff;}
 .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--tx);color:#fff;padding:11px 24px;border-radius:100px;font-size:13px;transition:transform 0.3s ease;z-index:300;white-space:nowrap;font-weight:500;}
 .toast.show{transform:translateX(-50%) translateY(0);}
-@media(max-width:600px){.sgrid{grid-template-columns:repeat(2,1fr);}.emp-cards{grid-template-columns:1fr;}}
+.tab-nav{overflow-x:auto;flex-wrap:nowrap;}
+.tab-btn{white-space:nowrap;}
+.exp-card{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:20px;margin-bottom:12px;}
+.exp-item-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--bdr);font-size:13px;}
+.exp-item-row:last-child{border-bottom:none;}
+.exp-date{font-family:"DM Mono",monospace;font-size:12px;color:var(--tx3);min-width:48px;}
+.exp-amount{font-family:"DM Mono",monospace;font-size:13px;color:var(--out);font-weight:600;margin-left:auto;white-space:nowrap;}
+.exp-total{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;margin-top:12px;}
+.exp-total-amount{font-family:"DM Mono",monospace;font-size:20px;color:var(--acc);font-weight:700;}
+.travel-info{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0;}
+.ti-item{background:var(--s2);border-radius:8px;padding:10px 12px;}
+.ti-label{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;font-weight:600;}
+.ti-val{font-size:13px;color:var(--tx);font-weight:500;}
+@media(max-width:600px){.sgrid{grid-template-columns:repeat(2,1fr);}.emp-cards{grid-template-columns:1fr;}.travel-info{grid-template-columns:repeat(2,1fr);}}
 </style>
 </head>
 <body>
@@ -131,6 +144,8 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
     <button class="tab-btn" data-tab="勤怠">勤怠確認</button>
     <button class="tab-btn" data-tab="履歴">申請履歴</button>
     <button class="tab-btn" data-tab="打刻">打刻記録</button>
+    <button class="tab-btn" data-tab="経費">&#x1F4B0; 経費精算</button>
+    <button class="tab-btn" data-tab="出張">&#x2708; 出張報告</button>
   </div>
 
   <div class="tab-content active" id="tab-概要">
@@ -179,7 +194,33 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
       <tbody id="stampLog"><tr><td colspan="6" class="no-data">社員を選択してください</td></tr></tbody>
     </table></div>
   </div>
+
+  <!-- 経費精算タブ -->
+  <div class="tab-content" id="tab-経費">
+    <div id="expAdminList"><div class="no-data">読み込み中...</div></div>
+  </div>
+
+  <!-- 出張報告タブ -->
+  <div class="tab-content" id="tab-出張">
+    <div id="travelAdminList"><div class="no-data">読み込み中...</div></div>
+  </div>
 </div>
+</div>
+
+<!-- 詳細モーダル（経費・出張） -->
+<div class="overlay" id="detailModal">
+  <div class="modal">
+    <div class="mtitle">
+      <span id="detailTitle"></span>
+      <button style="background:transparent;border:none;font-size:22px;cursor:pointer;color:var(--tx3);" id="detailCloseBtn">&times;</button>
+    </div>
+    <div id="detailBody"></div>
+    <div id="commentField" style="display:none;margin-top:12px;">
+      <label style="display:block;font-size:11px;color:var(--tx2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600;">コメント（差し戻し時に通知）</label>
+      <textarea id="detailComment" style="width:100%;background:var(--s2);border:1px solid var(--bdr2);border-radius:8px;padding:11px 14px;color:var(--tx);font-size:14px;outline:none;resize:vertical;min-height:80px;font-family:inherit;" placeholder="例：領収書の添付が必要です"></textarea>
+    </div>
+    <div class="mbtns" id="detailBtns" style="margin-top:16px;"></div>
+  </div>
 </div>
 
 <!-- 差し戻しモーダル -->
@@ -425,7 +466,180 @@ function showTab(name){
   if(name==="履歴"){buildEmpSelector("histEmpSel",()=>selectedHistUid,v=>{selectedHistUid=v;},renderHistory);renderHistory();}
   if(name==="打刻"){buildEmpSelector("stampEmpSel",()=>selectedStampUid,v=>{selectedStampUid=v;},renderStamp);renderStamp();}
   if(name==="申請")renderPending();
+  if(name==="経費")renderExpAdmin();
+  if(name==="出張")renderTravelAdmin();
 }
+
+// ══ 経費精算 管理 ══
+function fmtYen(n){return "¥ "+Number(n||0).toLocaleString();}
+const statusMap={draft:"<span style=\"display:inline-block;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;background:#F1F5F9;color:var(--tx2);border:1px solid var(--bdr)\">下書き</span>",pending:"<span style=\"display:inline-block;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;background:#FFFBEB;color:#92400E;border:1px solid #FDE68A\">提出済</span>",approved:"<span style=\"display:inline-block;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;background:#ECFDF5;color:var(--in);border:1px solid #A7F3D0\">承認済</span>",rejected:"<span style=\"display:inline-block;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;background:#FEF2F2;color:var(--out);border:1px solid #FECACA\">差し戻し</span>"};
+
+async function getAllDocs(col){
+  const sn=await getDocs(collection(db,col));
+  const r=[];sn.forEach(d=>r.push({id:d.id,...d.data()}));
+  return r;
+}
+
+async function renderExpAdmin(){
+  const all=await getAllDocs("expenses");
+  const groups={};
+  all.forEach(e=>{
+    if(!e.date)return;
+    const key=e.userId+"_"+e.date.slice(0,7);
+    if(!groups[key])groups[key]={userId:e.userId,userName:e.userName||e.userId,month:e.date.slice(0,7),items:[],submitted:false,approved:false,rejected:false};
+    groups[key].items.push(e);
+    if(e.submitted)groups[key].submitted=true;
+    if(e.approved)groups[key].approved=true;
+    if(e.rejected)groups[key].rejected=true;
+  });
+  const el=document.getElementById("expAdminList");
+  const sorted=Object.values(groups).sort((a,b)=>b.month.localeCompare(a.month));
+  if(!sorted.length){el.innerHTML="<div class=\"no-data\">経費精算データがありません</div>";return;}
+  el.innerHTML="";
+  sorted.forEach(g=>{
+    const total=g.items.reduce((s,e)=>s+(Number(e.amount)||0),0);
+    const status=g.approved?"approved":g.rejected?"rejected":g.submitted?"pending":"draft";
+    const div=document.createElement("div");div.className="exp-card";
+    div.innerHTML=
+      "<div style=\"display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;\">"+
+      "<div><div style=\"font-size:16px;font-weight:700;\">"+g.userName+"　<span style=\"font-family:'DM Mono',monospace;font-size:13px;color:var(--tx2);\">"+g.month+"</span></div>"+
+      "<div style=\"font-size:12px;color:var(--tx2);margin-top:2px;\">"+g.items.length+"件</div></div>"+
+      (statusMap[status]||"")+
+      "</div>"+
+      g.items.sort((a,b)=>a.date.localeCompare(b.date)).map(e=>
+        "<div class=\"exp-item-row\">"+
+        "<span class=\"exp-date\">"+e.date.slice(5)+"</span>"+
+        "<span style=\"flex:1;\">"+e.desc+"</span>"+
+        "<span style=\"font-size:11px;color:var(--tx3);padding:0 8px;\">"+e.method+"</span>"+
+        (e.receipt?"<span style=\"font-size:11px;color:var(--tx3);\">&#x1F9FE;</span>":"")+
+        "<span class=\"exp-amount\">"+fmtYen(e.amount)+"</span>"+
+        "</div>"
+      ).join("")+
+      "<div class=\"exp-total\"><span style=\"font-weight:600;color:var(--acc2);\">合計</span><span class=\"exp-total-amount\">"+fmtYen(total)+"</span></div>"+
+      (status==="pending"?
+        "<div style=\"display:flex;gap:8px;margin-top:12px;\">"+
+        "<button class=\"rbtn-approve rbtn\" style=\"flex:1;padding:10px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#ECFDF5;color:var(--in);border:1.5px solid #A7F3D0;\">&#x2705; 承認する</button>"+
+        "<button class=\"rbtn-reject rbtn\" style=\"flex:1;padding:10px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#FEF2F2;color:var(--out);border:1.5px solid #FECACA;\">&#x274C; 差し戻す</button>"+
+        "</div>":"");
+    if(status==="pending"){
+      div.querySelector(".rbtn-approve").addEventListener("click",async()=>{
+        if(!confirm("承認しますか？"))return;
+        for(const item of g.items){await updateDoc(doc(db,"expenses",item.id),{approved:true,approvedAt:new Date().toISOString()});}
+        showToast("承認しました ✓");renderExpAdmin();
+      });
+      div.querySelector(".rbtn-reject").addEventListener("click",()=>{
+        openDetailModal("exp_reject",g,null);
+      });
+    }
+    el.appendChild(div);
+  });
+}
+
+// ══ 出張報告 管理 ══
+async function renderTravelAdmin(){
+  const all=await getAllDocs("travels");
+  all.sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+  const el=document.getElementById("travelAdminList");
+  const visible=all.filter(t=>t.status!=="draft");
+  if(!visible.length){el.innerHTML="<div class=\"no-data\">提出済みの出張報告がありません</div>";return;}
+  el.innerHTML="";
+  visible.forEach(t=>{
+    const totalCost=(t.costs||[]).reduce((s,c)=>s+(Number(c.amount)||0),0);
+    const div=document.createElement("div");div.className="exp-card";div.style.cursor="pointer";
+    div.innerHTML=
+      "<div style=\"display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;\">"+
+      "<div><div style=\"font-size:16px;font-weight:700;\">"+(t.userName||t.userId)+"　"+t.dest+"出張</div>"+
+      "<div style=\"font-size:12px;color:var(--tx2);margin-top:2px;\">"+(t.from||"")+(t.to&&t.to!==t.from?" 〜 "+t.to:"")+" / "+(t.purpose||"")+"</div></div>"+
+      (statusMap[t.status]||"")+
+      "</div>"+
+      "<div class=\"travel-info\">"+
+      "<div class=\"ti-item\"><div class=\"ti-label\">交通手段</div><div class=\"ti-val\">"+(t.transport||"―")+"</div></div>"+
+      "<div class=\"ti-item\"><div class=\"ti-label\">同行者</div><div class=\"ti-val\">"+(t.companion||"―")+"</div></div>"+
+      "<div class=\"ti-item\"><div class=\"ti-label\">費用合計</div><div class=\"ti-val\" style=\"color:var(--out);font-weight:700;\">"+fmtYen(totalCost)+"</div></div>"+
+      "</div>"+
+      (t.status==="pending"?
+        "<div style=\"display:flex;gap:8px;margin-top:12px;\">"+
+        "<button class=\"rbtn-approve\" style=\"flex:1;padding:10px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#ECFDF5;color:var(--in);border:1.5px solid #A7F3D0;\">&#x2705; 承認する</button>"+
+        "<button class=\"rbtn-reject\" style=\"flex:1;padding:10px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#FEF2F2;color:var(--out);border:1.5px solid #FECACA;\">&#x274C; 差し戻す</button>"+
+        "</div>":"");
+    if(t.status==="pending"){
+      div.querySelector(".rbtn-approve").addEventListener("click",async e=>{
+        e.stopPropagation();
+        if(!confirm("承認しますか？"))return;
+        await updateDoc(doc(db,"travels",t.id),{status:"approved",approvedAt:new Date().toISOString()});
+        showToast("承認しました ✓");renderTravelAdmin();
+      });
+      div.querySelector(".rbtn-reject").addEventListener("click",e=>{
+        e.stopPropagation();
+        openDetailModal("travel_reject",null,t);
+      });
+    }
+    div.addEventListener("click",()=>openDetailModal("travel_view",null,t));
+    el.appendChild(div);
+  });
+}
+
+// 詳細モーダル
+let _detailMode=null,_detailGroup=null,_detailTravel=null;
+function openDetailModal(mode,group,travel){
+  _detailMode=mode;_detailGroup=group;_detailTravel=travel;
+  const body=document.getElementById("detailBody");
+  const cf=document.getElementById("commentField");
+  const btns=document.getElementById("detailBtns");
+  document.getElementById("detailComment").value="";
+  cf.style.display="none";btns.innerHTML="";
+
+  if(mode==="exp_reject"){
+    document.getElementById("detailTitle").textContent="経費精算 差し戻し";
+    body.innerHTML="<div style=\"font-size:13px;color:var(--tx2);\">"+group.userName+" / "+group.month+" / 合計 "+fmtYen(group.items.reduce((s,e)=>s+(Number(e.amount)||0),0))+"</div>";
+    cf.style.display="block";
+    btns.innerHTML="<button class=\"mbtn2 mb-cancel\" id=\"dcb\">キャンセル</button><button class=\"mbtn2 mb-reject\" id=\"dab\">差し戻す</button>";
+  } else if(mode==="travel_reject"){
+    document.getElementById("detailTitle").textContent="出張報告 差し戻し";
+    body.innerHTML="<div style=\"font-size:13px;color:var(--tx2);\">"+travel.dest+"出張（"+(travel.from||"")+"）</div>";
+    cf.style.display="block";
+    btns.innerHTML="<button class=\"mbtn2 mb-cancel\" id=\"dcb\">キャンセル</button><button class=\"mbtn2 mb-reject\" id=\"dab\">差し戻す</button>";
+  } else if(mode==="travel_view"){
+    document.getElementById("detailTitle").textContent=travel.dest+"出張 - 詳細";
+    const totalCost=(travel.costs||[]).reduce((s,c)=>s+(Number(c.amount)||0),0);
+    body.innerHTML=
+      "<div style=\"font-size:11px;color:var(--tx3);letter-spacing:2px;text-transform:uppercase;font-weight:600;margin-bottom:8px;\">基本情報</div>"+
+      "<div style=\"display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px;\">"+
+      "<div class=\"ti-item\"><div class=\"ti-label\">出張先</div><div class=\"ti-val\">"+(travel.dest||"―")+"</div></div>"+
+      "<div class=\"ti-item\"><div class=\"ti-label\">目的</div><div class=\"ti-val\">"+(travel.purpose||"―")+"</div></div>"+
+      "<div class=\"ti-item\"><div class=\"ti-label\">期間</div><div class=\"ti-val\">"+(travel.from||"")+" 〜 "+(travel.to||"")+"</div></div>"+
+      "<div class=\"ti-item\"><div class=\"ti-label\">交通手段</div><div class=\"ti-val\">"+(travel.transport||"―")+"</div></div>"+
+      "</div>"+
+      "<div style=\"font-size:11px;color:var(--tx3);letter-spacing:2px;text-transform:uppercase;font-weight:600;margin-bottom:8px;\">出張内容</div>"+
+      "<div class=\"twrap\" style=\"margin-bottom:12px;\"><table class=\"ltable\"><thead><tr><th>日付</th><th>時間</th><th>訪問先</th><th>内容</th><th>対応者</th><th>結果</th></tr></thead><tbody>"+
+      (travel.schedules||[]).map(s=>"<tr><td>"+(s.date||"")+"</td><td>"+(s.time||"")+"</td><td>"+(s.place||"")+"</td><td>"+(s.content||"")+"</td><td>"+(s.contact||"")+"</td><td>"+(s.result||"")+"</td></tr>").join("")+
+      "</tbody></table></div>"+
+      "<div style=\"font-size:11px;color:var(--tx3);letter-spacing:2px;text-transform:uppercase;font-weight:600;margin-bottom:8px;\">交通費・宿泊費</div>"+
+      "<div class=\"twrap\" style=\"margin-bottom:12px;\"><table class=\"ltable\"><thead><tr><th>日付</th><th>区間・内容</th><th>交通手段</th><th>領収書</th><th>金額</th><th>備考</th></tr></thead><tbody>"+
+      (travel.costs||[]).map(c=>"<tr><td>"+(c.date||"")+"</td><td>"+(c.route||"")+"</td><td>"+(c.transport||"")+"</td><td>"+(c.receipt?"有":"―")+"</td><td style=\"color:var(--out);font-weight:600;font-family:'DM Mono',monospace;\">"+fmtYen(c.amount)+"</td><td>"+(c.note||"")+"</td></tr>").join("")+
+      "</tbody></table></div>"+
+      "<div style=\"background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;margin-bottom:12px;\"><span style=\"font-weight:600;color:var(--in);\">合計</span><span style=\"font-family:'DM Mono',monospace;font-size:18px;color:var(--in);font-weight:700;\">"+fmtYen(totalCost)+"</span></div>"+
+      (travel.report?"<div style=\"font-size:11px;color:var(--tx3);letter-spacing:2px;text-transform:uppercase;font-weight:600;margin-bottom:8px;\">所見・報告事項</div><div style=\"background:var(--s2);border-radius:8px;padding:12px 16px;font-size:13px;color:var(--tx);line-height:1.8;\">"+travel.report+"</div>":"");
+    btns.innerHTML="<button class=\"mbtn2 mb-cancel\" id=\"dcb\">閉じる</button>";
+  }
+
+  document.getElementById("detailModal").classList.add("open");
+  document.getElementById("dcb").addEventListener("click",closeDetailModal);
+  const dab=document.getElementById("dab");
+  if(dab){
+    dab.addEventListener("click",async()=>{
+      const comment=document.getElementById("detailComment").value.trim();
+      if(_detailMode==="exp_reject"){
+        for(const item of _detailGroup.items){await updateDoc(doc(db,"expenses",item.id),{rejected:true,rejectedAt:new Date().toISOString(),comment});}
+        showToast("差し戻しました");closeDetailModal();renderExpAdmin();
+      } else if(_detailMode==="travel_reject"){
+        await updateDoc(doc(db,"travels",_detailTravel.id),{status:"rejected",rejectedAt:new Date().toISOString(),comment});
+        showToast("差し戻しました");closeDetailModal();renderTravelAdmin();
+      }
+    });
+  }
+}
+function closeDetailModal(){document.getElementById("detailModal").classList.remove("open");}
 
 // 認証状態の監視と初期化
 onAuthStateChanged(auth,async function(user){
@@ -473,6 +687,10 @@ onAuthStateChanged(auth,async function(user){
     a.download=emp.name+"_R"+(y-2018)+"_"+p2(m+1)+"_勤怠.csv";a.click();
     showToast("CSVをダウンロードしました");
   });
+
+  // 詳細モーダル
+  document.getElementById("detailCloseBtn").addEventListener("click",closeDetailModal);
+  document.getElementById("detailModal").addEventListener("click",e=>{if(e.target===e.currentTarget)closeDetailModal();});
 
   // 初期表示
   await renderEmpCards();
