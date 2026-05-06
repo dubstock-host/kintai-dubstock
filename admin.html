@@ -469,7 +469,7 @@ onAuthStateChanged(auth,async function(user){
     const rows=[["日付","曜日","出勤","退勤","休憩(min)","実労働(h)","残業(h)"]];
     for(let d=1;d<=days;d++){const date=y+"-"+p2(m+1)+"-"+p2(d);const rec=recs[date];const shifts=rec&&rec.shifts?rec.shifts.filter(s=>s&&s.in&&s.out):[];if(!shifts.length)continue;const s=shifts[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);rows.push([date.slice(5),DOW[new Date(date).getDay()],ts2hm(s.in),ts2hm(s.out),Math.round(bms/60000),(Math.round(wms/36000)/100).toFixed(2),(Math.round(oms/36000)/100).toFixed(2)]);}
     const csv=rows.map(r=>r.join(",")).join("\n");
-    const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"}));
+    const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
     a.download=emp.name+"_R"+(y-2018)+"_"+p2(m+1)+"_勤怠.csv";a.click();
     showToast("CSVをダウンロードしました");
   });
