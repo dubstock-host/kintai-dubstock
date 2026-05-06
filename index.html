@@ -446,9 +446,9 @@ function openCancelLeaveModal(id,date,type){
   cancelLeaveId=id;
   const dow=DOW[new Date(date.replace(/-/g,"/")).getDay()];
   document.getElementById("cancelLeaveSubtitle").textContent=date.slice(5)+"("+dow+") "+type;
-  document.getElementById("cancelLeaveModal").classList.add("open");
+  document.getElementById("cancelLeaveOverlay").classList.add("open");
 }
-function closeCancelLeaveModal(){document.getElementById("cancelLeaveModal").classList.remove("open");cancelLeaveId=null;}
+function closeCancelLeaveModal(){document.getElementById("cancelLeaveOverlay").classList.remove("open");cancelLeaveId=null;}
 
 // 有給残日数
 async function renderLeaveBalance(){
@@ -551,10 +551,10 @@ async function loadEditDay(){
 function openEditModal(date,idx,isNew){
   editState={date,idx,isNew};
   const wo=new Date(date.replace(/-/g,"/"));
-  document.getElementById("modalSubtitle").textContent=date.slice(5)+"（"+DOW[wo.getDay()]+"）";
-  gRec(date).then(rec=>{const sh=rec.shifts&&rec.shifts[0];document.getElementById("modalIn").value=sh&&sh.in&&!isNew?ts2hm(sh.in):"";document.getElementById("modalOut").value=sh&&sh.out&&!isNew?ts2hm(sh.out):"";});
-  document.getElementById("modalErr").textContent="";
-  document.getElementById("modalOverlay").classList.add("open");
+  document.getElementById("leaveDate").textContent=date.slice(5)+"（"+DOW[wo.getDay()]+"）";
+  gRec(date).then(rec=>{const sh=rec.shifts&&rec.shifts[0];(document.getElementById("modalIn")||{value:""}).value=sh&&sh.in&&!isNew?ts2hm(sh.in):"";(document.getElementById("modalOut")||{value:""}).value=sh&&sh.out&&!isNew?ts2hm(sh.out):"";});
+  document.getElementById("leaveErr").textContent="";
+  document.getElementById("leaveOverlay").classList.add("open");
 }
 
 // 有給申請モーダル
@@ -566,9 +566,9 @@ function openLeaveModal(){
   document.getElementById("leaveTimeTo").value="";
   document.getElementById("leaveTimeField").style.display="none";
   document.getElementById("leaveErr").textContent="";
-  document.getElementById("leaveModal").classList.add("open");
+  document.getElementById("leaveOverlay").classList.add("open");
 }
-function closeLeaveModal(){document.getElementById("leaveModal").classList.remove("open");}
+function closeLeaveModal(){document.getElementById("leaveOverlay").classList.remove("open");}
 
 function toggleLeaveTime(){
   const t=document.getElementById("leaveType").value;
@@ -643,32 +643,32 @@ onAuthStateChanged(auth,async user=>{
   }
 
   // 月次
-  document.getElementById("monthPrev").addEventListener("click",()=>{curMonth.setMonth(curMonth.getMonth()-1);renderMonthly();});
-  document.getElementById("monthNext").addEventListener("click",()=>{curMonth.setMonth(curMonth.getMonth()+1);renderMonthly();});
+  document.getElementById("prevMonthBtn").addEventListener("click",()=>{curMonth.setMonth(curMonth.getMonth()-1);renderMonthly();});
+  document.getElementById("nextMonthBtn").addEventListener("click",()=>{curMonth.setMonth(curMonth.getMonth()+1);renderMonthly();});
 
   // 履歴タブ月切替
-  document.getElementById("histPrev").addEventListener("click",()=>{histMonth.setMonth(histMonth.getMonth()-1);renderHistStamp();});
-  document.getElementById("histNext").addEventListener("click",()=>{histMonth.setMonth(histMonth.getMonth()+1);renderHistStamp();});
+  document.getElementById("histPrevBtn").addEventListener("click",()=>{histMonth.setMonth(histMonth.getMonth()-1);renderHistStamp();});
+  document.getElementById("histNextBtn").addEventListener("click",()=>{histMonth.setMonth(histMonth.getMonth()+1);renderHistStamp();});
 
   // 打刻修正モーダル
-  document.getElementById("modalOverlay").addEventListener("click",(e)=>{if(e.target===e.currentTarget)document.getElementById("modalOverlay").classList.remove("open");});
-  document.getElementById("modalCancelBtn").addEventListener("click",()=>document.getElementById("modalOverlay").classList.remove("open"));
-  document.getElementById("modalSaveBtn").addEventListener("click",async()=>{
+  document.getElementById("leaveOverlay").addEventListener("click",(e)=>{if(e.target===e.currentTarget)document.getElementById("leaveOverlay").classList.remove("open");});
+  document.getElementById("leaveCancelBtn").addEventListener("click",()=>document.getElementById("leaveOverlay").classList.remove("open"));
+  document.getElementById("leaveSubmitBtn").addEventListener("click",async()=>{
     const {date,idx,isNew}=editState;
-    const iv=document.getElementById("modalIn").value;const ov=document.getElementById("modalOut").value;
-    const er=document.getElementById("modalErr");er.textContent="";
+    const iv=(document.getElementById("modalIn")||{value:""}).value;const ov=(document.getElementById("modalOut")||{value:""}).value;
+    const er=document.getElementById("leaveErr");er.textContent="";
     if(!iv){er.textContent="出勤時刻を入力してください";return;}
     const it=ts2ts(date,iv);let ot=ov?ts2ts(date,ov):null;
     if(ot&&ot<=it)ot+=86400000;
     if(ot&&ot<=it){er.textContent="退勤時刻は出勤より後にしてください";return;}
     const rec=await gRec(date);if(!rec.shifts)rec.shifts=[];
     rec.shifts[idx]={in:it,out:ot||undefined};
-    try{await sRec(date,rec);document.getElementById("modalOverlay").classList.remove("open");showToast("修正を保存しました ✓");loadEditDay();if(ot)syncGAS(date,rec);if(date===getWD())refreshUI(rec);renderMonthly();}
+    try{await sRec(date,rec);document.getElementById("leaveOverlay").classList.remove("open");showToast("修正を保存しました ✓");loadEditDay();if(ot)syncGAS(date,rec);if(date===getWD())refreshUI(rec);renderMonthly();}
     catch(e){er.textContent="保存に失敗しました";}
   });
 
   // 有給申請モーダル
-  document.getElementById("leaveModal").addEventListener("click",(e)=>{if(e.target===e.currentTarget)closeLeaveModal();});
+  document.getElementById("leaveOverlay").addEventListener("click",(e)=>{if(e.target===e.currentTarget)closeLeaveModal();});
   document.getElementById("leaveCancelBtn").addEventListener("click",closeLeaveModal);
   document.getElementById("leaveType").addEventListener("change",toggleLeaveTime);
   document.getElementById("leaveSubmitBtn").addEventListener("click",async()=>{
@@ -687,7 +687,7 @@ onAuthStateChanged(auth,async user=>{
   });
 
   // 有給取り消しモーダル
-  document.getElementById("cancelLeaveModal").addEventListener("click",(e)=>{if(e.target===e.currentTarget)closeCancelLeaveModal();});
+  document.getElementById("cancelLeaveOverlay").addEventListener("click",(e)=>{if(e.target===e.currentTarget)closeCancelLeaveModal();});
   document.getElementById("cancelLeaveCancelBtn").addEventListener("click",closeCancelLeaveModal);
   document.getElementById("cancelLeaveConfirmBtn").addEventListener("click",async()=>{
     if(!cancelLeaveId)return;
