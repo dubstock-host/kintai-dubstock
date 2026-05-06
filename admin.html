@@ -19,8 +19,9 @@ body{font-family:"Noto Sans JP",sans-serif;background:var(--bg);color:var(--tx);
 .lfield label{display:block;font-size:11px;color:var(--tx2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600;}
 .lfield input{width:100%;background:var(--s2);border:1px solid var(--bdr2);border-radius:8px;padding:12px 14px;color:var(--tx);font-size:15px;outline:none;}
 .lfield input:focus{border-color:var(--acc);}
-.lbtn{width:100%;padding:14px;background:var(--acc);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;}
 .lerr{font-size:12px;color:var(--out);margin-top:10px;min-height:16px;}
+.lbtn{width:100%;padding:14px;background:var(--acc);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;}
+.lbtn:hover{background:var(--acc2);}
 #appScreen{display:none;}
 .wrap{max-width:960px;margin:0 auto;padding:24px 16px 60px;}
 header{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;padding-bottom:16px;border-bottom:1px solid var(--bdr);}
@@ -36,9 +37,6 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .tbadge.show{display:block;}
 .tab-content{display:none;}
 .tab-content.active{display:block;}
-.emp-selector{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
-.emp-btn{padding:8px 18px;background:var(--surface);border:1px solid var(--bdr);border-radius:100px;font-size:13px;cursor:pointer;font-weight:500;color:var(--tx2);}
-.emp-btn.active{background:var(--acc);border-color:var(--acc);color:#fff;}
 .req-card{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:20px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.04);}
 .req-name{font-size:16px;font-weight:700;margin-bottom:4px;}
 .req-date{font-family:"DM Mono",monospace;font-size:14px;color:var(--tx2);margin-bottom:8px;}
@@ -80,14 +78,17 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .emp-stat{background:var(--s2);border-radius:6px;padding:8px;text-align:center;}
 .emp-stat-label{font-size:10px;color:var(--tx3);margin-bottom:2px;}
 .emp-stat-val{font-family:"DM Mono",monospace;font-size:14px;font-weight:600;}
+.emp-selector{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
+.emp-btn{padding:8px 18px;background:var(--surface);border:1px solid var(--bdr);border-radius:100px;font-size:13px;cursor:pointer;font-weight:500;color:var(--tx2);}
+.emp-btn.active{background:var(--acc);border-color:var(--acc);color:#fff;}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
 .overlay.open{display:flex;}
-.modal{background:var(--surface);border:1px solid var(--bdr);border-radius:16px;padding:28px;width:100%;max-width:420px;margin:16px;animation:sup 0.2s ease;}
+.modal{background:var(--surface);border:1px solid var(--bdr);border-radius:16px;padding:28px;width:100%;max-width:420px;margin:16px;animation:sup 0.2s ease;box-shadow:0 8px 32px rgba(0,0,0,0.12);}
 @keyframes sup{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
 .mtitle{font-size:16px;font-weight:700;margin-bottom:4px;}
 .msub{font-size:12px;color:var(--tx3);margin-bottom:20px;}
 .mfield label{display:block;font-size:11px;color:var(--tx2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600;}
-.mfield textarea{width:100%;background:var(--s2);border:1px solid var(--bdr2);border-radius:8px;padding:11px 14px;color:var(--tx);font-size:14px;outline:none;resize:vertical;min-height:100px;}
+.mfield textarea{width:100%;background:var(--s2);border:1px solid var(--bdr2);border-radius:8px;padding:11px 14px;color:var(--tx);font-size:14px;outline:none;resize:vertical;min-height:100px;font-family:"Noto Sans JP",sans-serif;}
 .mbtns{display:flex;gap:10px;margin-top:20px;}
 .mbtn2{flex:1;padding:13px;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;}
 .mb-cancel{background:var(--s2);color:var(--tx2);border:1px solid var(--bdr);}
@@ -99,26 +100,28 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 </head>
 <body>
 
+<!-- ログイン画面 -->
 <div id="loginScreen">
   <div class="lcard">
     <div class="llogo">KINTAI</div>
     <div class="lbadge">管理者画面</div>
     <div class="ltitle">谷口 管理者</div>
     <div class="lsub">管理者アカウントでログイン</div>
-    <div class="lfield"><label>メールアドレス</label><input type="email" id="loginEmail" placeholder="admin@email.com"></div>
-    <div class="lfield"><label>パスワード</label><input type="password" id="loginPass" placeholder="password"></div>
-    <div class="lerr" id="loginErr"></div>
-    <button class="lbtn" onclick="adminLogin()">ログイン</button>
+    <div class="lfield"><label>メールアドレス</label><input type="email" id="adminEmail" placeholder="admin@email.com"></div>
+    <div class="lfield"><label>パスワード</label><input type="password" id="adminPass" placeholder="password"></div>
+    <div class="lerr" id="adminErr"></div>
+    <button class="lbtn" id="adminLoginBtn">ログイン</button>
   </div>
 </div>
 
+<!-- メイン画面 -->
 <div id="appScreen">
 <div class="wrap">
   <header>
     <div><div class="hlogo">KINTAI</div><div class="htitle">管理者ダッシュボード</div></div>
     <div class="hright">
       <span id="pendingBadge"></span>
-      <button class="obtn" id="logoutBtn">ログアウト</button>
+      <button class="obtn" id="adminLogoutBtn">ログアウト</button>
     </div>
   </header>
 
@@ -141,10 +144,10 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
   <div class="tab-content" id="tab-勤怠">
     <div class="emp-selector" id="kintaiEmpSel"></div>
     <div class="mnav">
-      <button class="mbtn" id="kintaiPrev">&#8249;</button>
+      <button class="mbtn" id="kintaiPrevBtn">&#8249;</button>
       <div class="mlabel" id="kintaiMonthLabel"></div>
-      <button class="mbtn" id="kintaiNext">&#8250;</button>
-      <button class="expbtn" id="exportBtn">&#x2B07; CSV出力</button>
+      <button class="mbtn" id="kintaiNextBtn">&#8250;</button>
+      <button class="expbtn" id="csvExportBtn">&#x2B07; CSV出力</button>
     </div>
     <div class="sgrid">
       <div class="sc"><div class="slabel">出勤日数</div><div class="sval" id="totalDays">-</div></div>
@@ -167,9 +170,9 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
     <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#1D4ED8;">&#x1F512; 閲覧専用です。</div>
     <div class="emp-selector" id="stampEmpSel"></div>
     <div class="mnav">
-      <button class="mbtn" id="stampPrev">&#8249;</button>
+      <button class="mbtn" id="stampPrevBtn">&#8249;</button>
       <div class="mlabel" id="stampMonthLabel"></div>
-      <button class="mbtn" id="stampNext">&#8250;</button>
+      <button class="mbtn" id="stampNextBtn">&#8250;</button>
     </div>
     <div class="twrap"><table class="ltable">
       <thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実労働</th><th>残業</th></tr></thead>
@@ -197,34 +200,17 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 
 <div class="toast" id="toast"></div>
 
-<script>
-// グローバルログイン関数（ES Moduleの外）
-function adminLogin() {
-  var em = document.getElementById("loginEmail").value.trim();
-  var pw = document.getElementById("loginPass").value;
-  var er = document.getElementById("loginErr");
-  er.textContent = "";
-  if (!em || !pw) { er.textContent = "メールアドレスとパスワードを入力してください"; return; }
-  // Firebase SDKが読み込まれるまで待つ
-  if (typeof firebase !== "undefined") {
-    firebase.auth().signInWithEmailAndPassword(em, pw)
-      .catch(function(e) { er.textContent = "ログインに失敗しました。内容を確認してください。"; });
-  } else {
-    // Module版のFirebaseを使う場合はイベントで通知
-    document.dispatchEvent(new CustomEvent("adminLoginRequest", {detail: {em, pw}}));
-  }
-}
-</script>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import {getFirestore,doc,collection,query,where,getDocs,updateDoc} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {getFirestore,doc,collection,getDocs,updateDoc} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const FB={apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",authDomain:"kintai-dubstock.firebaseapp.com",projectId:"kintai-dubstock",storageBucket:"kintai-dubstock.firebasestorage.app",messagingSenderId:"1030065146975",appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"};
 const app=initializeApp(FB);
 const auth=getAuth(app);
 const db=getFirestore(app);
 
+// 社員リスト（追加時はここに追記）
 const EMPLOYEES=[
   {uid:"yuuki_kenta", name:"結城 健太", avatar:"結"},
 ];
@@ -244,9 +230,11 @@ function ts2hm(ts){if(!ts)return "--:--";const d=new Date(ts);return p2(d.getHou
 function brkMs(a,b){if(!a||!b)return 0;const d=new Date(a),s=new Date(d),e=new Date(d);s.setHours(12,0,0,0);e.setHours(13,0,0,0);return Math.max(0,Math.min(b,e.getTime())-Math.max(a,s.getTime()));}
 function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2500);}
 
+// データ取得（インデックス不要・全件取得してJS側でフィルタ）
 async function getLeavesByUid(uid){
-  const q=query(collection(db,"leaves"),where("userId","==",uid));
-  const sn=await getDocs(q);const r=[];sn.forEach(d=>r.push(d.data()));
+  const sn=await getDocs(collection(db,"leaves"));
+  const r=[];
+  sn.forEach(d=>{if(d.data().userId===uid)r.push(d.data());});
   return r.sort((a,b)=>new Date(b.appliedAt)-new Date(a.appliedAt));
 }
 async function getAllLeaves(){
@@ -259,16 +247,20 @@ async function getAllLeaves(){
   return all.sort((a,b)=>new Date(b.appliedAt)-new Date(a.appliedAt));
 }
 async function getRecsByUid(uid){
-  const q=query(collection(db,"kintai"),where("userId","==",uid));
-  const sn=await getDocs(q);const r={};sn.forEach(d=>{r[d.data().date]=d.data();});return r;
+  const sn=await getDocs(collection(db,"kintai"));
+  const r={};
+  sn.forEach(d=>{if(d.data().userId===uid)r[d.data().date]=d.data();});
+  return r;
 }
 
+// 承認処理
 async function doApprove(id){
   await updateDoc(doc(db,"leaves",id),{status:"approved",respondedAt:new Date().toISOString(),notifSeen:false});
   showToast("承認しました ✓");
-  await renderPending();await renderEmpCards();
+  renderPending();renderEmpCards();
 }
 
+// 差し戻し
 function openRejectModal(id,date,type,name){
   rejectTargetId=id;
   const dow=DOW[new Date(date.replace(/-/g,"/")).getDay()];
@@ -285,12 +277,13 @@ async function doReject(){
   const comment=document.getElementById("rejectComment").value.trim();
   await updateDoc(doc(db,"leaves",rejectTargetId),{status:"rejected",comment:comment||"",respondedAt:new Date().toISOString(),notifSeen:false});
   closeRejectModal();showToast("差し戻しました");
-  await renderPending();await renderEmpCards();
+  renderPending();renderEmpCards();
 }
 
+// 全社員概要
 async function renderEmpCards(){
   const el=document.getElementById("empCards");el.innerHTML="";
-  const y=new Date().getFullYear(),m=new Date().getMonth()+1;
+  const y=new Date().getFullYear(),m=new Date().getMonth()+1,r=y-2018;
   for(const emp of EMPLOYEES){
     const allRecs=await getRecsByUid(emp.uid);
     const pfx=y+"-"+p2(m);const recs={};Object.keys(allRecs).forEach(k=>{if(k.startsWith(pfx))recs[k]=allRecs[k];});
@@ -303,7 +296,6 @@ async function renderEmpCards(){
       if(!shifts.length)continue;wd++;const s=shifts[0];const bms=brkMs(s.in,s.out);tw+=Math.max(0,s.out-s.in-bms);
     }
     const aLvs=lvs.filter(lv=>{const d=new Date(lv.date.replace(/-/g,"/"));return d.getFullYear()===y&&d.getMonth()===m-1&&lv.status==="approved";});
-    const r=y-2018;
     const card=document.createElement("div");card.className="emp-card";
     card.innerHTML=
       "<div class=\"emp-card-header\"><div class=\"emp-avatar\">"+emp.avatar+"</div><div>"+
@@ -318,6 +310,7 @@ async function renderEmpCards(){
   }
 }
 
+// 有給申請（承認待ち）
 async function renderPending(){
   const lvs=await getAllLeaves();
   const pending=lvs.filter(lv=>lv.status==="pending");
@@ -353,24 +346,23 @@ async function renderPending(){
   });
 }
 
-function renderEmpSelector(containerId,getUid,setUid,onSelect){
-  const el=document.getElementById(containerId);el.innerHTML="";
+// 勤怠確認
+function buildEmpSelector(containerId,getUid,setUid,onSelect){
+  const el=document.getElementById(containerId);if(!el)return;el.innerHTML="";
   EMPLOYEES.forEach(emp=>{
-    const btn=document.createElement("button");
-    btn.className="emp-btn"+(emp.uid===getUid()?" active":"");
+    const btn=document.createElement("button");btn.className="emp-btn"+(emp.uid===getUid()?" active":"");
     btn.textContent=emp.name;
     btn.addEventListener("click",()=>{
       setUid(emp.uid);
       el.querySelectorAll(".emp-btn").forEach(b=>b.classList.remove("active"));
-      btn.classList.add("active");
-      onSelect();
+      btn.classList.add("active");onSelect();
     });
     el.appendChild(btn);
   });
 }
 
 async function renderKintai(){
-  const y=kintaiMonth.getFullYear(),m=kintaiMonth.getMonth();const r=y-2018;
+  const y=kintaiMonth.getFullYear(),m=kintaiMonth.getMonth(),r=y-2018;
   document.getElementById("kintaiMonthLabel").textContent="R"+r+"年"+(m+1)+"月";
   const allRecs=await getRecsByUid(selectedKintaiUid);
   const pfx=y+"-"+p2(m+1);const recs={};Object.keys(allRecs).forEach(k=>{if(k.startsWith(pfx))recs[k]=allRecs[k];});
@@ -394,6 +386,7 @@ async function renderKintai(){
   document.getElementById("totalLeave").textContent=aLvs.length+" 日";
 }
 
+// 申請履歴
 async function renderHistory(){
   const lvs=await getLeavesByUid(selectedHistUid);
   const el=document.getElementById("historyList");
@@ -405,16 +398,16 @@ async function renderHistory(){
     }).join("")+"</tbody></table></div>";
 }
 
+// 打刻記録（閲覧専用）
 async function renderStamp(){
-  const y=stampMonth.getFullYear(),m=stampMonth.getMonth();const r=y-2018;
+  const y=stampMonth.getFullYear(),m=stampMonth.getMonth(),r=y-2018;
   document.getElementById("stampMonthLabel").textContent="R"+r+"年"+(m+1)+"月";
   const allRecs=await getRecsByUid(selectedStampUid);
   const pfx=y+"-"+p2(m+1);const recs={};Object.keys(allRecs).forEach(k=>{if(k.startsWith(pfx))recs[k]=allRecs[k];});
   const days=new Date(y,m+1,0).getDate();let tb="";
   for(let d=1;d<=days;d++){
     const date=y+"-"+p2(m+1)+"-"+p2(d);const rec=recs[date];
-    const shifts=rec&&rec.shifts?rec.shifts.filter(s=>s&&s.in&&s.out):[];
-    if(!shifts.length)continue;
+    const shifts=rec&&rec.shifts?rec.shifts.filter(s=>s&&s.in&&s.out):[];if(!shifts.length)continue;
     const s=shifts[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);
     const dow=DOW[new Date(date).getDay()];
     tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td>"+ts2hm(s.in)+"</td><td>"+ts2hm(s.out)+"</td><td>"+(bms>0?hm(bms):"―")+"</td><td>"+hm(wms)+"</td><td class=\""+(oms>0?"ot":"")+"\">"+(oms>0?hm(oms):"―")+"</td></tr>";
@@ -422,48 +415,52 @@ async function renderStamp(){
   document.getElementById("stampLog").innerHTML=tb||"<tr><td colspan=\"6\" class=\"no-data\">記録なし</td></tr>";
 }
 
+// タブ切替
 function showTab(name){
   document.querySelectorAll(".tab-content").forEach(e=>e.classList.remove("active"));
   document.querySelectorAll(".tab-btn").forEach(e=>e.classList.remove("active"));
   document.getElementById("tab-"+name).classList.add("active");
   document.querySelector("[data-tab=\""+name+"\"]").classList.add("active");
-  if(name==="勤怠"){renderEmpSelector("kintaiEmpSel",()=>selectedKintaiUid,(v)=>{selectedKintaiUid=v;},renderKintai);renderKintai();}
-  if(name==="履歴"){renderEmpSelector("histEmpSel",()=>selectedHistUid,(v)=>{selectedHistUid=v;},renderHistory);renderHistory();}
-  if(name==="打刻"){renderEmpSelector("stampEmpSel",()=>selectedStampUid,(v)=>{selectedStampUid=v;},renderStamp);renderStamp();}
+  if(name==="勤怠"){buildEmpSelector("kintaiEmpSel",()=>selectedKintaiUid,v=>{selectedKintaiUid=v;},renderKintai);renderKintai();}
+  if(name==="履歴"){buildEmpSelector("histEmpSel",()=>selectedHistUid,v=>{selectedHistUid=v;},renderHistory);renderHistory();}
+  if(name==="打刻"){buildEmpSelector("stampEmpSel",()=>selectedStampUid,v=>{selectedStampUid=v;},renderStamp);renderStamp();}
   if(name==="申請")renderPending();
 }
 
-// DOMContentLoaded で全ボタン登録（ES Module は defer 相当だが念のため）
-document.addEventListener("DOMContentLoaded", function(){
+// 認証状態の監視と初期化
+onAuthStateChanged(auth,async function(user){
+  if(!user){
+    document.getElementById("loginScreen").style.display="flex";
+    document.getElementById("appScreen").style.display="none";
+    return;
+  }
+  document.getElementById("loginScreen").style.display="none";
+  document.getElementById("appScreen").style.display="block";
 
-  // adminLoginRequest イベント受信
-  document.addEventListener("adminLoginRequest", async function(e){
-    const em=e.detail.em, pw=e.detail.pw;
-    const er=document.getElementById("loginErr");
-    try{
-      await signInWithEmailAndPassword(auth,em,pw);
-    }catch(err){
-      er.textContent="ログインに失敗しました。内容を確認してください。";
-    }
+  if(window._adminInitialized)return;
+  window._adminInitialized=true;
+
+  // タブボタン
+  document.querySelectorAll(".tab-btn").forEach(btn=>{
+    btn.addEventListener("click",()=>showTab(btn.dataset.tab));
   });
 
-  document.getElementById("loginPass").addEventListener("keydown",function(e){
-    if(e.key==="Enter") adminLogin();
-  });
+  // ログアウト
+  document.getElementById("adminLogoutBtn").addEventListener("click",()=>signOut(auth));
 
   // 差し戻しモーダル
   document.getElementById("rejectCancelBtn").addEventListener("click",closeRejectModal);
   document.getElementById("rejectConfirmBtn").addEventListener("click",doReject);
-  document.getElementById("rejectOverlay").addEventListener("click",function(e){if(e.target===e.currentTarget)closeRejectModal();});
+  document.getElementById("rejectOverlay").addEventListener("click",e=>{if(e.target===e.currentTarget)closeRejectModal();});
 
   // 月切替
-  document.getElementById("kintaiPrev").addEventListener("click",()=>{kintaiMonth.setMonth(kintaiMonth.getMonth()-1);renderKintai();});
-  document.getElementById("kintaiNext").addEventListener("click",()=>{kintaiMonth.setMonth(kintaiMonth.getMonth()+1);renderKintai();});
-  document.getElementById("stampPrev").addEventListener("click",()=>{stampMonth.setMonth(stampMonth.getMonth()-1);renderStamp();});
-  document.getElementById("stampNext").addEventListener("click",()=>{stampMonth.setMonth(stampMonth.getMonth()+1);renderStamp();});
+  document.getElementById("kintaiPrevBtn").addEventListener("click",()=>{kintaiMonth.setMonth(kintaiMonth.getMonth()-1);renderKintai();});
+  document.getElementById("kintaiNextBtn").addEventListener("click",()=>{kintaiMonth.setMonth(kintaiMonth.getMonth()+1);renderKintai();});
+  document.getElementById("stampPrevBtn").addEventListener("click",()=>{stampMonth.setMonth(stampMonth.getMonth()-1);renderStamp();});
+  document.getElementById("stampNextBtn").addEventListener("click",()=>{stampMonth.setMonth(stampMonth.getMonth()+1);renderStamp();});
 
   // CSV出力
-  document.getElementById("exportBtn").addEventListener("click",async function(){
+  document.getElementById("csvExportBtn").addEventListener("click",async()=>{
     const y=kintaiMonth.getFullYear(),m=kintaiMonth.getMonth();
     const emp=EMPLOYEES.find(e=>e.uid===selectedKintaiUid)||{name:selectedKintaiUid};
     const allRecs=await getRecsByUid(selectedKintaiUid);
@@ -471,35 +468,36 @@ document.addEventListener("DOMContentLoaded", function(){
     const days=new Date(y,m+1,0).getDate();
     const rows=[["日付","曜日","出勤","退勤","休憩(min)","実労働(h)","残業(h)"]];
     for(let d=1;d<=days;d++){const date=y+"-"+p2(m+1)+"-"+p2(d);const rec=recs[date];const shifts=rec&&rec.shifts?rec.shifts.filter(s=>s&&s.in&&s.out):[];if(!shifts.length)continue;const s=shifts[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);rows.push([date.slice(5),DOW[new Date(date).getDay()],ts2hm(s.in),ts2hm(s.out),Math.round(bms/60000),(Math.round(wms/36000)/100).toFixed(2),(Math.round(oms/36000)/100).toFixed(2)]);}
-    const csv=rows.map(r=>r.join(",")).join("
-");
-    const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}));
+    const csv=rows.map(r=>r.join(",")).join("\n");
+    const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"}));
     a.download=emp.name+"_R"+(y-2018)+"_"+p2(m+1)+"_勤怠.csv";a.click();
     showToast("CSVをダウンロードしました");
   });
 
-  // タブ
-  document.querySelectorAll(".tab-btn").forEach(btn=>{
-    btn.addEventListener("click",()=>showTab(btn.dataset.tab));
-  });
+  // 初期表示
+  await renderEmpCards();
+  await renderPending();
+  setInterval(()=>{renderPending();renderEmpCards();},30000);
+});
 
-  // ログアウト
-  document.getElementById("logoutBtn").addEventListener("click",()=>signOut(auth));
-
-  // 認証状態監視
-  onAuthStateChanged(auth, async function(user){
-    if(!user){
-      document.getElementById("loginScreen").style.display="flex";
-      document.getElementById("appScreen").style.display="none";
-      return;
+// ログインボタン（DOMContentLoaded後に確実に登録）
+document.addEventListener("DOMContentLoaded",function(){
+  document.getElementById("adminLoginBtn").addEventListener("click",async function(){
+    const em=document.getElementById("adminEmail").value.trim();
+    const pw=document.getElementById("adminPass").value;
+    const er=document.getElementById("adminErr");
+    er.textContent="";
+    if(!em||!pw){er.textContent="メールアドレスとパスワードを入力してください";return;}
+    try{
+      await signInWithEmailAndPassword(auth,em,pw);
+    }catch(e){
+      er.textContent="ログインに失敗しました。入力内容を確認してください。";
+      console.error(e);
     }
-    document.getElementById("loginScreen").style.display="none";
-    document.getElementById("appScreen").style.display="block";
-    await renderEmpCards();
-    await renderPending();
-    setInterval(async()=>{await renderPending();await renderEmpCards();},30000);
   });
-
+  document.getElementById("adminPass").addEventListener("keydown",function(e){
+    if(e.key==="Enter")document.getElementById("adminLoginBtn").click();
+  });
 });
 </script>
 </body>
