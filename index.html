@@ -338,7 +338,18 @@ function syncSt(s){const el=document.getElementById("syncStatus");const M={synci
 async function sRec(date,rec){await setDoc(doc(db,"kintai",UID+"_"+date),{userId:UID,date,...rec});}
 async function gRec(date){const sn=await getDoc(doc(db,"kintai",UID+"_"+date));return sn.exists()?sn.data():{shifts:[]};}
 async function dRec(date){await deleteDoc(doc(db,"kintai",UID+"_"+date));}
-async function gAllRecs(){const q=query(collection(db,"kintai"),where("userId","==",UID));const sn=await getDocs(q);const r={};sn.forEach(d=>{r[d.data().date]=d.data();});return r;}
+async function gAllRecs(){
+  // kintaiコレクションからユーザーIDが一致するデータを全件取得
+  // コレクション全体を取得してJS側でフィルタ（インデックス不要）
+  const sn=await getDocs(collection(db,"kintai"));
+  const r={};
+  sn.forEach(d=>{
+    const data=d.data();
+    // 自分のデータのみ保持
+    if(data.userId===UID) r[data.date]=data;
+  });
+  return r;
+}
 async function gMonthRecs(y,m){const all=await gAllRecs();const pfx=y+"-"+p2(m);const r={};Object.keys(all).forEach(k=>{if(k.startsWith(pfx))r[k]=all[k];});return r;}
 async function sLeave(lv){await setDoc(doc(db,"leaves",lv.id),{...lv});}
 async function gMyLeaves(){const q=query(collection(db,"leaves"),where("userId","==",UID));const sn=await getDocs(q);const r=[];sn.forEach(d=>r.push(d.data()));return r.sort((a,b)=>new Date(b.appliedAt)-new Date(a.appliedAt));}
