@@ -2,113 +2,103 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>経費・出張データ インポート</title>
+<title>経費インポート</title>
 <style>
 body{font-family:sans-serif;max-width:600px;margin:40px auto;padding:20px;background:#F7F8FA;}
 .card{background:#fff;border-radius:12px;padding:24px;border:1px solid #E2E5EA;}
-h2{color:#1E293B;margin-bottom:8px;}
-p{font-size:13px;color:#64748B;margin-bottom:16px;line-height:1.6;}
-button{background:#3B82F6;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;width:100%;margin-bottom:8px;}
-#log{background:#1E293B;color:#A7F3D0;padding:16px;border-radius:8px;font-family:monospace;font-size:12px;min-height:120px;margin-top:16px;white-space:pre-wrap;line-height:1.6;}
+h2{margin-bottom:8px;}
+p{font-size:13px;color:#64748B;margin-bottom:16px;}
+button{background:#3B82F6;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;width:100%;}
+#log{background:#1E293B;color:#A7F3D0;padding:16px;border-radius:8px;font-family:monospace;font-size:12px;min-height:120px;margin-top:16px;white-space:pre-wrap;}
 </style>
 </head>
 <body>
 <div class="card">
   <h2>経費・出張データ インポート</h2>
-  <p>令和8年3月分データをFirebaseに取り込みます。ログイン後に「インポート開始」を押してください。</p>
-  <button id="importBtn">&#x25B6; インポート開始</button>
+  <p>令和8年3月分データをFirebaseに取り込みます。</p>
+  <button onclick="startImport()">インポート開始</button>
   <div id="log">待機中...</div>
 </div>
-
-<script type="module">
-import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {getAuth,signInWithEmailAndPassword} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import {getFirestore,setDoc,doc} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-const FB={
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+firebase.initializeApp({
   apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",
   authDomain:"kintai-dubstock.firebaseapp.com",
   projectId:"kintai-dubstock",
   storageBucket:"kintai-dubstock.firebasestorage.app",
   messagingSenderId:"1030065146975",
   appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"
-};
-const app=initializeApp(FB);
-const auth=getAuth(app);
-const db=getFirestore(app);
+});
+var db=firebase.firestore();
+var auth=firebase.auth();
 
 function addLog(msg){
-  const el=document.getElementById("log");
-  el.textContent+="
-"+msg;
-  el.scrollTop=el.scrollHeight;
+  var el=document.getElementById("log");
+  el.textContent+="\n"+msg;
 }
 
-const EXPENSES=[
-  {date:"2026-03-05",desc:"交通費（行き先：東京ビッグサイト）",payee:"有楽町線/りんかい線",method:"現金",amount:540,receipt:false,note:""},
-  {date:"2026-03-05",desc:"交通費（行き先：自宅）",payee:"りんかい線",method:"現金",amount:280,receipt:false,note:""},
-  {date:"2026-03-11",desc:"交通費（行き先：フォルマ定例）",payee:"JR京浜東北・有楽町線",method:"現金",amount:878,receipt:false,note:""},
-  {date:"2026-03-16",desc:"鳥栖サンプル送付（船場本社）",payee:"ヤマト運輸(株)",method:"現金",amount:1090,receipt:true,note:""},
-  {date:"2026-03-18",desc:"交通費（行き先：フォルマ定例）",payee:"JR京浜東北",method:"現金",amount:200,receipt:false,note:""},
-  {date:"2026-03-18",desc:"交通費（行き先：事務所）",payee:"JR京浜東北・有楽町線",method:"現金",amount:439,receipt:false,note:""},
-  {date:"2026-03-26",desc:"交通費（行き先：鳥栖出張（東京分））",payee:"東京モノレール",method:"現金",amount:920,receipt:false,note:""},
-  {date:"2026-03-26",desc:"交通費（行き先：鳥栖出張（九州分））",payee:"空港線/鹿児島本線",method:"現金",amount:1840,receipt:false,note:"往復"},
-];
+function startImport(){
+  document.getElementById("log").textContent="開始します...";
+  var email=prompt("結城さんのメールアドレス");
+  if(!email){addLog("キャンセル");return;}
+  var pass=prompt("パスワード");
+  if(!pass){addLog("キャンセル");return;}
 
-const TRAVEL={
-  dest:"鳥栖",
-  purpose:"鳥栖PO引き渡し前確認",
-  from:"2026-03-24",
-  to:"2026-03-24",
-  reportDate:"2026-04-06",
-  transport:"飛行機",
-  companion:"無し",
-  report:"",
-  schedules:[{date:"2026-03-24",time:"14:00〜18:00",place:"鳥栖プレミアムアウトレット",content:"現場確認",contact:"結城",result:"問題なし"}],
-  costs:[{date:"2026-03-24",route:"羽田空港〜福岡空港",transport:"飛行機",amount:84420,receipt:true,note:"往復"}],
-  status:"pending",
-};
-
-document.getElementById("importBtn").addEventListener("click", async function(){
-  document.getElementById("log").textContent="ログイン中...";
-  const email=prompt("メールアドレス（結城さんのもの）");
-  const pass=prompt("パスワード");
-  if(!email||!pass){addLog("キャンセルされました");return;}
-  try{
-    await signInWithEmailAndPassword(auth,email,pass);
+  addLog("ログイン中...");
+  auth.signInWithEmailAndPassword(email,pass).then(function(){
     addLog("ログイン成功！");
-    addLog("
-経費精算データをインポート中...");
-    for(const exp of EXPENSES){
-      const id="yuuki_kenta_exp_march_"+exp.date.replace(/-/g,"")+"_"+exp.amount;
-      await setDoc(doc(db,"expenses",id),{
-        userId:"yuuki_kenta",
-        userName:"結城 健太",
-        ...exp,
+    addLog("経費データを書き込み中...");
+
+    var expenses=[
+      {id:"exp_20260305_540",  date:"2026-03-05",desc:"交通費（東京ビッグサイト）",payee:"有楽町線/りんかい線",method:"現金",amount:540,receipt:false,note:""},
+      {id:"exp_20260305_280",  date:"2026-03-05",desc:"交通費（自宅）",payee:"りんかい線",method:"現金",amount:280,receipt:false,note:""},
+      {id:"exp_20260311_878",  date:"2026-03-11",desc:"交通費（フォルマ定例）",payee:"JR京浜東北",method:"現金",amount:878,receipt:false,note:""},
+      {id:"exp_20260316_1090", date:"2026-03-16",desc:"鳥栖サンプル送付（船場本社）",payee:"ヤマト運輸",method:"現金",amount:1090,receipt:true,note:""},
+      {id:"exp_20260318_200",  date:"2026-03-18",desc:"交通費（フォルマ定例）",payee:"JR京浜東北",method:"現金",amount:200,receipt:false,note:""},
+      {id:"exp_20260318_439",  date:"2026-03-18",desc:"交通費（事務所）",payee:"JR京浜東北",method:"現金",amount:439,receipt:false,note:""},
+      {id:"exp_20260326_920",  date:"2026-03-26",desc:"交通費（鳥栖出張 東京分）",payee:"東京モノレール",method:"現金",amount:920,receipt:false,note:""},
+      {id:"exp_20260326_1840", date:"2026-03-26",desc:"交通費（鳥栖出張 九州分）",payee:"空港線/鹿児島本線",method:"現金",amount:1840,receipt:false,note:"往復"}
+    ];
+
+    var done=0;
+    expenses.forEach(function(exp){
+      db.collection("expenses").doc("yuuki_kenta_"+exp.id).set({
+        userId:"yuuki_kenta",userName:"結城 健太",
+        date:exp.date,desc:exp.desc,payee:exp.payee,
+        method:exp.method,amount:exp.amount,
+        receipt:exp.receipt,note:exp.note,
         submitted:true,
         submittedAt:"2026-04-06T00:00:00.000Z",
         createdAt:new Date().toISOString()
-      });
-      addLog("  OK " + exp.date.slice(5) + " " + exp.desc + " ¥" + exp.amount.toLocaleString());
-    }
-    addLog("経費 " + EXPENSES.length + "件 完了");
-    addLog("
-出張報告データをインポート中...");
-    await setDoc(doc(db,"travels","yuuki_kenta_travel_march2026"),{
-      userId:"yuuki_kenta",
-      userName:"結城 健太",
-      ...TRAVEL,
-      submittedAt:"2026-04-06T00:00:00.000Z",
-      createdAt:new Date().toISOString(),
-      updatedAt:new Date().toISOString()
+      }).then(function(){
+        done++;
+        addLog("  OK "+exp.date.slice(5)+" "+exp.desc+" ¥"+exp.amount);
+        if(done===expenses.length){
+          addLog("経費 "+done+"件 完了！");
+          addLog("出張報告を書き込み中...");
+          db.collection("travels").doc("yuuki_kenta_travel_march2026").set({
+            userId:"yuuki_kenta",userName:"結城 健太",
+            dest:"鳥栖",purpose:"鳥栖PO引き渡し前確認",
+            from:"2026-03-24",to:"2026-03-24",
+            reportDate:"2026-04-06",
+            transport:"飛行機",companion:"無し",report:"",
+            schedules:[{date:"2026-03-24",time:"14:00〜18:00",place:"鳥栖プレミアムアウトレット",content:"現場確認",contact:"結城",result:"問題なし"}],
+            costs:[{date:"2026-03-24",route:"羽田空港〜福岡空港",transport:"飛行機",amount:84420,receipt:true,note:"往復"}],
+            status:"pending",
+            submittedAt:"2026-04-06T00:00:00.000Z",
+            createdAt:new Date().toISOString(),
+            updatedAt:new Date().toISOString()
+          }).then(function(){
+            addLog("  OK 鳥栖出張 3/24 84420円");
+            addLog("\nインポート完了！KEIHIアプリで前月に切り替えると表示されます。");
+          });
+        }
+      }).catch(function(e){addLog("エラー: "+e.message);});
     });
-    addLog("  OK 鳥栖出張 3/24 ¥84,420");
-    addLog("
-インポート完了！経費アプリで前月に切り替えると表示されます。");
-  }catch(e){
-    addLog("エラー: "+e.message);
-  }
-});
+  }).catch(function(e){addLog("ログイン失敗: "+e.message);});
+}
 </script>
 </body>
 </html>
