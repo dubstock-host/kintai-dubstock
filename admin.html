@@ -207,10 +207,8 @@ const app=initializeApp(FB);
 const auth=getAuth(app);
 const db=getFirestore(app);
 
-// ══ 社員リスト（追加時はここに追記）══
 const EMPLOYEES=[
   {uid:"yuuki_kenta", name:"結城 健太", avatar:"結"},
-  // {uid:"yamada_taro", name:"山田 太郎", avatar:"山"},
 ];
 
 const DOW=["日","月","火","水","木","金","土"];
@@ -228,7 +226,6 @@ function ts2hm(ts){if(!ts)return "--:--";const d=new Date(ts);return p2(d.getHou
 function brkMs(a,b){if(!a||!b)return 0;const d=new Date(a),s=new Date(d),e=new Date(d);s.setHours(12,0,0,0);e.setHours(13,0,0,0);return Math.max(0,Math.min(b,e.getTime())-Math.max(a,s.getTime()));}
 function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2500);}
 
-// データ取得
 async function getLeavesByUid(uid){
   const q=query(collection(db,"leaves"),where("userId","==",uid));
   const sn=await getDocs(q);const r=[];sn.forEach(d=>r.push(d.data()));
@@ -248,15 +245,12 @@ async function getRecsByUid(uid){
   const sn=await getDocs(q);const r={};sn.forEach(d=>{r[d.data().date]=d.data();});return r;
 }
 
-// 承認処理
 async function doApprove(id){
   await updateDoc(doc(db,"leaves",id),{status:"approved",respondedAt:new Date().toISOString(),notifSeen:false});
   showToast("承認しました ✓");
-  await renderPending();
-  await renderEmpCards();
+  await renderPending();await renderEmpCards();
 }
 
-// 差し戻しモーダル
 function openRejectModal(id,date,type,name){
   rejectTargetId=id;
   const dow=DOW[new Date(date.replace(/-/g,"/")).getDay()];
@@ -272,17 +266,13 @@ async function doReject(){
   if(!rejectTargetId)return;
   const comment=document.getElementById("rejectComment").value.trim();
   await updateDoc(doc(db,"leaves",rejectTargetId),{status:"rejected",comment:comment||"",respondedAt:new Date().toISOString(),notifSeen:false});
-  closeRejectModal();
-  showToast("差し戻しました");
-  await renderPending();
-  await renderEmpCards();
+  closeRejectModal();showToast("差し戻しました");
+  await renderPending();await renderEmpCards();
 }
 
-// 全社員概要
 async function renderEmpCards(){
   const el=document.getElementById("empCards");el.innerHTML="";
   const y=new Date().getFullYear(),m=new Date().getMonth()+1;
-  const r=y-2018;
   for(const emp of EMPLOYEES){
     const allRecs=await getRecsByUid(emp.uid);
     const pfx=y+"-"+p2(m);const recs={};Object.keys(allRecs).forEach(k=>{if(k.startsWith(pfx))recs[k]=allRecs[k];});
@@ -295,6 +285,7 @@ async function renderEmpCards(){
       if(!shifts.length)continue;wd++;const s=shifts[0];const bms=brkMs(s.in,s.out);tw+=Math.max(0,s.out-s.in-bms);
     }
     const aLvs=lvs.filter(lv=>{const d=new Date(lv.date.replace(/-/g,"/"));return d.getFullYear()===y&&d.getMonth()===m-1&&lv.status==="approved";});
+    const r=y-2018;
     const card=document.createElement("div");card.className="emp-card";
     card.innerHTML=
       "<div class=\"emp-card-header\"><div class=\"emp-avatar\">"+emp.avatar+"</div><div>"+
@@ -309,23 +300,19 @@ async function renderEmpCards(){
   }
 }
 
-// 承認待ち一覧
 async function renderPending(){
   const lvs=await getAllLeaves();
   const pending=lvs.filter(lv=>lv.status==="pending");
   document.getElementById("reqBadge").className="tbadge"+(pending.length>0?" show":"");
   document.getElementById("pendingBadge").innerHTML=pending.length>0?"<span class=\"nbadge\">承認待ち "+pending.length+"件</span>":"";
-
   const el=document.getElementById("pendingList");
   if(!pending.length){el.innerHTML="<div class=\"no-data\">承認待ちの申請はありません</div>";return;}
-
   el.innerHTML="";
   pending.forEach(lv=>{
     const dow=DOW[new Date(lv.date.replace(/-/g,"/")).getDay()];
     const at=new Date(lv.appliedAt);
     const atStr=at.getFullYear()+"/"+p2(at.getMonth()+1)+"/"+p2(at.getDate())+" "+p2(at.getHours())+":"+p2(at.getMinutes());
     const empName=lv.userName||(EMPLOYEES.find(e=>e.uid===lv.userId)||{name:lv.userId}).name;
-
     const card=document.createElement("div");card.className="req-card";
     card.innerHTML=
       "<div class=\"req-name\">"+empName+"</div>"+
@@ -337,8 +324,6 @@ async function renderPending(){
       "<button class=\"rbtn rbtn-approve\">&#x2705; 承認する</button>"+
       "<button class=\"rbtn rbtn-reject\">&#x274C; 差し戻す</button>"+
       "</div>";
-
-    // ボタンにイベントを直接登録
     card.querySelector(".rbtn-approve").addEventListener("click",async()=>{
       if(!confirm("承認しますか？"))return;
       await doApprove(lv.id);
@@ -346,12 +331,10 @@ async function renderPending(){
     card.querySelector(".rbtn-reject").addEventListener("click",()=>{
       openRejectModal(lv.id,lv.date,lv.type,empName);
     });
-
     el.appendChild(card);
   });
 }
 
-// 勤怠確認
 function renderEmpSelector(containerId,getUid,setUid,onSelect){
   const el=document.getElementById(containerId);el.innerHTML="";
   EMPLOYEES.forEach(emp=>{
@@ -393,7 +376,6 @@ async function renderKintai(){
   document.getElementById("totalLeave").textContent=aLvs.length+" 日";
 }
 
-// 申請履歴
 async function renderHistory(){
   const lvs=await getLeavesByUid(selectedHistUid);
   const el=document.getElementById("historyList");
@@ -405,7 +387,6 @@ async function renderHistory(){
     }).join("")+"</tbody></table></div>";
 }
 
-// 打刻記録（閲覧専用）
 async function renderStamp(){
   const y=stampMonth.getFullYear(),m=stampMonth.getMonth();const r=y-2018;
   document.getElementById("stampMonthLabel").textContent="R"+r+"年"+(m+1)+"月";
@@ -423,7 +404,6 @@ async function renderStamp(){
   document.getElementById("stampLog").innerHTML=tb||"<tr><td colspan=\"6\" class=\"no-data\">記録なし</td></tr>";
 }
 
-// タブ切替
 function showTab(name){
   document.querySelectorAll(".tab-content").forEach(e=>e.classList.remove("active"));
   document.querySelectorAll(".tab-btn").forEach(e=>e.classList.remove("active"));
@@ -435,49 +415,40 @@ function showTab(name){
   if(name==="申請")renderPending();
 }
 
-// ログインボタン
-document.getElementById("loginBtn").addEventListener("click",async()=>{
-  const em=document.getElementById("loginEmail").value.trim();
-  const pw=document.getElementById("loginPass").value;
-  const er=document.getElementById("loginErr");er.textContent="";
-  try{await signInWithEmailAndPassword(auth,em,pw);}
-  catch(e){er.textContent="メールアドレスまたはパスワードが間違っています";}
-});
-document.getElementById("loginPass").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("loginBtn").click();});
+// DOMContentLoaded で全ボタン登録（ES Module は defer 相当だが念のため）
+document.addEventListener("DOMContentLoaded", function(){
 
-// 初期化（全ボタンをここで登録）
-onAuthStateChanged(auth,async user=>{
-  if(!user){
-    document.getElementById("loginScreen").style.display="flex";
-    document.getElementById("appScreen").style.display="none";
-    return;
-  }
-  document.getElementById("loginScreen").style.display="none";
-  document.getElementById("appScreen").style.display="block";
-
-  // タブボタン
-  document.querySelectorAll(".tab-btn").forEach(btn=>{
-    btn.addEventListener("click",()=>showTab(btn.dataset.tab));
+  // ログインボタン
+  document.getElementById("loginBtn").addEventListener("click", async function(){
+    const em=document.getElementById("loginEmail").value.trim();
+    const pw=document.getElementById("loginPass").value;
+    const er=document.getElementById("loginErr");
+    er.textContent="";
+    if(!em||!pw){er.textContent="メールアドレスとパスワードを入力してください";return;}
+    try{
+      await signInWithEmailAndPassword(auth,em,pw);
+    }catch(e){
+      er.textContent="ログインに失敗しました。メールアドレスまたはパスワードを確認してください。";
+    }
   });
 
-  // ログアウト
-  document.getElementById("logoutBtn").addEventListener("click",()=>signOut(auth));
+  document.getElementById("loginPass").addEventListener("keydown",function(e){
+    if(e.key==="Enter") document.getElementById("loginBtn").click();
+  });
 
-  // 差し戻しモーダルボタン
+  // 差し戻しモーダル
   document.getElementById("rejectCancelBtn").addEventListener("click",closeRejectModal);
   document.getElementById("rejectConfirmBtn").addEventListener("click",doReject);
-  document.getElementById("rejectOverlay").addEventListener("click",(e)=>{if(e.target===e.currentTarget)closeRejectModal();});
+  document.getElementById("rejectOverlay").addEventListener("click",function(e){if(e.target===e.currentTarget)closeRejectModal();});
 
-  // 勤怠月切替
+  // 月切替
   document.getElementById("kintaiPrev").addEventListener("click",()=>{kintaiMonth.setMonth(kintaiMonth.getMonth()-1);renderKintai();});
   document.getElementById("kintaiNext").addEventListener("click",()=>{kintaiMonth.setMonth(kintaiMonth.getMonth()+1);renderKintai();});
-
-  // 打刻月切替
   document.getElementById("stampPrev").addEventListener("click",()=>{stampMonth.setMonth(stampMonth.getMonth()-1);renderStamp();});
   document.getElementById("stampNext").addEventListener("click",()=>{stampMonth.setMonth(stampMonth.getMonth()+1);renderStamp();});
 
   // CSV出力
-  document.getElementById("exportBtn").addEventListener("click",async()=>{
+  document.getElementById("exportBtn").addEventListener("click",async function(){
     const y=kintaiMonth.getFullYear(),m=kintaiMonth.getMonth();
     const emp=EMPLOYEES.find(e=>e.uid===selectedKintaiUid)||{name:selectedKintaiUid};
     const allRecs=await getRecsByUid(selectedKintaiUid);
@@ -492,13 +463,29 @@ onAuthStateChanged(auth,async user=>{
     showToast("CSVをダウンロードしました");
   });
 
-  // 初期表示
-  await renderEmpCards();
-  await renderPending();
-  setInterval(async()=>{await renderPending();await renderEmpCards();},30000);
+  // タブ
+  document.querySelectorAll(".tab-btn").forEach(btn=>{
+    btn.addEventListener("click",()=>showTab(btn.dataset.tab));
+  });
+
+  // ログアウト
+  document.getElementById("logoutBtn").addEventListener("click",()=>signOut(auth));
+
+  // 認証状態監視
+  onAuthStateChanged(auth, async function(user){
+    if(!user){
+      document.getElementById("loginScreen").style.display="flex";
+      document.getElementById("appScreen").style.display="none";
+      return;
+    }
+    document.getElementById("loginScreen").style.display="none";
+    document.getElementById("appScreen").style.display="block";
+    await renderEmpCards();
+    await renderPending();
+    setInterval(async()=>{await renderPending();await renderEmpCards();},30000);
+  });
+
 });
-
-
 </script>
 </body>
 </html>
