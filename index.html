@@ -608,7 +608,10 @@ onAuthStateChanged(auth,async user=>{
   document.querySelectorAll(".tab-btn").forEach(btn=>{btn.addEventListener("click",()=>showTab(btn.dataset.tab));});
 
   // 打刻修正日付
-  document.getElementById("editDatePicker").addEventListener("change",loadEditDay);
+  // 打刻修正タブの日付選択（タブが存在する場合のみ登録）
+  if(document.getElementById("editDatePicker")){
+    document.getElementById("editDatePicker").addEventListener("change",loadEditDay);
+  }
 
   // ログアウト
   document.getElementById("logoutBtn").addEventListener("click",()=>signOut(auth));
@@ -634,7 +637,10 @@ onAuthStateChanged(auth,async user=>{
   });
 
   // 打刻タブの有給申請ボタン
-  document.getElementById("btnLeaveFromStamp").addEventListener("click",openLeaveModal);
+  // 打刻タブの有給申請ボタン（id=leaveQuickBtn）
+  if(document.getElementById("leaveQuickBtn")){
+    document.getElementById("leaveQuickBtn").addEventListener("click",openLeaveModal);
+  }
 
   // 月次
   document.getElementById("monthPrev").addEventListener("click",()=>{curMonth.setMonth(curMonth.getMonth()-1);renderMonthly();});
