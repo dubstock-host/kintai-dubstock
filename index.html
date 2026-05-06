@@ -604,6 +604,13 @@ onAuthStateChanged(auth,async user=>{
     setInterval(updateClock,1000);
   }
 
+  // onAuthStateChangedは複数回発火するため初回のみ初期化
+  if(window._appInitialized){
+    const rec2=await gRec(getWD());refreshUI(rec2);
+    return;
+  }
+  window._appInitialized=true;
+
   // タブ
   document.querySelectorAll(".tab-btn").forEach(btn=>{btn.addEventListener("click",()=>showTab(btn.dataset.tab));});
 
@@ -695,9 +702,6 @@ onAuthStateChanged(auth,async user=>{
     closeCancelLeaveModal();showToast("申請を取り消しました");
     renderMyLeaveList();renderLeaveBalance();
   });
-
-  // 打刻修正タブの日付
-  document.getElementById("editDatePicker").addEventListener("change",loadEditDay);
 
   // 時計を確実に更新
   updateClock();
