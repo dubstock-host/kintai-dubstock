@@ -108,7 +108,11 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 <div id="appScreen">
 <div class="wrap">
   <header>
-    <div class="logo">DUBSTOCK</div>
+    <!-- アプリ切替ボタン：KEIHIが現在のページなのでアクティブ表示 -->
+    <div style="display:flex;align-items:center;gap:6px;">
+      <a href="index.html" style="font-family:'DM Mono',monospace;font-size:13px;letter-spacing:3px;text-transform:uppercase;font-weight:500;color:var(--tx3);background:transparent;border:1px solid var(--bdr);border-radius:8px;padding:6px 14px;text-decoration:none;">KINTAI</a>
+      <span style="font-family:'DM Mono',monospace;font-size:13px;letter-spacing:3px;text-transform:uppercase;font-weight:500;color:var(--acc);background:#EFF6FF;border:1.5px solid var(--acc);border-radius:8px;padding:6px 14px;">KEIHI</span>
+    </div>
     <div class="uinfo">
       <div class="avatar">結</div>
       <span style="font-size:14px;font-weight:500;">結城 健太</span>
