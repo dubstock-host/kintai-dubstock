@@ -108,7 +108,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
     <div class="lfield"><label>メールアドレス</label><input type="email" id="loginEmail" placeholder="admin@email.com"></div>
     <div class="lfield"><label>パスワード</label><input type="password" id="loginPass" placeholder="password"></div>
     <div class="lerr" id="loginErr"></div>
-    <button class="lbtn" id="loginBtn">ログイン</button>
+    <button class="lbtn" onclick="adminLogin()">ログイン</button>
   </div>
 </div>
 
@@ -197,6 +197,24 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 
 <div class="toast" id="toast"></div>
 
+<script>
+// グローバルログイン関数（ES Moduleの外）
+function adminLogin() {
+  var em = document.getElementById("loginEmail").value.trim();
+  var pw = document.getElementById("loginPass").value;
+  var er = document.getElementById("loginErr");
+  er.textContent = "";
+  if (!em || !pw) { er.textContent = "メールアドレスとパスワードを入力してください"; return; }
+  // Firebase SDKが読み込まれるまで待つ
+  if (typeof firebase !== "undefined") {
+    firebase.auth().signInWithEmailAndPassword(em, pw)
+      .catch(function(e) { er.textContent = "ログインに失敗しました。内容を確認してください。"; });
+  } else {
+    // Module版のFirebaseを使う場合はイベントで通知
+    document.dispatchEvent(new CustomEvent("adminLoginRequest", {detail: {em, pw}}));
+  }
+}
+</script>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -418,22 +436,19 @@ function showTab(name){
 // DOMContentLoaded で全ボタン登録（ES Module は defer 相当だが念のため）
 document.addEventListener("DOMContentLoaded", function(){
 
-  // ログインボタン
-  document.getElementById("loginBtn").addEventListener("click", async function(){
-    const em=document.getElementById("loginEmail").value.trim();
-    const pw=document.getElementById("loginPass").value;
+  // adminLoginRequest イベント受信
+  document.addEventListener("adminLoginRequest", async function(e){
+    const em=e.detail.em, pw=e.detail.pw;
     const er=document.getElementById("loginErr");
-    er.textContent="";
-    if(!em||!pw){er.textContent="メールアドレスとパスワードを入力してください";return;}
     try{
       await signInWithEmailAndPassword(auth,em,pw);
-    }catch(e){
-      er.textContent="ログインに失敗しました。メールアドレスまたはパスワードを確認してください。";
+    }catch(err){
+      er.textContent="ログインに失敗しました。内容を確認してください。";
     }
   });
 
   document.getElementById("loginPass").addEventListener("keydown",function(e){
-    if(e.key==="Enter") document.getElementById("loginBtn").click();
+    if(e.key==="Enter") adminLogin();
   });
 
   // 差し戻しモーダル
