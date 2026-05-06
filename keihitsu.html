@@ -89,6 +89,151 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .receipt-check{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;}
 .receipt-check input{width:18px;height:18px;cursor:pointer;}
 @media(max-width:480px){.field-row{grid-template-columns:1fr;}.field-row.triple{grid-template-columns:1fr 1fr;}.info-grid{grid-template-columns:1fr;}}
+
+/* ── 印刷用スタイル：画面非表示要素を隠し、経費明細表をA4で美しく出力 ── */
+@media print {
+  /* 印刷時はヘッダー・タブ・ボタン類を非表示 */
+  header, .tab-nav, .btn-add, #expSubmitArea, .total-bar,
+  #tab-travel, .overlay, .toast, #expPrevBtn, #expNextBtn,
+  .del-btn, #printBtn { display: none !important; }
+
+  /* 印刷時は余白をなくしてA4全幅を使う */
+  body { background: white; padding: 0; margin: 0; }
+  .wrap { max-width: 100%; padding: 0 10mm; }
+
+  /* 印刷用の経費精算ヘッダー */
+  .print-header { display: block !important; }
+
+  /* 印刷時はタブコンテンツを全て表示（経費のみ） */
+  .tab-content { display: block !important; }
+  #tab-travel { display: none !important; }
+
+  /* 表が途中で切れないよう設定 */
+  .exp-table-wrap { page-break-inside: avoid; }
+}
+
+/* 印刷ヘッダー（画面では非表示、印刷時のみ表示） */
+.print-header {
+  display: none;
+  margin-bottom: 16px;
+}
+.print-header h1 {
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 12px;
+  border-bottom: 2px solid #1E293B;
+  padding-bottom: 8px;
+}
+.print-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+.print-meta-item { display: flex; gap: 8px; }
+.print-meta-label { font-weight: 600; white-space: nowrap; }
+
+/* ── 経費明細テーブル（スプレッドシート風） ── */
+.exp-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  margin-bottom: 12px;
+  border: 1px solid #CBD5E1;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.exp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.exp-table thead tr {
+  background: #1E293B;
+  color: white;
+}
+.exp-table thead th {
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+.exp-table tbody tr {
+  border-bottom: 1px solid #E2E5EA;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.exp-table tbody tr:hover { background: #F0F7FF; }
+.exp-table tbody tr:last-child { border-bottom: none; }
+.exp-table td {
+  padding: 9px 12px;
+  color: #1E293B;
+  vertical-align: middle;
+}
+.exp-table td.td-date {
+  font-family: "DM Mono", monospace;
+  font-size: 12px;
+  color: #64748B;
+  white-space: nowrap;
+}
+.exp-table td.td-amount {
+  font-family: "DM Mono", monospace;
+  font-weight: 700;
+  color: #DC2626;
+  text-align: right;
+  white-space: nowrap;
+}
+.exp-table td.td-method {
+  font-size: 11px;
+  color: #64748B;
+  white-space: nowrap;
+}
+.exp-table td.td-receipt {
+  text-align: center;
+  font-size: 13px;
+}
+.exp-table td.td-action {
+  text-align: center;
+  width: 40px;
+}
+.exp-table tfoot tr {
+  background: #F0F4F8;
+  font-weight: 700;
+}
+.exp-table tfoot td {
+  padding: 10px 12px;
+  border-top: 2px solid #CBD5E1;
+}
+.exp-table tfoot .td-total-label {
+  text-align: right;
+  font-size: 13px;
+  color: #64748B;
+}
+.exp-table tfoot .td-total-amount {
+  font-family: "DM Mono", monospace;
+  font-size: 16px;
+  color: #1D4ED8;
+  font-weight: 800;
+  text-align: right;
+}
+/* 印刷ボタン */
+#printBtn {
+  background: #475569;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#printBtn:hover { background: #334155; }
 </style>
 </head>
 <body>
@@ -135,6 +280,8 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
       <div style="display:flex;gap:8px;">
         <button class="obtn" id="expPrevBtn">&#8249; 前月</button>
         <button class="obtn" id="expNextBtn">翌月 &#8250;</button>
+        <!-- 印刷ボタン：押すとブラウザの印刷ダイアログを開く -->
+        <button id="printBtn">&#x1F5A8; 印刷</button>
       </div>
     </div>
     <div class="total-bar">
@@ -142,6 +289,15 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
       <div class="total-amount" id="expTotal">¥ 0</div>
     </div>
     <button class="btn-add" id="addExpBtn">＋ 明細を追加</button>
+    <!-- 印刷時のみ表示される経費精算書ヘッダー -->
+    <div class="print-header" id="printHeader">
+      <h1>経費精算書</h1>
+      <div class="print-meta">
+        <div class="print-meta-item"><span class="print-meta-label">氏名：</span><span>結城 健太</span></div>
+        <div class="print-meta-item"><span class="print-meta-label">申請月：</span><span id="printMonth"></span></div>
+        <div class="print-meta-item"><span class="print-meta-label">申請日：</span><span id="printDate"></span></div>
+      </div>
+    </div>
     <div id="expList"><div class="no-data">明細がありません</div></div>
     <div style="margin-top:16px;" id="expSubmitArea"></div>
   </div>
@@ -288,24 +444,76 @@ async function renderExpenses(){
 
   const el=document.getElementById("expList");
   if(!items.length){el.innerHTML="<div class='no-data'>明細がありません</div>";renderExpSubmit([]);return;}
-  el.innerHTML="";
+
+  // 印刷ヘッダーの日付を更新
+  const y2=expMonth.getFullYear(),m2=expMonth.getMonth();
+  const r2=y2-2018;
+  document.getElementById("printMonth").textContent="R"+r2+"年"+(m2+1)+"月";
+  document.getElementById("printDate").textContent=new Date().toLocaleDateString("ja-JP");
+
+  // ── スプレッドシート風テーブルを生成 ──
+  const wrap=document.createElement("div");
+  wrap.className="exp-table-wrap";
+
+  const table=document.createElement("table");
+  table.className="exp-table";
+
+  // テーブルヘッダー行
+  table.innerHTML=
+    "<thead><tr>"+
+    "<th>日付</th>"+
+    "<th>内容・目的</th>"+
+    "<th>支払先</th>"+
+    "<th>支払方法</th>"+
+    "<th>領収書</th>"+
+    "<th style='text-align:right;'>金額（円）</th>"+
+    "<th>備考</th>"+
+    "<th></th>"+ // 削除ボタン列（印刷時は非表示）
+    "</tr></thead>";
+
+  // テーブルボディ（明細行）
+  const tbody=document.createElement("tbody");
   items.forEach(item=>{
-    const div=document.createElement("div");div.className="item-card";
-    div.innerHTML=
-      "<button class='del-btn' data-id='"+item.id+"'>&times;</button>"+
-      "<div class='item-row'>"+
-      "<span class='item-date'>"+item.date.slice(5)+"</span>"+
-      "<div><div class='item-desc'>"+item.desc+"</div><div style='font-size:11px;color:var(--tx3);margin-top:2px;'>"+item.payee+"　"+item.method+(item.receipt?" &#x1F9FE;":"")+(item.note?" / "+item.note:"")+"</div></div>"+
-      "<span class='item-amount'>"+fmtYen(item.amount)+"</span>"+
-      "</div>";
-    div.querySelector(".del-btn").addEventListener("click",async()=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=
+      "<td class='td-date'>"+item.date.slice(5)+"</td>"+
+      "<td>"+item.desc+"</td>"+
+      "<td style='font-size:12px;color:#64748B;'>"+( item.payee||"")+"</td>"+
+      "<td class='td-method'>"+item.method+"</td>"+
+      "<td class='td-receipt'>"+(item.receipt?"&#x2713;":"")+"</td>"+
+      "<td class='td-amount'>"+Number(item.amount||0).toLocaleString()+"</td>"+
+      "<td style='font-size:12px;color:#64748B;'>"+( item.note||"")+"</td>"+
+      "<td class='td-action'><button class='del-btn' style='background:transparent;border:none;color:#94A3B8;cursor:pointer;font-size:16px;'>&times;</button></td>";
+
+    // 行クリックで編集モーダルを開く
+    tr.addEventListener("click",e=>{
+      if(e.target.classList.contains("del-btn"))return;
+      openExpModal(item);
+    });
+    // 削除ボタン
+    tr.querySelector(".del-btn").addEventListener("click",async e=>{
+      e.stopPropagation();
       if(!confirm("この明細を削除しますか？"))return;
       await deleteDoc(doc(db,"expenses",item.id));
       showToast("削除しました");renderExpenses();
     });
-    div.addEventListener("click",e=>{if(e.target.classList.contains("del-btn"))return;openExpModal(item);});
-    el.appendChild(div);
+    tbody.appendChild(tr);
   });
+  table.appendChild(tbody);
+
+  // テーブルフッター（合計行）
+  const tfoot=document.createElement("tfoot");
+  tfoot.innerHTML=
+    "<tr>"+
+    "<td colspan='5' class='td-total-label'>合　計</td>"+
+    "<td class='td-total-amount'>"+total.toLocaleString()+"</td>"+
+    "<td colspan='2'></td>"+
+    "</tr>";
+  table.appendChild(tfoot);
+
+  wrap.appendChild(table);
+  el.innerHTML="";
+  el.appendChild(wrap);
   renderExpSubmit(items);
 }
 
@@ -498,6 +706,14 @@ onAuthStateChanged(auth,async user=>{
   document.getElementById("logoutBtn").addEventListener("click",()=>signOut(auth));
   document.getElementById("expPrevBtn").addEventListener("click",()=>{expMonth.setMonth(expMonth.getMonth()-1);renderExpenses();});
   document.getElementById("expNextBtn").addEventListener("click",()=>{expMonth.setMonth(expMonth.getMonth()+1);renderExpenses();});
+  // 印刷ボタン：クリックでブラウザ印刷ダイアログを開く
+  document.getElementById("printBtn").addEventListener("click",()=>{
+    // 印刷ヘッダーを表示状態にしてから印刷
+    document.getElementById("printHeader").style.display="block";
+    window.print();
+    // 印刷後に非表示に戻す
+    setTimeout(()=>{document.getElementById("printHeader").style.display="none";},1000);
+  });
   document.getElementById("addExpBtn").addEventListener("click",()=>openExpModal());
   document.getElementById("expModalCloseBtn").addEventListener("click",closeExpModal);
   document.getElementById("expModalCancelBtn").addEventListener("click",closeExpModal);
