@@ -451,7 +451,12 @@ async function renderStamp(){
     const shifts=rec&&rec.shifts?rec.shifts.filter(s=>s&&s.in&&s.out):[];if(!shifts.length)continue;
     const s=shifts[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);
     const dow=DOW[new Date(date).getDay()];
-    tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td>"+ts2hm(s.in)+"</td><td>"+ts2hm(s.out)+"</td><td>"+(bms>0?hm(bms):"―")+"</td><td>"+hm(wms)+"</td><td class=\""+(oms>0?"ot":"")+"\">"+(oms>0?hm(oms):"―")+"</td></tr>";
+    // デバッグ：shiftsの中身をコンソールに出力して確認
+    console.log(date, "shifts[0]:", JSON.stringify(s));
+    // 修正フラグがある場合は「修正」バッジと修正日時を表示
+    const editedMark=s.edited
+      ?"<span style=\"display:inline-block;background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;margin-left:4px;\" title=\"修正日時: "+( s.editedAt?new Date(s.editedAt).toLocaleString("ja-JP"):"不明")+"\">修正済</span>":"";
+    tb+="<tr><td>"+date.slice(5)+"("+dow+")"+editedMark+"</td><td>"+ts2hm(s.in)+"</td><td>"+ts2hm(s.out)+"</td><td>"+(bms>0?hm(bms):"―")+"</td><td>"+hm(wms)+"</td><td class=\""+(oms>0?"ot":"")+"\">"+(oms>0?hm(oms):"―")+"</td></tr>";
   }
   document.getElementById("stampLog").innerHTML=tb||"<tr><td colspan=\"6\" class=\"no-data\">記録なし</td></tr>";
 }

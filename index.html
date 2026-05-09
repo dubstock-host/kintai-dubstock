@@ -261,6 +261,29 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 </div>
 </div>
 
+<!-- 打刻修正モーダル（有給申請モーダルとは別の独立したモーダル） -->
+<div class="overlay" id="editOverlay">
+  <div class="modal">
+    <div class="mtitle">&#x270F;&#xFE0F; 打刻修正</div>
+    <div class="msub" id="editModalSubtitle"></div>
+    <div class="mfield">
+      <label>出勤時刻</label>
+      <input type="time" id="editModalIn" style="width:100%;background:var(--s2);border:1px solid var(--bdr2);border-radius:8px;padding:11px 14px;color:var(--tx);font-size:15px;outline:none;">
+    </div>
+    <div class="mfield">
+      <label>退勤時刻</label>
+      <input type="time" id="editModalOut" style="width:100%;background:var(--s2);border:1px solid var(--bdr2);border-radius:8px;padding:11px 14px;color:var(--tx);font-size:15px;outline:none;">
+      <div style="font-size:11px;color:var(--tx3);margin-top:5px;">未退勤の場合は空欄でOK</div>
+    </div>
+    <div style="font-size:11px;color:var(--tx3);background:var(--s2);border-radius:8px;padding:10px 12px;margin-bottom:12px;">&#x1F7E1; 休憩は 12:00〜13:00 固定で自動計算されます</div>
+    <div class="merr" id="editModalErr"></div>
+    <div class="mbtns">
+      <button class="mbtn2 mb-cancel" id="editModalCancelBtn">キャンセル</button>
+      <button class="mbtn2 mb-save" id="editModalSaveBtn">保存</button>
+    </div>
+  </div>
+</div>
+
 <!-- 有給申請モーダル -->
 <div class="overlay" id="leaveOverlay">
   <div class="modal">
@@ -553,12 +576,20 @@ async function loadEditDay(){
 }
 
 function openEditModal(date,idx,isNew){
+  // 打刻修正モーダルを開く（有給申請モーダルとは別のeditOverlayを使用）
   editState={date,idx,isNew};
   const wo=new Date(date.replace(/-/g,"/"));
-  document.getElementById("leaveDate").textContent=date.slice(5)+"（"+DOW[wo.getDay()]+"）";
-  gRec(date).then(rec=>{const sh=rec.shifts&&rec.shifts[0];(document.getElementById("modalIn")||{value:""}).value=sh&&sh.in&&!isNew?ts2hm(sh.in):"";(document.getElementById("modalOut")||{value:""}).value=sh&&sh.out&&!isNew?ts2hm(sh.out):"";});
-  document.getElementById("leaveErr").textContent="";
-  document.getElementById("leaveOverlay").classList.add("open");
+  // モーダルのサブタイトルに日付を表示
+  document.getElementById("editModalSubtitle").textContent=date.slice(5)+"（"+DOW[wo.getDay()]+"）";
+  // 既存の打刻データを入力欄にセット
+  gRec(date).then(rec=>{
+    const sh=rec.shifts&&rec.shifts[0];
+    document.getElementById("editModalIn").value=sh&&sh.in&&!isNew?ts2hm(sh.in):"";
+    document.getElementById("editModalOut").value=sh&&sh.out&&!isNew?ts2hm(sh.out):"";
+  });
+  document.getElementById("editModalErr").textContent="";
+  // 打刻修正専用モーダルを開く
+  document.getElementById("editOverlay").classList.add("open");
 }
 
 // 有給申請モーダル
@@ -661,7 +692,34 @@ onAuthStateChanged(auth,async user=>{
   document.getElementById("histPrevBtn").addEventListener("click",()=>{histMonth.setMonth(histMonth.getMonth()-1);renderHistStamp();});
   document.getElementById("histNextBtn").addEventListener("click",()=>{histMonth.setMonth(histMonth.getMonth()+1);renderHistStamp();});
 
-  // 打刻修正モーダル
+  // 打刻修正モーダルのイベント登録（editOverlayを使用）
+  document.getElementById("editOverlay").addEventListener("click",(e)=>{if(e.target===e.currentTarget)document.getElementById("editOverlay").classList.remove("open");});
+  document.getElementById("editModalCancelBtn").addEventListener("click",()=>document.getElementById("editOverlay").classList.remove("open"));
+  document.getElementById("editModalSaveBtn").addEventListener("click",async()=>{
+    // 打刻修正の保存処理
+    const {date,idx,isNew}=editState;
+    const iv=document.getElementById("editModalIn").value;
+    const ov=document.getElementById("editModalOut").value;
+    const er=document.getElementById("editModalErr");er.textContent="";
+    if(!iv){er.textContent="出勤時刻を入力してください";return;}
+    const it=ts2ts(date,iv);let ot=ov?ts2ts(date,ov):null;
+    if(ot&&ot<=it)ot+=86400000;
+    if(ot&&ot<=it){er.textContent="退勤時刻は出勤より後にしてください";return;}
+    const rec=await gRec(date);if(!rec.shifts)rec.shifts=[];
+    // 修正フラグを付与：edited=true、修正日時・修正者を記録する
+    rec.shifts[idx]={in:it,out:ot||undefined,edited:true,editedAt:new Date().toISOString(),editedBy:UNAME};
+    try{
+      await sRec(date,rec);
+      document.getElementById("editOverlay").classList.remove("open");
+      showToast("修正を保存しました ✓");
+      loadEditDay();
+      if(ot)syncGAS(date,rec);
+      if(date===getWD())refreshUI(rec);
+      renderMonthly();
+    }catch(e){er.textContent="保存に失敗しました";}
+  });
+
+  // 有給申請モーダルのイベント登録
   document.getElementById("leaveOverlay").addEventListener("click",(e)=>{if(e.target===e.currentTarget)document.getElementById("leaveOverlay").classList.remove("open");});
   document.getElementById("leaveCancelBtn").addEventListener("click",()=>document.getElementById("leaveOverlay").classList.remove("open"));
   document.getElementById("leaveSubmitBtn").addEventListener("click",async()=>{
