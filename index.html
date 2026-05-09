@@ -160,11 +160,10 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
     <div style="font-size:11px;color:var(--tx3);margin-top:5px;">定時 10:00〜19:00　休憩 12:00〜13:00</div>
   </div>
   <div class="tab-nav">
+    <!-- 表示タブを3つに簡略化（打刻修正・履歴確認タブは非表示だが機能は保持） -->
     <button class="tab-btn active" data-tab="打刻">打刻<span class="badge-dot" id="notifDot"></span></button>
     <button class="tab-btn" data-tab="有給">有給申請</button>
     <button class="tab-btn" data-tab="月次">月次</button>
-    <button class="tab-btn" data-tab="修正">打刻修正</button>
-    <button class="tab-btn" data-tab="履歴">履歴確認</button>
   </div>
 
   <!-- 打刻タブ -->
