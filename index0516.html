@@ -365,14 +365,14 @@ async function sRec(date,rec){await setDoc(doc(db,"kintai",UID+"_"+date),{userId
 async function gRec(date){const sn=await getDoc(doc(db,"kintai",UID+"_"+date));return sn.exists()?sn.data():{shifts:[]};}
 async function dRec(date){await deleteDoc(doc(db,"kintai",UID+"_"+date));}
 async function gAllRecs(){
-  // kintaiコレクションからユーザーIDが一致するデータを全件取得
-  // コレクション全体を取得してJS側でフィルタ（インデックス不要）
+  // kintaiコレクションからデータを全件取得
   const sn=await getDocs(collection(db,"kintai"));
   const r={};
   sn.forEach(d=>{
     const data=d.data();
-    // 自分のデータのみ保持
-    if(data.userId===UID) r[data.date]=data;
+    // userIdが一致するか、またはドキュメントIDがUID_で始まる場合も取得
+    // （Firebase手動追加データも確実に取得するため）
+    if(data.userId===UID || d.id.startsWith(UID+"_")) r[data.date]=data;
   });
   return r;
 }
