@@ -455,9 +455,22 @@ async function renderStamp(){
   const days=new Date(y,m+1,0).getDate();let tb="";
   for(let d=1;d<=days;d++){
     const date=y+"-"+p2(m+1)+"-"+p2(d);const rec=recs[date];
-    const shifts=rec&&rec.shifts?rec.shifts.filter(s=>s&&s.in&&s.out):[];if(!shifts.length)continue;
-    const s=shifts[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);
+    // 退勤ありと退勤なし（打刻忘れ）を分けて取得
+    const shiftsComplete=rec&&rec.shifts?rec.shifts.filter(s=>s&&s.in&&s.out):[];
+    const shiftsMissing=rec&&rec.shifts?rec.shifts.filter(s=>s&&s.in&&!s.out):[];
+    if(!shiftsComplete.length&&!shiftsMissing.length)continue;
     const dow=DOW[new Date(date).getDay()];
+
+    // 退勤未打刻の行：⚠️マークで表示
+    if(shiftsMissing.length&&!shiftsComplete.length){
+      const sm=shiftsMissing[0];
+      tb+="<tr style=\"background:#FFFBEB;\">"+
+        "<td>"+date.slice(5)+"("+dow+") <span style=\"display:inline-block;background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;\">⚠️ 退勤未打刻</span></td>"+
+        "<td>"+ts2hm(sm.in)+"</td><td>―</td><td>―</td><td>―</td><td>―</td>"+
+        "</tr>";
+      continue;
+    }
+    const s=shiftsComplete[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);
     // 修正フラグがある場合は「修正」バッジと修正日時を表示
     // 修正フラグがある場合：修正済バッジ＋修正日時・修正者をホバーポップアップで表示
     const editedInfo=s.edited
