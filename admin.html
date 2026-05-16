@@ -292,7 +292,12 @@ async function getAllLeaves(){
 async function getRecsByUid(uid){
   const sn=await getDocs(collection(db,"kintai"));
   const r={};
-  sn.forEach(d=>{if(d.data().userId===uid)r[d.data().date]=d.data();});
+  sn.forEach(d=>{
+    const data=d.data();
+    // userIdが一致するか、ドキュメントIDがuid_で始まる場合も取得
+    // （Firebase手動追加データも確実に取得するため）
+    if(data.userId===uid || d.id.startsWith(uid+"_")) r[data.date]=data;
+  });
   return r;
 }
 
