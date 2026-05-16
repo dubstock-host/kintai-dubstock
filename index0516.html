@@ -1,0 +1,808 @@
+<!DOCTYPE html><!-- v2.1 -->
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>勤怠管理 - 結城健太</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F8FA;--surface:#fff;--s2:#F0F2F5;--bdr:#E2E5EA;--bdr2:#D0D5DD;--acc:#3B82F6;--acc2:#1D4ED8;--tx:#1E293B;--tx2:#64748B;--tx3:#94A3B8;--in:#059669;--out:#DC2626;--warn:#F59E0B;--lv:#7C3AED;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:"Noto Sans JP",sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;}
+#loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+.lcard{background:var(--surface);border:1px solid var(--bdr);border-radius:20px;padding:40px 32px;width:100%;max-width:360px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.08);}
+.llogo{font-family:"DM Mono",monospace;font-size:13px;color:var(--acc);letter-spacing:4px;text-transform:uppercase;margin-bottom:32px;}
+.ltitle{font-size:22px;font-weight:700;margin-bottom:8px;}
+.lsub{font-size:13px;color:var(--tx3);margin-bottom:32px;}
+.lfield{margin-bottom:16px;text-align:left;}
+.lfield label{display:block;font-size:11px;color:var(--tx2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600;}
+.lfield input{width:100%;background:var(--s2);border:1px solid var(--bdr2);border-radius:8px;padding:12px 14px;color:var(--tx);font-size:15px;outline:none;}
+.lfield input:focus{border-color:var(--acc);}
+.lbtn{width:100%;padding:14px;background:var(--acc);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;}
+.lerr{font-size:12px;color:var(--out);margin-top:10px;min-height:16px;}
+#appScreen{display:none;}
+.wrap{max-width:560px;margin:0 auto;padding:24px 16px 80px;}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--bdr);}
+.logo{font-family:"DM Mono",monospace;font-size:13px;color:var(--acc);letter-spacing:3px;text-transform:uppercase;font-weight:500;}
+.uinfo{display:flex;align-items:center;gap:10px;}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;}
+.uname{font-size:14px;font-weight:500;}
+.obtn{font-size:11px;color:var(--tx3);background:transparent;border:1px solid var(--bdr);border-radius:6px;padding:4px 10px;cursor:pointer;}
+.clock-block{text-align:center;margin-bottom:24px;}
+.clock-time{font-family:"DM Mono",monospace;font-size:52px;color:var(--tx);letter-spacing:4px;line-height:1;margin-bottom:6px;}
+.clock-date{font-size:13px;color:var(--tx2);}
+.day-badge{display:inline-block;margin-top:8px;font-family:"DM Mono",monospace;font-size:11px;color:var(--acc);background:#EFF6FF;border:1px solid #BFDBFE;border-radius:100px;padding:3px 14px;}
+.tab-nav{display:flex;background:var(--s2);border:1px solid var(--bdr);border-radius:10px;padding:4px;gap:4px;margin-bottom:20px;}
+.tab-btn{flex:1;padding:9px;background:transparent;border:none;border-radius:7px;color:var(--tx2);font-size:12px;cursor:pointer;font-weight:500;position:relative;}
+.tab-btn.active{background:var(--surface);color:var(--acc);box-shadow:0 1px 3px rgba(0,0,0,0.08);}
+.badge-dot{position:absolute;top:6px;right:6px;width:8px;height:8px;background:var(--out);border-radius:50%;display:none;}
+.badge-dot.show{display:block;}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+.scard{background:var(--surface);border:1px solid var(--bdr);border-radius:14px;padding:22px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.05);}
+.scard.working{border-color:#6EE7B7;border-top:3px solid var(--in);}
+.scard.done{border-top:3px solid var(--tx3);}
+.stop{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.sbadge{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:100px;font-size:12px;font-weight:600;}
+.b-off{background:#F1F5F9;color:var(--tx2);}
+.b-work{background:#ECFDF5;color:var(--in);}
+.b-done{background:#F1F5F9;color:var(--tx3);}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+.b-work .dot{animation:blink 2s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.elwrap{text-align:right;}
+.ellabel{font-size:10px;color:var(--tx3);letter-spacing:2px;text-transform:uppercase;margin-bottom:2px;}
+.el{font-family:"DM Mono",monospace;font-size:26px;color:var(--tx);letter-spacing:2px;}
+.trow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;}
+.ti{background:var(--s2);border-radius:8px;padding:10px 8px;border:1px solid var(--bdr);}
+.tilabel{font-size:10px;color:var(--tx3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;}
+.tival{font-family:"DM Mono",monospace;font-size:16px;color:var(--tx);}
+.tinote{font-size:10px;color:var(--tx3);margin-top:2px;}
+.brow{display:flex;gap:8px;}
+.btn{flex:1;padding:13px;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;}
+.btn:disabled{opacity:0.3;cursor:not-allowed;}
+.btn-in{background:#ECFDF5;color:var(--in);border:1.5px solid #A7F3D0;}
+.btn-out{background:#FEF2F2;color:var(--out);border:1.5px solid #FECACA;}
+.btn-cancel{flex:none;width:60px;padding:13px 0;background:#FFFBEB;color:var(--warn);border:1.5px solid #FDE68A;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;}
+.btn-leave{width:100%;padding:14px;background:#F5F3FF;color:var(--lv);border:1.5px solid #DDD6FE;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;margin-top:12px;}
+.stitle{font-size:11px;color:var(--tx3);letter-spacing:2px;text-transform:uppercase;margin:22px 0 10px;font-weight:600;}
+.log-card{background:var(--surface);border:1px solid var(--bdr);border-radius:10px;padding:16px;}
+.lrow{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--bdr);}
+.lrow:last-child{border-bottom:none;}
+.licon{font-size:14px;width:20px;text-align:center;}
+.llabel{flex:1;font-size:13px;color:var(--tx2);}
+.ltime{font-family:"DM Mono",monospace;font-size:14px;color:var(--tx);}
+.no-data{text-align:center;padding:28px;color:var(--tx3);font-size:13px;}
+#syncStatus{text-align:center;font-size:12px;margin-top:10px;min-height:18px;}
+.notif-card{border-radius:10px;padding:14px 16px;margin-bottom:12px;font-size:13px;line-height:1.6;cursor:pointer;}
+.notif-approved{background:#ECFDF5;border:1px solid #A7F3D0;color:#065F46;}
+.notif-rejected{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;}
+.notif-title{font-weight:700;margin-bottom:4px;}
+.notif-comment{font-size:12px;margin-top:6px;padding:8px;background:rgba(0,0,0,0.05);border-radius:6px;}
+.balance-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;}
+.balance-item{background:var(--s2);border-radius:8px;padding:12px 8px;border:1px solid var(--bdr);text-align:center;}
+.balance-label{font-size:10px;color:var(--tx3);margin-bottom:4px;}
+.balance-val{font-family:"DM Mono",monospace;font-size:22px;font-weight:700;}
+.sgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
+.sc{background:var(--surface);border:1px solid var(--bdr);border-radius:10px;padding:16px;}
+.slabel{font-size:10px;color:var(--tx3);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600;}
+.sval{font-family:"DM Mono",monospace;font-size:22px;}
+.mnav{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+.mbtn{background:var(--surface);border:1px solid var(--bdr);color:var(--tx2);width:32px;height:32px;border-radius:6px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;}
+.mlabel{font-family:"DM Mono",monospace;font-size:15px;font-weight:500;}
+.twrap{background:var(--surface);border:1px solid var(--bdr);border-radius:10px;overflow:hidden;}
+.ltable{width:100%;border-collapse:collapse;}
+.ltable th{font-size:10px;color:var(--tx3);letter-spacing:1px;text-transform:uppercase;padding:8px 10px;text-align:left;border-bottom:1px solid var(--bdr);background:var(--s2);font-weight:600;}
+.ltable td{padding:9px 10px;font-family:"DM Mono",monospace;font-size:12px;color:var(--tx2);border-bottom:1px solid var(--bdr);}
+.ltable tr:last-child td{border-bottom:none;}
+.ltable td:first-child{color:var(--tx);}
+.ot{color:var(--out)!important;font-weight:600;}
+.ebtn{background:var(--s2);border:1px solid var(--bdr);color:var(--tx2);border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;}
+.overlay.open{display:flex;}
+.modal{background:var(--surface);border-radius:16px;padding:28px;width:100%;max-width:400px;margin:16px;box-shadow:0 8px 32px rgba(0,0,0,0.15);}
+.mtitle{font-size:16px;font-weight:700;margin-bottom:4px;}
+.msub{font-size:12px;color:var(--tx3);margin-bottom:22px;}
+.mfield{margin-bottom:16px;}
+.mfield label{display:block;font-size:11px;color:var(--tx2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600;}
+.mfield input[type="time"],.mfield input[type="date"],.mfield textarea,.mfield select{width:100%;background:var(--s2);border:1px solid var(--bdr2);border-radius:8px;padding:11px 14px;color:var(--tx);font-size:15px;outline:none;}
+.mfield textarea{font-size:13px;resize:vertical;min-height:80px;font-family:"Noto Sans JP",sans-serif;}
+.mfield select{font-size:14px;font-family:"Noto Sans JP",sans-serif;}
+.mnote{font-size:11px;color:var(--tx3);margin-bottom:20px;background:var(--s2);border-radius:8px;padding:10px 12px;line-height:1.6;}
+.merr{font-size:12px;color:var(--out);margin-top:10px;min-height:16px;text-align:center;}
+.mbtns{display:flex;gap:10px;margin-top:4px;}
+.mbtn2{flex:1;padding:13px;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;}
+.mb-cancel{background:var(--s2);color:var(--tx2);border:1px solid var(--bdr);}
+.mb-save{background:var(--acc);color:#fff;}
+.mb-leave{background:var(--lv);color:#fff;}
+.mb-del{background:var(--out);color:#fff;}
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--tx);color:#fff;padding:11px 24px;border-radius:100px;font-size:13px;transition:transform 0.3s;z-index:300;white-space:nowrap;font-weight:500;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.sbadge2{display:inline-block;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;}
+.s-pending{background:#FFFBEB;color:#92400E;border:1px solid #FDE68A;}
+.s-approved{background:#ECFDF5;color:var(--in);border:1px solid #A7F3D0;}
+.s-rejected{background:#FEF2F2;color:var(--out);border:1px solid #FECACA;}
+@media(max-width:400px){.clock-time{font-size:38px;}.trow{grid-template-columns:repeat(2,1fr);}}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="lcard">
+    <div class="llogo">KINTAI</div>
+    <div class="ltitle">おかえりなさい</div>
+    <div class="lsub">勤怠管理システムにログイン</div>
+    <div class="lfield"><label>メールアドレス</label><input type="email" id="loginEmail" placeholder="example@email.com"></div>
+    <div class="lfield"><label>パスワード</label><input type="password" id="loginPass" placeholder="password"></div>
+    <div class="lerr" id="loginErr"></div>
+    <button class="lbtn" id="loginBtn">ログイン</button>
+  </div>
+</div>
+
+<div id="appScreen">
+<div class="wrap">
+  <header>
+    <!-- アプリ切替ボタン：KINTAIが現在のページなのでアクティブ表示 -->
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span class="logo" style="background:#EFF6FF;border-radius:8px;padding:6px 14px;border:1.5px solid var(--acc);">KINTAI</span>
+      <a href="keihitsu.html" style="font-family:'DM Mono',monospace;font-size:13px;letter-spacing:3px;text-transform:uppercase;font-weight:500;color:var(--tx3);background:transparent;border:1px solid var(--bdr);border-radius:8px;padding:6px 14px;text-decoration:none;">KEIHI</a>
+    </div>
+    <div class="uinfo">
+      <div class="avatar">結</div>
+      <div class="uname">結城 健太</div>
+      <button class="obtn" id="logoutBtn">ログアウト</button>
+    </div>
+  </header>
+  <div class="clock-block">
+    <div class="clock-time" id="clock">--:--:--</div>
+    <div class="clock-date" id="dateStr"></div>
+    <div class="day-badge" id="dayLabel"></div>
+    <div style="font-size:11px;color:var(--tx3);margin-top:5px;">定時 10:00〜19:00　休憩 12:00〜13:00</div>
+  </div>
+  <div class="tab-nav">
+    <!-- 表示タブを3つに簡略化（打刻修正・履歴確認タブは非表示だが機能は保持） -->
+    <button class="tab-btn active" data-tab="打刻">打刻<span class="badge-dot" id="notifDot"></span></button>
+    <button class="tab-btn" data-tab="有給">有給申請</button>
+    <button class="tab-btn" data-tab="月次">月次</button>
+  </div>
+
+  <!-- 打刻タブ -->
+  <div class="tab-content active" id="tab-打刻">
+    <div id="leaveNotifArea"></div>
+    <div class="scard" id="card1">
+      <div class="stop">
+        <span class="sbadge b-off" id="badge1"><span class="dot"></span><span id="stxt1">未出勤</span></span>
+        <div class="elwrap"><div class="ellabel">実労働時間</div><div class="el" id="el1">--:--:--</div></div>
+      </div>
+      <div class="trow">
+        <div class="ti"><div class="tilabel">出勤</div><div class="tival" id="in1">--:--</div></div>
+        <div class="ti"><div class="tilabel">退勤</div><div class="tival" id="out1">--:--</div></div>
+        <div class="ti"><div class="tilabel">休憩</div><div class="tival" id="brk1">--</div><div class="tinote" id="brkn1"></div></div>
+      </div>
+      <div class="brow">
+        <button class="btn btn-in" id="bi1">出勤</button>
+        <button class="btn btn-out" id="bo1" disabled>退勤</button>
+        <button class="btn-cancel" id="bcan1" style="display:none">取消</button>
+      </div>
+      <button class="btn-leave" id="leaveQuickBtn">&#x1F4C5; 有給申請</button>
+    </div>
+    <div class="stitle">本日のタイムライン</div>
+    <div class="log-card" id="todayLog"><div class="no-data">まだ記録がありません</div></div>
+    <div id="syncStatus"></div>
+  </div>
+
+  <!-- 有給申請タブ -->
+  <div class="tab-content" id="tab-有給">
+    <div style="background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:18px;margin-bottom:16px;">
+      <div style="font-size:10px;color:var(--tx3);letter-spacing:2px;text-transform:uppercase;font-weight:600;margin-bottom:12px;">有給残日数</div>
+      <div class="balance-grid">
+        <div class="balance-item"><div class="balance-label">付与済み</div><div class="balance-val" id="leaveGranted" style="color:var(--acc)">--</div><div style="font-size:10px;color:var(--tx3);">日</div></div>
+        <div class="balance-item"><div class="balance-label">取得済み</div><div class="balance-val" id="leaveTaken" style="color:var(--out)">--</div><div style="font-size:10px;color:var(--tx3);">日</div></div>
+        <div class="balance-item"><div class="balance-label">残日数</div><div class="balance-val" id="leaveRemaining">--</div><div style="font-size:10px;color:var(--tx3);">日</div></div>
+      </div>
+      <div id="leaveNextGrant" style="font-size:11px;color:var(--tx3);line-height:1.6;"></div>
+    </div>
+    <button class="btn-leave" id="leaveNewBtn" style="margin-bottom:16px;">&#xFF0B; 新規有給申請</button>
+    <div id="myLeaveList"></div>
+  </div>
+
+  <!-- 月次タブ -->
+  <div class="tab-content" id="tab-月次">
+    <div class="mnav">
+      <button class="mbtn" id="prevMonthBtn">&#8249;</button>
+      <div class="mlabel" id="monthLabel"></div>
+      <button class="mbtn" id="nextMonthBtn">&#8250;</button>
+    </div>
+    <div class="sgrid">
+      <div class="sc"><div class="slabel">出勤日数</div><div class="sval" id="totalDays">0 日</div></div>
+      <div class="sc"><div class="slabel">総実労働時間</div><div class="sval" id="totalHours">0:00</div></div>
+      <div class="sc"><div class="slabel">残業時間</div><div class="sval" id="totalOT" style="color:var(--out)">0:00</div><div style="font-size:11px;color:var(--tx3);margin-top:2px;">実労働8h超/日</div></div>
+      <div class="sc"><div class="slabel">有休取得日数</div><div class="sval" id="totalLeave" style="color:var(--lv)">0 日</div></div>
+    </div>
+    <div class="twrap">
+      <table class="ltable">
+        <thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実労働</th><th>残業</th><th></th></tr></thead>
+        <tbody id="monthlyLog"><tr><td colspan="7" class="no-data">記録なし</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 打刻修正タブ -->
+  <div class="tab-content" id="tab-修正">
+    <div class="edit-info">過去の打刻ミスをここで修正できます。</div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:11px;color:var(--tx3);text-transform:uppercase;display:block;margin-bottom:6px;font-weight:600;">修正する日付を選択</label>
+      <input type="date" id="editDatePicker" style="width:100%;background:var(--surface);border:1px solid var(--bdr2);border-radius:8px;padding:11px 14px;color:var(--tx);font-size:15px;outline:none;">
+    </div>
+    <div id="editDayPanel"><div class="no-data" style="background:var(--surface);border:1px solid var(--bdr);border-radius:10px;">日付を選択してください</div></div>
+  </div>
+
+  <!-- 履歴確認タブ -->
+  <div class="tab-content" id="tab-履歴">
+    <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#1D4ED8;">
+      &#x1F512; 過去の打刻・有給申請の履歴を確認できます。
+    </div>
+    <div class="stitle">打刻履歴</div>
+    <div class="mnav">
+      <button class="mbtn" id="histPrevBtn">&#8249;</button>
+      <div class="mlabel" id="histMonthLabel"></div>
+      <button class="mbtn" id="histNextBtn">&#8250;</button>
+    </div>
+    <div class="twrap" style="margin-bottom:20px;">
+      <table class="ltable">
+        <thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実労働</th><th>残業</th></tr></thead>
+        <tbody id="histStampLog"><tr><td colspan="6" class="no-data">読み込み中...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="stitle">有給申請履歴</div>
+    <div id="histLeaveList"><div class="no-data">読み込み中...</div></div>
+  </div>
+</div>
+</div>
+
+<!-- 打刻修正モーダル（有給申請モーダルとは別の独立したモーダル） -->
+<div class="overlay" id="editOverlay">
+  <div class="modal">
+    <div class="mtitle">&#x270F;&#xFE0F; 打刻修正</div>
+    <div class="msub" id="editModalSubtitle"></div>
+    <div class="mfield">
+      <label>出勤時刻</label>
+      <input type="time" id="editModalIn" style="width:100%;background:var(--s2);border:1px solid var(--bdr2);border-radius:8px;padding:11px 14px;color:var(--tx);font-size:15px;outline:none;">
+    </div>
+    <div class="mfield">
+      <label>退勤時刻</label>
+      <input type="time" id="editModalOut" style="width:100%;background:var(--s2);border:1px solid var(--bdr2);border-radius:8px;padding:11px 14px;color:var(--tx);font-size:15px;outline:none;">
+      <div style="font-size:11px;color:var(--tx3);margin-top:5px;">未退勤の場合は空欄でOK</div>
+    </div>
+    <div style="font-size:11px;color:var(--tx3);background:var(--s2);border-radius:8px;padding:10px 12px;margin-bottom:12px;">&#x1F7E1; 休憩は 12:00〜13:00 固定で自動計算されます</div>
+    <div class="merr" id="editModalErr"></div>
+    <div class="mbtns">
+      <button class="mbtn2 mb-cancel" id="editModalCancelBtn">キャンセル</button>
+      <button class="mbtn2 mb-save" id="editModalSaveBtn">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 有給申請モーダル -->
+<div class="overlay" id="leaveOverlay">
+  <div class="modal">
+    <div class="mtitle">&#x1F4C5; 有給申請</div>
+    <div class="msub">申請内容を入力してください</div>
+    <div class="mfield"><label>取得日</label><input type="date" id="leaveDate"></div>
+    <div class="mfield"><label>種別</label>
+      <select id="leaveType">
+        <option value="全日">全日有給</option>
+        <option value="午前半休">午前半休</option>
+        <option value="午後半休">午後半休</option>
+        <option value="時間休">時間休</option>
+        <option value="振替休日">振替休日</option>
+      </select>
+    </div>
+    <div class="mfield" id="leaveTimeField" style="display:none;"><label>時間（開始〜終了）</label>
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;">
+        <input type="time" id="leaveTimeFrom"><span style="text-align:center;color:var(--tx3);">〜</span><input type="time" id="leaveTimeTo">
+      </div>
+    </div>
+    <div class="mfield"><label>理由・備考</label><textarea id="leaveReason" placeholder="例：私用のため"></textarea></div>
+    <div class="merr" id="leaveErr"></div>
+    <div class="mbtns">
+      <button class="mbtn2 mb-cancel" id="leaveCancelBtn">キャンセル</button>
+      <button class="mbtn2 mb-leave" id="leaveSubmitBtn">申請する</button>
+    </div>
+  </div>
+</div>
+
+<!-- 申請取り消し確認モーダル -->
+<div class="overlay" id="cancelLeaveOverlay">
+  <div class="modal">
+    <div class="mtitle">申請を取り消しますか？</div>
+    <div class="msub" id="cancelLeaveSubtitle"></div>
+    <div style="font-size:13px;color:var(--tx2);margin-bottom:24px;line-height:1.7;">承認待ちの申請を取り消します。この操作は元に戻せません。</div>
+    <div class="mbtns">
+      <button class="mbtn2 mb-cancel" id="cancelLeaveCancelBtn">キャンセル</button>
+      <button class="mbtn2 mb-del" id="cancelLeaveConfirmBtn">取り消す</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {getFirestore,doc,setDoc,getDoc,collection,query,where,getDocs,deleteDoc,updateDoc} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const FB={apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",authDomain:"kintai-dubstock.firebaseapp.com",projectId:"kintai-dubstock",storageBucket:"kintai-dubstock.firebasestorage.app",messagingSenderId:"1030065146975",appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"};
+const app=initializeApp(FB);
+const auth=getAuth(app);
+const db=getFirestore(app);
+
+const UID="yuuki_kenta",UNAME="結城 健太";
+const DOW=["日","月","火","水","木","金","土"];
+const EIGHT=8*3600000;
+const HIRE=new Date(2025,8,1);
+const GRANTS=[{m:6,d:10},{m:18,d:11},{m:30,d:12},{m:42,d:14},{m:54,d:16},{m:66,d:18},{m:78,d:20}];
+const GAS="https://script.google.com/macros/s/AKfycbxkgq98e6Rq6WUytkom_SUoagYlov5CrQChwHiSc1YgOZSd6Q2nP6A7Yql-_mKqhn7Mig/exec";
+let curMonth=new Date();
+let histMonth=new Date();
+let cancelLeaveId=null;
+let curShift=null;
+let elTmr=null;
+
+function p2(n){return String(n).padStart(2,"0");}
+function getWD(ts){const d=ts?new Date(ts):new Date();if(d.getHours()<5)d.setDate(d.getDate()-1);return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate());}
+function toR(s){const p=s.split("-");return "R"+(parseInt(p[0])-2018)+"."+p[1]+"."+p[2];}
+function brkMs(a,b){if(!a||!b)return 0;const d=new Date(a),s=new Date(d),e=new Date(d);s.setHours(12,0,0,0);e.setHours(13,0,0,0);return Math.max(0,Math.min(b,e.getTime())-Math.max(a,s.getTime()));}
+function hms(ms){const s=Math.floor(ms/1000);return p2(Math.floor(s/3600))+":"+p2(Math.floor((s%3600)/60))+":"+p2(s%60);}
+function hm(ms){const m=Math.floor(ms/60000);return Math.floor(m/60)+":"+p2(m%60);}
+function ts2hm(ts){if(!ts)return "--:--";const d=new Date(ts);return p2(d.getHours())+":"+p2(d.getMinutes());}
+function ts2ts(date,str){const p=str.split(":");const d=new Date(date.replace(/-/g,"/"));d.setHours(+p[0],+p[1],0,0);return d.getTime();}
+function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2500);}
+function syncSt(s){const el=document.getElementById("syncStatus");const M={syncing:{t:"⏳ 保存中…",c:"var(--tx2)"},ok:{t:"&#x1F7E2; クラウドに保存済み",c:"var(--in)"},err:{t:"⚠️ 保存失敗",c:"var(--out)"}};if(!M[s])return;el.innerHTML=M[s].t;el.style.color=M[s].c;if(s==="ok")setTimeout(()=>{el.textContent="";},5000);}
+
+// Firestore
+async function sRec(date,rec){await setDoc(doc(db,"kintai",UID+"_"+date),{userId:UID,date,...rec});}
+async function gRec(date){const sn=await getDoc(doc(db,"kintai",UID+"_"+date));return sn.exists()?sn.data():{shifts:[]};}
+async function dRec(date){await deleteDoc(doc(db,"kintai",UID+"_"+date));}
+async function gAllRecs(){
+  // kintaiコレクションからユーザーIDが一致するデータを全件取得
+  // コレクション全体を取得してJS側でフィルタ（インデックス不要）
+  const sn=await getDocs(collection(db,"kintai"));
+  const r={};
+  sn.forEach(d=>{
+    const data=d.data();
+    // 自分のデータのみ保持
+    if(data.userId===UID) r[data.date]=data;
+  });
+  return r;
+}
+async function gMonthRecs(y,m){const all=await gAllRecs();const pfx=y+"-"+p2(m);const r={};Object.keys(all).forEach(k=>{if(k.startsWith(pfx))r[k]=all[k];});return r;}
+async function sLeave(lv){await setDoc(doc(db,"leaves",lv.id),{...lv});}
+async function gMyLeaves(){const q=query(collection(db,"leaves"),where("userId","==",UID));const sn=await getDocs(q);const r=[];sn.forEach(d=>r.push(d.data()));return r.sort((a,b)=>new Date(b.appliedAt)-new Date(a.appliedAt));}
+
+// 時計
+function updateClock(){
+  const now=new Date();
+  document.getElementById("clock").textContent=now.toTimeString().slice(0,8);
+  document.getElementById("dateStr").textContent=now.getFullYear()+"年"+(now.getMonth()+1)+"月"+now.getDate()+"日（"+DOW[now.getDay()]+"）";
+  const wd=getWD();const wo=new Date(wd.replace(/-/g,"/"));const r=wo.getFullYear()-2018;
+  document.getElementById("dayLabel").textContent="勤務日: R"+r+"."+p2(wo.getMonth()+1)+"."+p2(wo.getDate())+"（"+DOW[wo.getDay()]+"）";
+}
+
+// タイマー
+function startTick(){if(elTmr)clearInterval(elTmr);elTmr=setInterval(tick,1000);tick();}
+function stopTick(){if(elTmr){clearInterval(elTmr);elTmr=null;}}
+function tick(){const el=document.getElementById("el1");if(!curShift||!curShift.in){el.textContent="--:--:--";return;}const out=curShift.out||Date.now();el.textContent=hms(Math.max(0,out-curShift.in-brkMs(curShift.in,out)));}
+
+// UI更新
+function refreshUI(rec){
+  const sh=rec&&rec.shifts&&rec.shifts[0]?rec.shifts[0]:null;curShift=sh;
+  const card=document.getElementById("card1");const badge=document.getElementById("badge1");const stxt=document.getElementById("stxt1");
+  const bi=document.getElementById("bi1"),bo=document.getElementById("bo1"),bc=document.getElementById("bcan1");
+  if(!sh||!sh.in){card.className="scard";badge.className="sbadge b-off";stxt.textContent="未出勤";bi.disabled=false;bo.disabled=true;bc.style.display="none";stopTick();document.getElementById("el1").textContent="--:--:--";}
+  else if(!sh.out){card.className="scard working";badge.className="sbadge b-work";stxt.textContent="勤務中";bi.disabled=true;bo.disabled=false;bc.style.display="block";startTick();}
+  else{card.className="scard done";badge.className="sbadge b-done";stxt.textContent="退勤済";bi.disabled=bo.disabled=true;bc.style.display="block";stopTick();const bms=brkMs(sh.in,sh.out);document.getElementById("el1").textContent=hms(Math.max(0,sh.out-sh.in-bms));}
+  document.getElementById("in1").textContent=sh&&sh.in?ts2hm(sh.in):"--:--";
+  document.getElementById("out1").textContent=sh&&sh.out?ts2hm(sh.out):"--:--";
+  if(sh&&sh.in){const out=sh.out||Date.now();const bms=brkMs(sh.in,out);document.getElementById("brk1").textContent=bms>0?hm(bms):"0:00";document.getElementById("brkn1").textContent=bms>0?"12:00〜13:00":"昼休憩なし";}
+  else{document.getElementById("brk1").textContent="--";document.getElementById("brkn1").textContent="";}
+  renderTimeline(sh);
+}
+
+function renderTimeline(sh){
+  const el=document.getElementById("todayLog");
+  if(!sh||!sh.in){el.innerHTML="<div class=\"no-data\">まだ記録がありません</div>";return;}
+  let r="<div class=\"lrow\"><span class=\"licon\">&#x1F7E2;</span><span class=\"llabel\">出勤</span><span class=\"ltime\">"+ts2hm(sh.in)+"</span></div>";
+  if(brkMs(sh.in,sh.out||Date.now())>0)r+="<div class=\"lrow\"><span class=\"licon\">&#x1F7E1;</span><span class=\"llabel\">休憩（固定）</span><span class=\"ltime\">12:00 〜 13:00</span></div>";
+  if(sh.out)r+="<div class=\"lrow\"><span class=\"licon\">&#x1F534;</span><span class=\"llabel\">退勤</span><span class=\"ltime\">"+ts2hm(sh.out)+"</span></div>";
+  el.innerHTML="<div>"+r+"</div>";
+}
+
+// 有給通知（打刻タブ）
+async function renderLeaveNotif(){
+  const lvs=await gMyLeaves();
+  const area=document.getElementById("leaveNotifArea");
+  const dot=document.getElementById("notifDot");
+  const recent=lvs.filter(lv=>lv.status!=="pending"&&lv.status!=="cancelled"&&!lv.notifSeen);
+  dot.className="badge-dot"+(recent.length>0?" show":"");
+  if(!recent.length){area.innerHTML="";return;}
+  area.innerHTML=recent.map(lv=>{
+    const isApproved=lv.status==="approved";
+    const cls=isApproved?"notif-approved":"notif-rejected";
+    const icon=isApproved?"✅":"❌";
+    const title=isApproved?"有給申請が承認されました":"有給申請が差し戻されました";
+    const dow=DOW[new Date(lv.date.replace(/-/g,"/")).getDay()];
+    return "<div class=\"notif-card "+cls+"\" data-lid=\""+lv.id+"\">"+
+      "<div class=\"notif-title\">"+icon+" "+title+"</div>"+
+      "<div>"+lv.date.slice(5)+"("+dow+") "+lv.type+"</div>"+
+      (lv.comment?"<div class=\"notif-comment\">&#x1F4AC; "+lv.comment+"</div>":"")+
+      "<div style=\"font-size:11px;margin-top:6px;opacity:0.7;\">タップして閉じる</div>"+
+      "</div>";
+  }).join("");
+  area.querySelectorAll(".notif-card").forEach(card=>{
+    card.addEventListener("click",async()=>{
+      await updateDoc(doc(db,"leaves",card.dataset.lid),{notifSeen:true});
+      renderLeaveNotif();
+    });
+  });
+}
+
+// 有給申請（承認待ち一覧）
+async function renderMyLeaveList(){
+  const lvs=await gMyLeaves();
+  const el=document.getElementById("myLeaveList");
+  const pending=lvs.filter(lv=>lv.status==="pending");
+  if(!pending.length){el.innerHTML="";return;}
+  el.innerHTML="<div class=\"stitle\">承認待ちの申請</div>";
+  pending.forEach(lv=>{
+    const dow=DOW[new Date(lv.date.replace(/-/g,"/")).getDay()];
+    const div=document.createElement("div");
+    div.className="notif-card notif-pending";
+    div.style.cssText="display:flex;align-items:center;justify-content:space-between;";
+    div.innerHTML=
+      "<div>&#x23F3; <strong>"+lv.date.slice(5)+"("+dow+")</strong> "+lv.type+(lv.time?"・"+lv.time:"")+"<br><span style=\"font-size:12px;\">"+( lv.reason||"")+"</span></div>"+
+      "<button style=\"background:transparent;border:1px solid currentColor;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;color:inherit;white-space:nowrap;margin-left:8px;\">取消</button>";
+    div.querySelector("button").addEventListener("click",()=>openCancelLeaveModal(lv.id,lv.date,lv.type));
+    document.getElementById("myLeaveList").appendChild(div);
+  });
+}
+
+// 申請取り消しモーダル
+function openCancelLeaveModal(id,date,type){
+  cancelLeaveId=id;
+  const dow=DOW[new Date(date.replace(/-/g,"/")).getDay()];
+  document.getElementById("cancelLeaveSubtitle").textContent=date.slice(5)+"("+dow+") "+type;
+  document.getElementById("cancelLeaveOverlay").classList.add("open");
+}
+function closeCancelLeaveModal(){document.getElementById("cancelLeaveOverlay").classList.remove("open");cancelLeaveId=null;}
+
+// 有給残日数
+async function renderLeaveBalance(){
+  const lvs=await gMyLeaves();const now=new Date();let granted=0;const log=[];
+  GRANTS.forEach(g=>{const gd=new Date(HIRE.getFullYear(),HIRE.getMonth()+g.m,HIRE.getDate());if(gd<=now){const exp=new Date(gd.getFullYear()+2,gd.getMonth(),gd.getDate());if(exp>now){granted+=g.d;log.push({date:gd,days:g.d});}}});
+  let taken=0;lvs.filter(lv=>lv.status==="approved").forEach(lv=>{if(lv.type==="全日"||lv.type==="振替休日")taken+=1;else if(lv.type==="午前半休"||lv.type==="午後半休")taken+=0.5;else if(lv.type==="時間休")taken+=0.25;});
+  let next=null;for(const g of GRANTS){const gd=new Date(HIRE.getFullYear(),HIRE.getMonth()+g.m,HIRE.getDate());if(gd>now){next={date:gd,days:g.d};break;}}
+  const rem=Math.max(0,granted-taken);
+  document.getElementById("leaveGranted").textContent=granted;
+  document.getElementById("leaveTaken").textContent=taken%1===0?taken:taken.toFixed(1);
+  document.getElementById("leaveRemaining").textContent=rem%1===0?rem:rem.toFixed(1);
+  document.getElementById("leaveRemaining").style.color=rem<=3?"var(--out)":"var(--in)";
+  let info=log.length?"付与履歴："+log.map(g=>{const d=g.date;return d.getFullYear()+"/"+p2(d.getMonth()+1)+"/"+p2(d.getDate())+"（"+g.days+"日）";}).join("　")+"\n":"";
+  if(next){const d=next.date;info+="次回付与："+d.getFullYear()+"/"+p2(d.getMonth()+1)+"/"+p2(d.getDate())+"（"+next.days+"日予定）";}
+  const nel=document.getElementById("leaveNextGrant");nel.style.whiteSpace="pre";nel.textContent=info;
+}
+
+// 月次
+async function renderMonthly(){
+  const y=curMonth.getFullYear(),m=curMonth.getMonth();const r=y-2018;
+  document.getElementById("monthLabel").textContent="R"+r+"年"+(m+1)+"月";
+  const recs=await gMonthRecs(y,m+1);const lvs=await gMyLeaves();
+  const days=new Date(y,m+1,0).getDate();let tw=0,to=0,wd=0,tb="";
+  const aLvs=lvs.filter(lv=>{const d=new Date(lv.date.replace(/-/g,"/"));return d.getFullYear()===y&&d.getMonth()===m&&lv.status==="approved";});
+  for(let d=1;d<=days;d++){
+    const date=y+"-"+p2(m+1)+"-"+p2(d);const rec=recs[date];
+    // 退勤ありのシフトと退勤なし（打刻忘れ）のシフトを分けて取得
+    const shiftsComplete=rec&&rec.shifts?rec.shifts.filter(s=>s&&s.in&&s.out):[];
+    const shiftsMissing=rec&&rec.shifts?rec.shifts.filter(s=>s&&s.in&&!s.out):[];
+    const shifts=shiftsComplete; // 互換性のため残す
+    const isLv=lvs.some(lv=>lv.date===date&&lv.status==="approved");
+    // 退勤あり・有給・退勤忘れのいずれもない日はスキップ
+    if(!shiftsComplete.length&&!shiftsMissing.length&&!isLv)continue;
+    wd++;
+    // 退勤打刻忘れの行：⚠️マークを表示して修正を促す
+    if(shiftsMissing.length&&!shiftsComplete.length&&!isLv){
+      const dow2=DOW[new Date(date).getDay()];
+      const sm=shiftsMissing[0];
+      tb+="<tr style=\"background:#FFFBEB;\">"+
+        "<td>"+date.slice(5)+"("+dow2+")</td>"+
+        "<td>"+ts2hm(sm.in)+"</td>"+
+        "<td><span style=\"color:#D97706;font-weight:600;font-size:12px;\">⚠️ 退勤未打刻</span></td>"+
+        "<td>―</td><td>―</td><td>―</td>"+
+        "<td data-date=\""+date+"\"></td>"+
+        "</tr>";
+      continue;
+    }
+    if(isLv&&!shifts.length){const dow=DOW[new Date(date).getDay()];tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td colspan=\"4\" style=\"text-align:center;\"><span style=\"background:#F5F3FF;color:var(--lv);border:1px solid #DDD6FE;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;\">有給休暇</span></td><td>―</td><td></td></tr>";continue;}
+    const s=shifts[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);tw+=wms;to+=oms;
+    const dow=DOW[new Date(date).getDay()];
+    const editBtn=document.createElement("button");editBtn.className="ebtn";editBtn.textContent="✏️";editBtn.addEventListener("click",()=>jumpToEdit(date));
+    tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td>"+ts2hm(s.in)+"</td><td>"+ts2hm(s.out)+"</td><td>"+(bms>0?hm(bms):"―")+"</td><td>"+hm(wms)+"</td><td class=\""+(oms>0?"ot":"")+"\">"+(oms>0?hm(oms):"―")+"</td><td data-date=\""+date+"\"></td></tr>";
+  }
+  const tbody=document.getElementById("monthlyLog");tbody.innerHTML=tb||"<tr><td colspan=\"7\" class=\"no-data\">記録なし</td></tr>";
+  tbody.querySelectorAll("td[data-date]").forEach(td=>{const btn=document.createElement("button");btn.className="ebtn";btn.textContent="✏️";btn.addEventListener("click",()=>jumpToEdit(td.dataset.date));td.appendChild(btn);});
+  document.getElementById("totalDays").textContent=wd+" 日";
+  document.getElementById("totalHours").textContent=hm(tw);
+  document.getElementById("totalOT").textContent=hm(to);
+  document.getElementById("totalLeave").textContent=aLvs.length+" 日";
+}
+
+function jumpToEdit(date){
+  document.getElementById("editDatePicker").value=date;loadEditDay();
+  document.querySelectorAll(".tab-content").forEach(e=>e.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(e=>e.classList.remove("active"));
+  document.getElementById("tab-修正").classList.add("active");
+  document.querySelector("[data-tab=\"修正\"]").classList.add("active");
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+// 履歴確認タブ
+async function renderHistStamp(){
+  const y=histMonth.getFullYear(),m=histMonth.getMonth();const r=y-2018;
+  document.getElementById("histMonthLabel").textContent="R"+r+"年"+(m+1)+"月";
+  const recs=await gMonthRecs(y,m+1);const days=new Date(y,m+1,0).getDate();let tb="";
+  for(let d=1;d<=days;d++){
+    const date=y+"-"+p2(m+1)+"-"+p2(d);const rec=recs[date];
+    const shifts=rec&&rec.shifts?rec.shifts.filter(s=>s&&s.in&&s.out):[];
+    if(!shifts.length)continue;
+    const s=shifts[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);
+    const dow=DOW[new Date(date).getDay()];
+    tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td>"+ts2hm(s.in)+"</td><td>"+ts2hm(s.out)+"</td><td>"+(bms>0?hm(bms):"―")+"</td><td>"+hm(wms)+"</td><td class=\""+(oms>0?"ot":"")+"\">"+(oms>0?hm(oms):"―")+"</td></tr>";
+  }
+  document.getElementById("histStampLog").innerHTML=tb||"<tr><td colspan=\"6\" class=\"no-data\">記録なし</td></tr>";
+}
+
+async function renderHistLeave(){
+  const lvs=await gMyLeaves();const el=document.getElementById("histLeaveList");
+  const sm={pending:"<span style=\"background:#FFFBEB;color:#92400E;border:1px solid #FDE68A;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600;\">承認待ち</span>",approved:"<span style=\"background:#ECFDF5;color:var(--in);border:1px solid #A7F3D0;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600;\">承認済</span>",rejected:"<span style=\"background:#FEF2F2;color:var(--out);border:1px solid #FECACA;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600;\">差し戻し</span>"};
+  if(!lvs.length){el.innerHTML="<div class=\"no-data\">申請履歴はありません</div>";return;}
+  el.innerHTML="<div class=\"twrap\"><table class=\"ltable\"><thead><tr><th>申請日</th><th>取得日</th><th>種別</th><th>理由</th><th>状態</th><th>コメント</th></tr></thead><tbody>"+
+    lvs.map(lv=>{const at=new Date(lv.appliedAt);const atStr=(at.getMonth()+1)+"/"+at.getDate()+" "+p2(at.getHours())+":"+p2(at.getMinutes());const dow=DOW[new Date(lv.date.replace(/-/g,"/")).getDay()];
+      return "<tr><td style=\"font-family:sans-serif;font-size:11px;\">"+atStr+"</td><td>"+lv.date.slice(5)+"("+dow+")</td><td style=\"font-family:sans-serif;\">"+lv.type+(lv.time?"・"+lv.time:"")+"</td><td style=\"font-family:sans-serif;font-size:12px;\">"+( lv.reason||"―")+"</td><td>"+(sm[lv.status]||lv.status)+"</td><td style=\"font-family:sans-serif;font-size:12px;color:var(--out);\">"+( lv.comment||"―")+"</td></tr>";
+    }).join("")+"</tbody></table></div>";
+}
+
+// 打刻修正
+let editState={date:null,idx:0};
+async function loadEditDay(){
+  const date=document.getElementById("editDatePicker").value;if(!date)return;
+  const rec=await gRec(date);const panel=document.getElementById("editDayPanel");
+  const wo=new Date(date.replace(/-/g,"/"));const label=date.slice(5)+"（"+DOW[wo.getDay()]+"）";
+  const sh=rec.shifts&&rec.shifts[0];
+  if(!sh||!sh.in){
+    panel.innerHTML="<div style=\"background:var(--surface);border:1px solid var(--bdr);border-radius:10px;padding:20px;\"><div style=\"font-size:13px;color:var(--tx2);margin-bottom:16px;\">"+label+" の記録はまだありません。</div></div>";
+    const addBtn=document.createElement("button");addBtn.className="btn btn-in";addBtn.style.cssText="flex:none;padding:10px 20px;font-size:13px;width:auto;";addBtn.textContent="＋ 記録を追加";
+    addBtn.addEventListener("click",()=>openEditModal(date,0,true));
+    panel.querySelector("div").appendChild(addBtn);
+    return;
+  }
+  const bms=brkMs(sh.in,sh.out||Date.now());const wms=sh.out?Math.max(0,sh.out-sh.in-bms):null;
+  panel.innerHTML="<div style=\"background:var(--surface);border:1px solid var(--bdr);border-radius:10px;padding:16px;\"><div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;\"><div style=\"font-size:11px;color:var(--tx3);font-weight:600;\">勤務記録 "+label+"</div></div><div style=\"display:grid;grid-template-columns:repeat(3,1fr);gap:8px;\"><div class=\"ti\"><div class=\"tilabel\">出勤</div><div class=\"tival\">"+ts2hm(sh.in)+"</div></div><div class=\"ti\"><div class=\"tilabel\">退勤</div><div class=\"tival\">"+(sh.out?ts2hm(sh.out):"―")+"</div></div><div class=\"ti\"><div class=\"tilabel\">実労働</div><div class=\"tival\">"+(wms!==null?hm(wms):"―")+"</div></div></div></div>";
+  const editBtn=document.createElement("button");editBtn.className="ebtn";editBtn.textContent="✏️ 修正";editBtn.style.marginTop="12px";
+  editBtn.addEventListener("click",()=>openEditModal(date,0,false));
+  panel.querySelector("div").insertBefore(editBtn,panel.querySelector("div").children[1]);
+}
+
+function openEditModal(date,idx,isNew){
+  // 打刻修正モーダルを開く（有給申請モーダルとは別のeditOverlayを使用）
+  editState={date,idx,isNew};
+  const wo=new Date(date.replace(/-/g,"/"));
+  // モーダルのサブタイトルに日付を表示
+  document.getElementById("editModalSubtitle").textContent=date.slice(5)+"（"+DOW[wo.getDay()]+"）";
+  // 既存の打刻データを入力欄にセット
+  gRec(date).then(rec=>{
+    const sh=rec.shifts&&rec.shifts[0];
+    document.getElementById("editModalIn").value=sh&&sh.in&&!isNew?ts2hm(sh.in):"";
+    document.getElementById("editModalOut").value=sh&&sh.out&&!isNew?ts2hm(sh.out):"";
+  });
+  document.getElementById("editModalErr").textContent="";
+  // 打刻修正専用モーダルを開く
+  document.getElementById("editOverlay").classList.add("open");
+}
+
+// 有給申請モーダル
+function openLeaveModal(){
+  document.getElementById("leaveDate").value=getWD();
+  document.getElementById("leaveType").value="全日";
+  document.getElementById("leaveReason").value="";
+  document.getElementById("leaveTimeFrom").value="";
+  document.getElementById("leaveTimeTo").value="";
+  document.getElementById("leaveTimeField").style.display="none";
+  document.getElementById("leaveErr").textContent="";
+  document.getElementById("leaveOverlay").classList.add("open");
+}
+function closeLeaveModal(){document.getElementById("leaveOverlay").classList.remove("open");}
+
+function toggleLeaveTime(){
+  const t=document.getElementById("leaveType").value;
+  const f=document.getElementById("leaveTimeField");
+  const fr=document.getElementById("leaveTimeFrom");const to=document.getElementById("leaveTimeTo");
+  if(t==="午前半休"){f.style.display="block";fr.value="10:00";to.value="14:00";fr.readOnly=to.readOnly=true;}
+  else if(t==="午後半休"){f.style.display="block";fr.value="14:00";to.value="19:00";fr.readOnly=to.readOnly=true;}
+  else if(t==="時間休"){f.style.display="block";fr.value="";to.value="";fr.readOnly=to.readOnly=false;}
+  else{f.style.display="none";fr.value="";to.value="";fr.readOnly=to.readOnly=false;}
+}
+
+// タブ切替
+function showTab(name){
+  document.querySelectorAll(".tab-content").forEach(e=>e.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(e=>e.classList.remove("active"));
+  document.getElementById("tab-"+name).classList.add("active");
+  document.querySelector("[data-tab=\""+name+"\"]").classList.add("active");
+  if(name==="月次")renderMonthly();
+  if(name==="有給"){renderMyLeaveList();renderLeaveBalance();}
+  if(name==="修正"){document.getElementById("editDatePicker").value=getWD();loadEditDay();}
+  if(name==="履歴"){renderHistStamp();renderHistLeave();}
+}
+
+// 全ボタン登録
+onAuthStateChanged(auth,async user=>{
+  if(!user){document.getElementById("loginScreen").style.display="flex";document.getElementById("appScreen").style.display="none";stopTick();return;}
+  document.getElementById("loginScreen").style.display="none";
+  document.getElementById("appScreen").style.display="block";
+  // 時計を即座に更新
+  updateClock();
+  if(!window._clockStarted){
+    window._clockStarted=true;
+    setInterval(updateClock,1000);
+  }
+
+  // onAuthStateChangedは複数回発火するため初回のみ初期化
+  if(window._appInitialized){
+    const rec2=await gRec(getWD());refreshUI(rec2);
+    return;
+  }
+  window._appInitialized=true;
+
+  // タブ
+  document.querySelectorAll(".tab-btn").forEach(btn=>{btn.addEventListener("click",()=>showTab(btn.dataset.tab));});
+
+  // 打刻修正日付
+  // 打刻修正タブの日付選択（タブが存在する場合のみ登録）
+  if(document.getElementById("editDatePicker")){
+    document.getElementById("editDatePicker").addEventListener("change",loadEditDay);
+  }
+
+  // ログアウト
+  document.getElementById("logoutBtn").addEventListener("click",()=>signOut(auth));
+
+  // 打刻
+  document.getElementById("bi1").addEventListener("click",async()=>{
+    const date=getWD();const rec=await gRec(date);
+    if(rec.shifts&&rec.shifts[0]&&rec.shifts[0].in)return;
+    const nr={shifts:[{in:Date.now()}]};syncSt("syncing");
+    try{await sRec(date,nr);showToast("出勤しました ✓");refreshUI(nr);syncSt("ok");}catch(e){syncSt("err");}
+  });
+  document.getElementById("bo1").addEventListener("click",async()=>{
+    const date=getWD();const rec=await gRec(date);
+    if(!rec.shifts||!rec.shifts[0]||!rec.shifts[0].in||rec.shifts[0].out)return;
+    rec.shifts[0].out=Date.now();syncSt("syncing");
+    try{await sRec(date,rec);showToast("退勤しました ✓");refreshUI(rec);syncSt("ok");syncGAS(date,rec);}catch(e){syncSt("err");}
+  });
+  document.getElementById("bcan1").addEventListener("click",async()=>{
+    const date=getWD();const rec=await gRec(date);const sh=rec.shifts&&rec.shifts[0];
+    if(!sh||!sh.in)return;
+    if(sh.out){if(!confirm("退勤打刻を取り消しますか？"))return;delete sh.out;await sRec(date,rec);showToast("退勤を取り消しました");refreshUI(rec);}
+    else{if(!confirm("出勤打刻を取り消しますか？"))return;await dRec(date);showToast("出勤を取り消しました");refreshUI({shifts:[]});}
+  });
+
+  // 打刻タブの有給申請ボタン
+  // 打刻タブの有給申請ボタン（id=leaveQuickBtn）
+  if(document.getElementById("leaveQuickBtn")){
+    document.getElementById("leaveQuickBtn").addEventListener("click",openLeaveModal);
+  }
+
+  // 月次
+  document.getElementById("prevMonthBtn").addEventListener("click",()=>{curMonth.setMonth(curMonth.getMonth()-1);renderMonthly();});
+  document.getElementById("nextMonthBtn").addEventListener("click",()=>{curMonth.setMonth(curMonth.getMonth()+1);renderMonthly();});
+
+  // 履歴タブ月切替
+  document.getElementById("histPrevBtn").addEventListener("click",()=>{histMonth.setMonth(histMonth.getMonth()-1);renderHistStamp();});
+  document.getElementById("histNextBtn").addEventListener("click",()=>{histMonth.setMonth(histMonth.getMonth()+1);renderHistStamp();});
+
+  // 打刻修正モーダルのイベント登録（editOverlayを使用）
+  document.getElementById("editOverlay").addEventListener("click",(e)=>{if(e.target===e.currentTarget)document.getElementById("editOverlay").classList.remove("open");});
+  document.getElementById("editModalCancelBtn").addEventListener("click",()=>document.getElementById("editOverlay").classList.remove("open"));
+  document.getElementById("editModalSaveBtn").addEventListener("click",async()=>{
+    // 打刻修正の保存処理
+    const {date,idx,isNew}=editState;
+    const iv=document.getElementById("editModalIn").value;
+    const ov=document.getElementById("editModalOut").value;
+    const er=document.getElementById("editModalErr");er.textContent="";
+    if(!iv){er.textContent="出勤時刻を入力してください";return;}
+    const it=ts2ts(date,iv);let ot=ov?ts2ts(date,ov):null;
+    if(ot&&ot<=it)ot+=86400000;
+    if(ot&&ot<=it){er.textContent="退勤時刻は出勤より後にしてください";return;}
+    const rec=await gRec(date);if(!rec.shifts)rec.shifts=[];
+    // 修正フラグを付与：edited=true、修正日時・修正者を記録する
+    rec.shifts[idx]={in:it,out:ot||undefined,edited:true,editedAt:new Date().toISOString(),editedBy:UNAME};
+    try{
+      await sRec(date,rec);
+      document.getElementById("editOverlay").classList.remove("open");
+      showToast("修正を保存しました ✓");
+      loadEditDay();
+      if(ot)syncGAS(date,rec);
+      if(date===getWD())refreshUI(rec);
+      renderMonthly();
+    }catch(e){er.textContent="保存に失敗しました";}
+  });
+
+  // 有給申請モーダルのイベント登録
+  document.getElementById("leaveOverlay").addEventListener("click",(e)=>{if(e.target===e.currentTarget)document.getElementById("leaveOverlay").classList.remove("open");});
+  document.getElementById("leaveCancelBtn").addEventListener("click",()=>document.getElementById("leaveOverlay").classList.remove("open"));
+  document.getElementById("leaveSubmitBtn").addEventListener("click",async()=>{
+    const {date,idx,isNew}=editState;
+    const iv=(document.getElementById("modalIn")||{value:""}).value;const ov=(document.getElementById("modalOut")||{value:""}).value;
+    const er=document.getElementById("leaveErr");er.textContent="";
+    if(!iv){er.textContent="出勤時刻を入力してください";return;}
+    const it=ts2ts(date,iv);let ot=ov?ts2ts(date,ov):null;
+    if(ot&&ot<=it)ot+=86400000;
+    if(ot&&ot<=it){er.textContent="退勤時刻は出勤より後にしてください";return;}
+    const rec=await gRec(date);if(!rec.shifts)rec.shifts=[];
+    rec.shifts[idx]={in:it,out:ot||undefined};
+    try{await sRec(date,rec);document.getElementById("leaveOverlay").classList.remove("open");showToast("修正を保存しました ✓");loadEditDay();if(ot)syncGAS(date,rec);if(date===getWD())refreshUI(rec);renderMonthly();}
+    catch(e){er.textContent="保存に失敗しました";}
+  });
+
+  // 有給申請モーダル
+  document.getElementById("leaveOverlay").addEventListener("click",(e)=>{if(e.target===e.currentTarget)closeLeaveModal();});
+  document.getElementById("leaveCancelBtn").addEventListener("click",closeLeaveModal);
+  document.getElementById("leaveType").addEventListener("change",toggleLeaveTime);
+  document.getElementById("leaveSubmitBtn").addEventListener("click",async()=>{
+    const date=document.getElementById("leaveDate").value;
+    const type=document.getElementById("leaveType").value;
+    const reason=document.getElementById("leaveReason").value.trim();
+    const er=document.getElementById("leaveErr");er.textContent="";
+    if(!date){er.textContent="取得日を選択してください";return;}
+    const tf=document.getElementById("leaveTimeFrom").value;const tt=document.getElementById("leaveTimeTo").value;
+    const ts2v=type==="時間休"&&tf&&tt?tf+"〜"+tt:"";
+    const id=UID+"_leave_"+Date.now();
+    const lv={id,userId:UID,userName:UNAME,date,type,time:ts2v,reason,status:"pending",appliedAt:new Date().toISOString(),notifSeen:false};
+    await sLeave(lv);
+    closeLeaveModal();showToast("有給申請を送信しました ✓");
+    renderMyLeaveList();renderLeaveBalance();
+  });
+
+  // 有給取り消しモーダル
+  document.getElementById("cancelLeaveOverlay").addEventListener("click",(e)=>{if(e.target===e.currentTarget)closeCancelLeaveModal();});
+  document.getElementById("cancelLeaveCancelBtn").addEventListener("click",closeCancelLeaveModal);
+  document.getElementById("cancelLeaveConfirmBtn").addEventListener("click",async()=>{
+    if(!cancelLeaveId)return;
+    await deleteDoc(doc(db,"leaves",cancelLeaveId));
+    closeCancelLeaveModal();showToast("申請を取り消しました");
+    renderMyLeaveList();renderLeaveBalance();
+  });
+
+  // 時計を確実に更新
+  updateClock();
+  // 初期表示（ログイン後）
+  const rec=await gRec(getWD());refreshUI(rec);
+  renderLeaveNotif();
+  setInterval(renderLeaveNotif,30000);
+});
+
+// ログイン
+document.getElementById("loginBtn").addEventListener("click",async()=>{
+  const em=document.getElementById("loginEmail").value.trim();
+  const pw=document.getElementById("loginPass").value;
+  const er=document.getElementById("loginErr");er.textContent="";
+  try{await signInWithEmailAndPassword(auth,em,pw);}catch(e){er.textContent="メールアドレスまたはパスワードが間違っています";}
+});
+document.getElementById("loginPass").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("loginBtn").click();});
+
+function syncGAS(date,rec){
+  const sh=rec.shifts[0];const bms=brkMs(sh.in,sh.out);const wms=Math.max(0,sh.out-sh.in-bms);const oms=Math.max(0,wms-EIGHT);
+  fetch(GAS,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/json"},body:JSON.stringify({rows:[{name:UNAME,date:toR(date),shift:1,in:ts2hm(sh.in),out:ts2hm(sh.out),breakMin:Math.round(bms/60000),workH:Math.round(wms/36000)/100,otH:Math.round(oms/36000)/100}]})}).catch(()=>{});
+}
+</script>
+</body>
+</html>
