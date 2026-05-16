@@ -514,9 +514,10 @@ async function renderMonthly(){
       const dow2=DOW[new Date(date).getDay()];
       const sm=shiftsMissing[0];
       tb+="<tr style=\"background:#FFFBEB;\">"+
-        "<td>"+date.slice(5)+"("+dow2+")</td>"+
+        // 日付欄に⚠️マークを表示（退勤欄ではなく日付の横に表示）
+      "<td>"+date.slice(5)+"("+dow2+") <span style=\"color:#D97706;font-weight:600;font-size:11px;background:#FEF9C3;border:1px solid #FDE68A;border-radius:4px;padding:1px 5px;\">⚠️ 退勤未打刻</span></td>"+
         "<td>"+ts2hm(sm.in)+"</td>"+
-        "<td><span style=\"color:#D97706;font-weight:600;font-size:12px;\">⚠️ 退勤未打刻</span></td>"+
+        "<td style=\"color:#D97706;\">―</td>"+
         "<td>―</td><td>―</td><td>―</td>"+
         "<td data-date=\""+date+"\"></td>"+
         "</tr>";
