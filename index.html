@@ -514,8 +514,22 @@ async function renderMonthly(){
     const shiftsMissing=rec&&rec.shifts?rec.shifts.filter(s=>s&&s.in&&!s.out):[];
     const shifts=shiftsComplete; // 互換性のため残す
     const isLv=lvs.some(lv=>lv.date===date&&lv.status==="approved");
-    // 退勤あり・有給・退勤忘れのいずれもない日はスキップ
-    if(!shiftsComplete.length&&!shiftsMissing.length&&!isLv)continue;
+    const dateObj=new Date(date.replace(/-/g,"/"));
+    const isWeekday=dateObj.getDay()>=1&&dateObj.getDay()<=5;
+    // 退勤あり・有給・退勤忘れのいずれもない日
+    if(!shiftsComplete.length&&!shiftsMissing.length&&!isLv){
+      // 過去の平日（入社日以降）は未打刻として表示
+      if(isWeekday&&date<getWD()&&dateObj>=HIRE){
+        const dow2=DOW[dateObj.getDay()];
+        tb+="<tr style=\"background:#FFF1F2;\">"+
+          "<td>"+date.slice(5)+"("+dow2+") <span style=\"color:#DC2626;font-weight:600;font-size:11px;background:#FEE2E2;border:1px solid #FECACA;border-radius:4px;padding:1px 5px;\">⚠️ 未打刻</span></td>"+
+          "<td style=\"color:#DC2626;\">―</td><td style=\"color:#DC2626;\">―</td>"+
+          "<td>―</td><td>―</td><td>―</td>"+
+          "<td data-date=\""+date+"\"></td>"+
+          "</tr>";
+      }
+      continue;
+    }
     wd++;
     // 退勤打刻忘れの行：⚠️マークを表示して修正を促す
     if(shiftsMissing.length&&!shiftsComplete.length&&!isLv){
