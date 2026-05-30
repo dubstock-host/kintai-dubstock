@@ -672,6 +672,13 @@ function showTab(name){
 // 全ボタン登録
 onAuthStateChanged(auth,async user=>{
   if(!user){document.getElementById("loginScreen").style.display="flex";document.getElementById("appScreen").style.display="none";stopTick();return;}
+  if(user.email!=="yuki.k@dubstock.co.jp"){
+    await signOut(auth);
+    document.getElementById("loginScreen").style.display="flex";
+    document.getElementById("appScreen").style.display="none";
+    document.getElementById("loginErr").textContent="このアカウントではログインできません";
+    return;
+  }
   document.getElementById("loginScreen").style.display="none";
   document.getElementById("appScreen").style.display="block";
   // 時計を即座に更新
