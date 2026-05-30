@@ -225,6 +225,14 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
         <tbody id="monthlyLog"><tr><td colspan="7" class="no-data">記録なし</td></tr></tbody>
       </table>
     </div>
+    <div style="margin-top:16px;background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:16px;">
+      <div style="font-size:11px;color:var(--tx3);letter-spacing:2px;text-transform:uppercase;font-weight:600;margin-bottom:10px;">打刻を追加・修正</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="date" id="addRecDatePicker" style="flex:1;background:var(--s2);border:1px solid var(--bdr2);border-radius:8px;padding:10px 12px;color:var(--tx);font-size:14px;outline:none;">
+        <button id="addRecBtn" style="padding:10px 16px;background:var(--acc);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;">入力・修正</button>
+      </div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:8px;">出勤・退勤ともに未記録の日もここから入力できます</div>
+    </div>
   </div>
 
   <!-- 打刻修正タブ -->
@@ -263,7 +271,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 <!-- 打刻修正モーダル（有給申請モーダルとは別の独立したモーダル） -->
 <div class="overlay" id="editOverlay">
   <div class="modal">
-    <div class="mtitle">&#x270F;&#xFE0F; 打刻修正</div>
+    <div class="mtitle" id="editModalTitle">&#x270F;&#xFE0F; 打刻修正</div>
     <div class="msub" id="editModalSubtitle"></div>
     <div class="mfield">
       <label>出勤時刻</label>
@@ -538,12 +546,7 @@ async function renderMonthly(){
 }
 
 function jumpToEdit(date){
-  document.getElementById("editDatePicker").value=date;loadEditDay();
-  document.querySelectorAll(".tab-content").forEach(e=>e.classList.remove("active"));
-  document.querySelectorAll(".tab-btn").forEach(e=>e.classList.remove("active"));
-  document.getElementById("tab-修正").classList.add("active");
-  document.querySelector("[data-tab=\"修正\"]").classList.add("active");
-  window.scrollTo({top:0,behavior:"smooth"});
+  openEditModal(date,0,false);
 }
 
 // 履歴確認タブ
@@ -594,19 +597,16 @@ async function loadEditDay(){
 }
 
 function openEditModal(date,idx,isNew){
-  // 打刻修正モーダルを開く（有給申請モーダルとは別のeditOverlayを使用）
   editState={date,idx,isNew};
   const wo=new Date(date.replace(/-/g,"/"));
-  // モーダルのサブタイトルに日付を表示
   document.getElementById("editModalSubtitle").textContent=date.slice(5)+"（"+DOW[wo.getDay()]+"）";
-  // 既存の打刻データを入力欄にセット
   gRec(date).then(rec=>{
     const sh=rec.shifts&&rec.shifts[0];
-    document.getElementById("editModalIn").value=sh&&sh.in&&!isNew?ts2hm(sh.in):"";
-    document.getElementById("editModalOut").value=sh&&sh.out&&!isNew?ts2hm(sh.out):"";
+    document.getElementById("editModalTitle").textContent=sh&&sh.in?"✏️ 打刻修正":"＋ 打刻を追加";
+    document.getElementById("editModalIn").value=sh&&sh.in?ts2hm(sh.in):"";
+    document.getElementById("editModalOut").value=sh&&sh.out?ts2hm(sh.out):"";
   });
   document.getElementById("editModalErr").textContent="";
-  // 打刻修正専用モーダルを開く
   document.getElementById("editOverlay").classList.add("open");
 }
 
@@ -709,6 +709,14 @@ onAuthStateChanged(auth,async user=>{
   // 履歴タブ月切替
   document.getElementById("histPrevBtn").addEventListener("click",()=>{histMonth.setMonth(histMonth.getMonth()-1);renderHistStamp();});
   document.getElementById("histNextBtn").addEventListener("click",()=>{histMonth.setMonth(histMonth.getMonth()+1);renderHistStamp();});
+
+  // 月次タブ：打刻追加・修正ボタン
+  document.getElementById("addRecDatePicker").value=getWD();
+  document.getElementById("addRecBtn").addEventListener("click",()=>{
+    const date=document.getElementById("addRecDatePicker").value;
+    if(!date)return;
+    openEditModal(date,0,false);
+  });
 
   // 打刻修正モーダルのイベント登録（editOverlayを使用）
   document.getElementById("editOverlay").addEventListener("click",(e)=>{if(e.target===e.currentTarget)document.getElementById("editOverlay").classList.remove("open");});
