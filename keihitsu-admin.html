@@ -320,6 +320,13 @@ function showTab(name){
 
 onAuthStateChanged(auth,async user=>{
   if(!user){document.getElementById("loginScreen").style.display="flex";document.getElementById("appScreen").style.display="none";return;}
+  if(user.email!=="account@dubstock.co.jp"){
+    await signOut(auth);
+    document.getElementById("loginScreen").style.display="flex";
+    document.getElementById("appScreen").style.display="none";
+    document.getElementById("adminErr").textContent="このアカウントではログインできません";
+    return;
+  }
   document.getElementById("loginScreen").style.display="none";
   document.getElementById("appScreen").style.display="block";
   if(window._adminInitialized2)return;
