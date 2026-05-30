@@ -349,6 +349,17 @@ const UID="yuuki_kenta",UNAME="結城 健太";
 const DOW=["日","月","火","水","木","金","土"];
 const EIGHT=8*3600000;
 const HIRE=new Date(2025,8,1);
+const HOLIDAYS=new Set([
+  // 2025（入社後）
+  "2025-09-15","2025-09-23","2025-10-13","2025-11-03","2025-11-24",
+  // 2026
+  "2026-01-01","2026-01-12","2026-02-11","2026-02-23","2026-03-20",
+  "2026-04-29",
+  "2026-05-03","2026-05-04","2026-05-05","2026-05-06",
+  "2026-07-20","2026-08-11",
+  "2026-09-21","2026-09-22","2026-09-23",
+  "2026-10-12","2026-11-03","2026-11-23",
+]);
 const GRANTS=[{m:6,d:10},{m:18,d:11},{m:30,d:12},{m:42,d:14},{m:54,d:16},{m:66,d:18},{m:78,d:20}];
 const GAS="https://script.google.com/macros/s/AKfycbxkgq98e6Rq6WUytkom_SUoagYlov5CrQChwHiSc1YgOZSd6Q2nP6A7Yql-_mKqhn7Mig/exec";
 let curMonth=new Date();
@@ -519,7 +530,7 @@ async function renderMonthly(){
     // 退勤あり・有給・退勤忘れのいずれもない日
     if(!shiftsComplete.length&&!shiftsMissing.length&&!isLv){
       // 過去の平日（入社日以降）は未打刻として表示
-      if(isWeekday&&date<getWD()&&dateObj>=HIRE){
+      if(isWeekday&&!HOLIDAYS.has(date)&&date<getWD()&&dateObj>=HIRE){
         const dow2=DOW[dateObj.getDay()];
         tb+="<tr style=\"background:#FFF1F2;\">"+
           "<td>"+date.slice(5)+"("+dow2+") <span style=\"color:#DC2626;font-weight:600;font-size:11px;background:#FEE2E2;border:1px solid #FECACA;border-radius:4px;padding:1px 5px;\">⚠️ 未打刻</span></td>"+
