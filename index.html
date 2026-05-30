@@ -559,7 +559,6 @@ async function renderMonthly(){
     if(isLv&&!shifts.length){const dow=DOW[new Date(date).getDay()];tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td colspan=\"4\" style=\"text-align:center;\"><span style=\"background:#F5F3FF;color:var(--lv);border:1px solid #DDD6FE;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;\">有給休暇</span></td><td>―</td><td></td></tr>";continue;}
     const s=shifts[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);tw+=wms;to+=oms;
     const dow=DOW[new Date(date).getDay()];
-    const editBtn=document.createElement("button");editBtn.className="ebtn";editBtn.textContent="✏️";editBtn.addEventListener("click",()=>jumpToEdit(date));
     tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td>"+ts2hm(s.in)+"</td><td>"+ts2hm(s.out)+"</td><td>"+(bms>0?hm(bms):"―")+"</td><td>"+hm(wms)+"</td><td class=\""+(oms>0?"ot":"")+"\">"+(oms>0?hm(oms):"―")+"</td><td data-date=\""+date+"\"></td></tr>";
   }
   const tbody=document.getElementById("monthlyLog");tbody.innerHTML=tb||"<tr><td colspan=\"7\" class=\"no-data\">記録なし</td></tr>";
@@ -768,23 +767,6 @@ onAuthStateChanged(auth,async user=>{
       if(date===getWD())refreshUI(rec);
       renderMonthly();
     }catch(e){er.textContent="保存に失敗しました";}
-  });
-
-  // 有給申請モーダルのイベント登録
-  document.getElementById("leaveOverlay").addEventListener("click",(e)=>{if(e.target===e.currentTarget)document.getElementById("leaveOverlay").classList.remove("open");});
-  document.getElementById("leaveCancelBtn").addEventListener("click",()=>document.getElementById("leaveOverlay").classList.remove("open"));
-  document.getElementById("leaveSubmitBtn").addEventListener("click",async()=>{
-    const {date,idx,isNew}=editState;
-    const iv=(document.getElementById("modalIn")||{value:""}).value;const ov=(document.getElementById("modalOut")||{value:""}).value;
-    const er=document.getElementById("leaveErr");er.textContent="";
-    if(!iv){er.textContent="出勤時刻を入力してください";return;}
-    const it=ts2ts(date,iv);let ot=ov?ts2ts(date,ov):null;
-    if(ot&&ot<=it)ot+=86400000;
-    if(ot&&ot<=it){er.textContent="退勤時刻は出勤より後にしてください";return;}
-    const rec=await gRec(date);if(!rec.shifts)rec.shifts=[];
-    rec.shifts[idx]={in:it,out:ot||undefined};
-    try{await sRec(date,rec);document.getElementById("leaveOverlay").classList.remove("open");showToast("修正を保存しました ✓");loadEditDay();if(ot)syncGAS(date,rec);if(date===getWD())refreshUI(rec);renderMonthly();}
-    catch(e){er.textContent="保存に失敗しました";}
   });
 
   // 有給申請モーダル
