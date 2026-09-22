@@ -292,12 +292,16 @@ function leaveDays(type){
   // 振替休日は年次有給休暇ではないため、残日数を消化しない
   if(type==="振替休日")return 0;
   if(type==="午前半休"||type==="午後半休")return 0.5;
-  if(type==="時間休")return 0.25;
+  if(type==="時間休")return 0.25;   // 選択肢からは削除済み。過去データ用に残す
   return 1;   // 全日
 }
+// 画面に出す種別名。Firestore に保存する値（lv.type）は変更しないこと。
+// 値を変えると既存データが leaveDays() の判定から外れ、消化日数が狂う。
+const LEAVE_LABELS={"全日":"有給：全日","午前半休":"有給：AM","午後半休":"有給：PM","時間休":"時間休","振替休日":"振替休日"};
+function typeLabel(t){return LEAVE_LABELS[t]||t;}
 // 申請の種別表示。振替休日は「何日の振替か」を併記する
 function leaveLabel(lv){
-  if(lv.type!=="振替休日")return lv.type+(lv.time?"・"+lv.time:"");
+  if(lv.type!=="振替休日")return typeLabel(lv.type)+(lv.time?"・"+lv.time:"");
   return "振替休日"+(lv.workDate?"（"+lv.workDate.slice(5).replace("-","/")+" の振替）":"");
 }
 function sumLeaveDays(list){return list.reduce((s,lv)=>s+leaveDays(lv.type),0);}
@@ -340,7 +344,7 @@ async function doApprove(id){
 function openRejectModal(id,date,type,name){
   rejectTargetId=id;
   const dow=DOW[new Date(date.replace(/-/g,"/")).getDay()];
-  document.getElementById("rejectSubtitle").textContent=name+" / "+date.slice(5)+"("+dow+") "+type;
+  document.getElementById("rejectSubtitle").textContent=name+" / "+date.slice(5)+"("+dow+") "+typeLabel(type);
   document.getElementById("rejectComment").value="";
   document.getElementById("rejectOverlay").classList.add("open");
 }
@@ -460,7 +464,7 @@ async function renderKintai(){
         ?"<span style=\"background:#ECFEFF;color:#0E7490;border:1px solid #A5F3FC;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;\">🔄 振替休日</span>"
          +(lvOn.workDate?"<span style=\"font-size:10px;color:var(--tx3);margin-left:6px;\">"+lvOn.workDate.slice(5).replace("-","/")+" の振替</span>":"")
         :"<span style=\"background:#F5F3FF;color:var(--lv);border:1px solid #DDD6FE;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;\">有給休暇</span>"
-         +(lvOn.type!=="全日"?"<span style=\"font-size:10px;color:var(--tx3);margin-left:6px;\">"+lvOn.type+"</span>":"");
+         +(lvOn.type!=="全日"?"<span style=\"font-size:10px;color:var(--tx3);margin-left:6px;\">"+typeLabel(lvOn.type)+"</span>":"");
       tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td colspan=\"4\" style=\"text-align:center;\">"+badge+"</td><td>―</td></tr>";
       continue;
     }
