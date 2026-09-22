@@ -222,6 +222,7 @@ $("dryBtn").addEventListener("click",async()=>{
       plan={form:f,ops};
       log(`\n実行可能です。「この内容で実行する」を押してください。`,"info");
     }
+    $("runBtn").disabled=false;
     $("runBtn").classList.remove("hide");
   }catch(e){
     log(`\nエラー: ${e.message}`,"err");
@@ -256,11 +257,12 @@ $("runBtn").addEventListener("click",async()=>{
     }
     log(`\n完了しました。次は firestore.rules を Firebase コンソールに適用してください。`,"info");
     plan=null;
+    $("runBtn").classList.add("hide");
   }catch(e){
     log(`\nエラー: ${e.message}`,"err");
     log(`途中で失敗した場合は、原因を解消してからドライラン→実行をやり直してください（冪等に作られています）。`,"warn");
     $("mainErr").textContent=e.message;
-  }finally{$("dryBtn").disabled=false;}
+  }finally{$("dryBtn").disabled=false;$("runBtn").disabled=false;}
 });
 
 // ── 認証 ────────────────────────────────────────────────────
@@ -286,6 +288,12 @@ onAuthStateChanged(auth,async user=>{
   $("cardMain").classList.remove("hide");
   $("whoEmail").textContent=user.email||"(不明)";
   $("whoUid").textContent=user.uid;
+  // アカウントを切り替えても前回の実行状態が残らないようリセットする
+  plan=null;
+  $("runBtn").classList.add("hide");
+  $("runBtn").disabled=false;
+  $("dryBtn").disabled=false;
+  $("mainErr").textContent="";
   resetLog();
   log(`ログインしました。`,"info");
   // 既存プロフィールがあればフォームに反映
