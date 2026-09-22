@@ -1,0 +1,162 @@
+rules_version = '2';
+
+// ══════════════════════════════════════════════════════════════
+//  kintai-dubstock  Firestore セキュリティルール
+//
+//  前提：
+//   - users/{authUid} に権限情報を持つ（role: 'employee' | 'admin'）
+//   - 業務データは userId フィールドに Firebase Auth の UID を持つ
+//   - 明示的に許可した以外のパスは全て拒否（rules_version 2 の既定）
+//
+//  注意：
+//   従業員はコレクション全体を読めない。クライアント側のクエリに
+//   where("userId","==",uid) が必須（無い場合クエリ全体が拒否される）。
+// ══════════════════════════════════════════════════════════════
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── ヘルパー ──────────────────────────────────────────────
+    function signedIn() {
+      return request.auth != null;
+    }
+    function hasProfile() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    function profile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function isAdmin() {
+      // キーが無い状態で .role を参照すると評価エラーになるため存在確認を挟む
+      return hasProfile() && 'role' in profile() && profile().role == 'admin';
+    }
+    // 在職中の一般利用者（退職者は users.active=false で即座に遮断できる）
+    function isActive() {
+      return hasProfile() && 'active' in profile() && profile().active == true;
+    }
+    // 既存ドキュメントが自分のものか
+    function isMine() {
+      // ここに 'userId' in resource.data を足してはいけない。
+      // list ではクエリ制約がルール条件を満たすことを静的に判定するため、
+      // where("userId","==",uid) から含意を導けずクエリ全体が拒否される恐れがある。
+      return signedIn() && resource.data.userId == request.auth.uid;
+    }
+    // 書き込もうとしているドキュメントが自分のものか
+    function becomesMine() {
+      return signedIn()
+        && 'userId' in request.resource.data
+        && request.resource.data.userId == request.auth.uid;
+    }
+    // 承認系フィールドが書き換えられていないか（自己承認の防止）
+    // ※ 動的なフィールド名参照は避け、フィールド名はリテラルで書く
+    function approvalUnchanged() {
+      return ('approved' in request.resource.data ? request.resource.data.approved : false)
+          == ('approved' in resource.data ? resource.data.approved : false)
+          && ('rejected' in request.resource.data ? request.resource.data.rejected : false)
+          == ('rejected' in resource.data ? resource.data.rejected : false);
+    }
+    function noApprovalFields() {
+      return !('approved' in request.resource.data)
+          && !('rejected' in request.resource.data);
+    }
+
+    // ── users : 権限マスタ ────────────────────────────────────
+    //  本人は自分のプロフィールのみ取得可。一覧と書き込みは管理者のみ。
+    //  （従業員が自分の role を 'admin' に書き換えるのを防ぐ）
+    match /users/{uid} {
+      allow get:   if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow list:  if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ── kintai : 勤怠打刻 ─────────────────────────────────────
+    //  ドキュメントIDは "<authUid>_<YYYY-MM-DD>" に固定する
+    match /kintai/{docId} {
+      // get : 存在しないドキュメントを読むと resource が null になる。
+      //       resource.data を直接参照すると PERMISSION_DENIED になってしまうため
+      //       null を許容する（打刻の無い日を gRec() で引く操作が常時発生する）。
+      allow get:    if isAdmin()
+                    || (signedIn() && (resource == null
+                                       || resource.data.userId == request.auth.uid));
+      // list: where("userId","==",uid) の無いクエリはここで拒否される
+      allow list:   if isAdmin() || isMine();
+      allow create: if isAdmin()
+                    || (isActive() && becomesMine()
+                        && 'date' in request.resource.data
+                        && docId == request.auth.uid + '_' + request.resource.data.date);
+      allow update: if isAdmin()
+                    || (isActive() && isMine() && becomesMine()
+                        && 'date' in request.resource.data
+                        && request.resource.data.date == resource.data.date);
+      allow delete: if isAdmin() || (isActive() && isMine());
+    }
+
+    // ── leaves : 有給申請 ─────────────────────────────────────
+    //  従業員は pending でのみ申請でき、承認状態は変更できない
+    //  （notifSeen の更新は status 不変なので許可される）
+    match /leaves/{docId} {
+      // get : 存在しないドキュメントを読むと resource が null になる。
+      //       resource.data を直接参照すると PERMISSION_DENIED になってしまうため
+      //       null を許容する（打刻の無い日を gRec() で引く操作が常時発生する）。
+      allow get:    if isAdmin()
+                    || (signedIn() && (resource == null
+                                       || resource.data.userId == request.auth.uid));
+      // list: where("userId","==",uid) の無いクエリはここで拒否される
+      allow list:   if isAdmin() || isMine();
+      allow create: if isAdmin()
+                    || (isActive() && becomesMine()
+                        && 'status' in request.resource.data
+                        && request.resource.data.status == 'pending');
+      allow update: if isAdmin()
+                    || (isActive() && isMine() && becomesMine()
+                        && 'status' in request.resource.data
+                        && request.resource.data.status == resource.data.status);
+      // 取り消しは承認待ちのもののみ
+      allow delete: if isAdmin()
+                    || (isActive() && isMine() && resource.data.status == 'pending');
+    }
+
+    // ── expenses : 経費精算 ───────────────────────────────────
+    //  承認/差し戻しフラグを立てられるのは管理者だけ
+    match /expenses/{docId} {
+      // get : 存在しないドキュメントを読むと resource が null になる。
+      //       resource.data を直接参照すると PERMISSION_DENIED になってしまうため
+      //       null を許容する（打刻の無い日を gRec() で引く操作が常時発生する）。
+      allow get:    if isAdmin()
+                    || (signedIn() && (resource == null
+                                       || resource.data.userId == request.auth.uid));
+      // list: where("userId","==",uid) の無いクエリはここで拒否される
+      allow list:   if isAdmin() || isMine();
+      allow create: if isAdmin()
+                    || (isActive() && becomesMine() && noApprovalFields());
+      allow update: if isAdmin()
+                    || (isActive() && isMine() && becomesMine()
+                        && approvalUnchanged());
+      allow delete: if isAdmin() || (isActive() && isMine());
+    }
+
+    // ── travels : 出張報告 ────────────────────────────────────
+    //  従業員が設定できる status は draft / pending のみ
+    match /travels/{docId} {
+      // get : 存在しないドキュメントを読むと resource が null になる。
+      //       resource.data を直接参照すると PERMISSION_DENIED になってしまうため
+      //       null を許容する（打刻の無い日を gRec() で引く操作が常時発生する）。
+      allow get:    if isAdmin()
+                    || (signedIn() && (resource == null
+                                       || resource.data.userId == request.auth.uid));
+      // list: where("userId","==",uid) の無いクエリはここで拒否される
+      allow list:   if isAdmin() || isMine();
+      allow create: if isAdmin()
+                    || (isActive() && becomesMine()
+                        && 'status' in request.resource.data
+                        && request.resource.data.status in ['draft', 'pending']);
+      allow update: if isAdmin()
+                    || (isActive() && isMine() && becomesMine()
+                        && 'status' in request.resource.data
+                        && request.resource.data.status in ['draft', 'pending']
+                        && !(('status' in resource.data) && resource.data.status == 'approved'));
+      allow delete: if isAdmin() || (isActive() && isMine());
+    }
+  }
+}

@@ -120,7 +120,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
   <div class="lcard">
     <div class="llogo">KINTAI</div>
     <div class="lbadge">管理者画面</div>
-    <div class="ltitle">谷口 管理者</div>
+    <div class="ltitle">管理者ログイン</div>
     <div class="lsub">管理者アカウントでログイン</div>
     <div class="lfield"><label>メールアドレス</label><input type="email" id="adminEmail" placeholder="admin@email.com"></div>
     <div class="lfield"><label>パスワード</label><input type="password" id="adminPass" placeholder="password"></div>
@@ -246,26 +246,38 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import {getFirestore,doc,collection,getDocs,updateDoc} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {getFirestore,doc,collection,getDocs,getDoc,updateDoc,query,where} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const FB={apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",authDomain:"kintai-dubstock.firebaseapp.com",projectId:"kintai-dubstock",storageBucket:"kintai-dubstock.firebasestorage.app",messagingSenderId:"1030065146975",appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"};
 const app=initializeApp(FB);
 const auth=getAuth(app);
 const db=getFirestore(app);
 
-// 社員リスト（追加時はここに追記）
-const EMPLOYEES=[
-  {uid:"yuuki_kenta", name:"結城 健太", avatar:"結"},
-];
+// 社員リストは users コレクション（role=="employee"）から取得する。
+// 社員追加時にこのファイルを編集する必要はない。
+let EMPLOYEES=[];
+async function loadEmployees(){
+  const sn=await getDocs(query(collection(db,"users"),where("role","==","employee")));
+  const list=[];
+  sn.forEach(d=>{
+    const u=d.data();
+    list.push({uid:d.id,name:u.name||d.id,avatar:u.avatar||(u.name||"?").slice(0,1),active:u.active!==false});
+  });
+  list.sort((a,b)=>String(a.name).localeCompare(String(b.name),"ja"));
+  EMPLOYEES=list;
+  if(!selectedKintaiUid&&EMPLOYEES.length)selectedKintaiUid=EMPLOYEES[0].uid;
+  if(!selectedStampUid&&EMPLOYEES.length)selectedStampUid=EMPLOYEES[0].uid;
+  if(!selectedHistUid&&EMPLOYEES.length)selectedHistUid=EMPLOYEES[0].uid;
+}
 
 const DOW=["日","月","火","水","木","金","土"];
 const EIGHT=8*3600000;
 let rejectTargetId=null;
 let kintaiMonth=new Date();
 let stampMonth=new Date();
-let selectedKintaiUid=EMPLOYEES[0].uid;
-let selectedStampUid=EMPLOYEES[0].uid;
-let selectedHistUid=EMPLOYEES[0].uid;
+let selectedKintaiUid=null;
+let selectedStampUid=null;
+let selectedHistUid=null;
 
 function p2(n){return String(n).padStart(2,"0");}
 function hm(ms){const m=Math.floor(ms/60000);return Math.floor(m/60)+":"+p2(m%60);}
@@ -273,11 +285,12 @@ function ts2hm(ts){if(!ts)return "--:--";const d=new Date(ts);return p2(d.getHou
 function brkMs(a,b){if(!a||!b)return 0;const d=new Date(a),s=new Date(d),e=new Date(d);s.setHours(12,0,0,0);e.setHours(13,0,0,0);return Math.max(0,Math.min(b,e.getTime())-Math.max(a,s.getTime()));}
 function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2500);}
 
-// データ取得（インデックス不要・全件取得してJS側でフィルタ）
+// データ取得（ルールが userId 一致を要求するため where でサーバ側絞り込み）
 async function getLeavesByUid(uid){
-  const sn=await getDocs(collection(db,"leaves"));
+  if(!uid)return [];
+  const sn=await getDocs(query(collection(db,"leaves"),where("userId","==",uid)));
   const r=[];
-  sn.forEach(d=>{if(d.data().userId===uid)r.push(d.data());});
+  sn.forEach(d=>r.push(d.data()));
   return r.sort((a,b)=>new Date(b.appliedAt)-new Date(a.appliedAt));
 }
 async function getAllLeaves(){
@@ -290,14 +303,10 @@ async function getAllLeaves(){
   return all.sort((a,b)=>new Date(b.appliedAt)-new Date(a.appliedAt));
 }
 async function getRecsByUid(uid){
-  const sn=await getDocs(collection(db,"kintai"));
+  if(!uid)return {};
+  const sn=await getDocs(query(collection(db,"kintai"),where("userId","==",uid)));
   const r={};
-  sn.forEach(d=>{
-    const data=d.data();
-    // userIdが一致するか、ドキュメントIDがuid_で始まる場合も取得
-    // （Firebase手動追加データも確実に取得するため）
-    if(data.userId===uid || d.id.startsWith(uid+"_")) r[data.date]=data;
-  });
+  sn.forEach(d=>{const data=d.data();if(data.date)r[data.date]=data;});
   return r;
 }
 
@@ -331,6 +340,7 @@ async function doReject(){
 // 全社員概要
 async function renderEmpCards(){
   const el=document.getElementById("empCards");el.innerHTML="";
+  if(!EMPLOYEES.length){el.innerHTML="<div class=\"no-data\">社員が登録されていません（users コレクションに role=\"employee\" のドキュメントを作成してください）</div>";return;}
   const y=new Date().getFullYear(),m=new Date().getMonth()+1,r=y-2018;
   for(const emp of EMPLOYEES){
     const allRecs=await getRecsByUid(emp.uid);
@@ -347,7 +357,7 @@ async function renderEmpCards(){
     const card=document.createElement("div");card.className="emp-card";
     card.innerHTML=
       "<div class=\"emp-card-header\"><div class=\"emp-avatar\">"+emp.avatar+"</div><div>"+
-      "<div class=\"emp-card-name\">"+emp.name+(pending>0?" <span style=\"background:var(--out);color:#fff;border-radius:100px;font-size:10px;font-weight:700;padding:1px 7px;\">申請"+pending+"件</span>":"")+"</div>"+
+      "<div class=\"emp-card-name\">"+emp.name+(emp.active?"":"（退職）")+(pending>0?" <span style=\"background:var(--out);color:#fff;border-radius:100px;font-size:10px;font-weight:700;padding:1px 7px;\">申請"+pending+"件</span>":"")+"</div>"+
       "<div class=\"emp-card-sub\">R"+r+"年"+m+"月</div></div></div>"+
       "<div class=\"emp-stats\">"+
       "<div class=\"emp-stat\"><div class=\"emp-stat-label\">出勤</div><div class=\"emp-stat-val\">"+wd+"日</div></div>"+
@@ -399,7 +409,7 @@ function buildEmpSelector(containerId,getUid,setUid,onSelect){
   const el=document.getElementById(containerId);if(!el)return;el.innerHTML="";
   EMPLOYEES.forEach(emp=>{
     const btn=document.createElement("button");btn.className="emp-btn"+(emp.uid===getUid()?" active":"");
-    btn.textContent=emp.name;
+    btn.textContent=emp.name+(emp.active?"":"（退職）");
     btn.addEventListener("click",()=>{
       setUid(emp.uid);
       el.querySelectorAll(".emp-btn").forEach(b=>b.classList.remove("active"));
@@ -412,6 +422,7 @@ function buildEmpSelector(containerId,getUid,setUid,onSelect){
 async function renderKintai(){
   const y=kintaiMonth.getFullYear(),m=kintaiMonth.getMonth(),r=y-2018;
   document.getElementById("kintaiMonthLabel").textContent="R"+r+"年"+(m+1)+"月";
+  if(!selectedKintaiUid){document.getElementById("kintaiLog").innerHTML="<tr><td colspan=\"6\" class=\"no-data\">社員が登録されていません</td></tr>";return;}
   const allRecs=await getRecsByUid(selectedKintaiUid);
   const pfx=y+"-"+p2(m+1);const recs={};Object.keys(allRecs).forEach(k=>{if(k.startsWith(pfx))recs[k]=allRecs[k];});
   const lvs=await getLeavesByUid(selectedKintaiUid);
@@ -450,6 +461,7 @@ async function renderHistory(){
 async function renderStamp(){
   const y=stampMonth.getFullYear(),m=stampMonth.getMonth(),r=y-2018;
   document.getElementById("stampMonthLabel").textContent="R"+r+"年"+(m+1)+"月";
+  if(!selectedStampUid){document.getElementById("stampLog").innerHTML="<tr><td colspan=\"6\" class=\"no-data\">社員が登録されていません</td></tr>";return;}
   const allRecs=await getRecsByUid(selectedStampUid);
   const pfx=y+"-"+p2(m+1);const recs={};Object.keys(allRecs).forEach(k=>{if(k.startsWith(pfx))recs[k]=allRecs[k];});
   const days=new Date(y,m+1,0).getDate();let tb="";
@@ -682,13 +694,22 @@ onAuthStateChanged(auth,async function(user){
     document.getElementById("appScreen").style.display="none";
     return;
   }
-  if(user.email!=="account@dubstock.co.jp"){
+  // 権限判定は users/{uid}.role で行う（メールアドレスのハードコード判定は廃止）
+  let prof=null,profErr=null;
+  try{
+    const ps=await getDoc(doc(db,"users",user.uid));
+    if(ps.exists())prof=ps.data();
+  }catch(e){profErr=e;}
+  if(profErr||!prof||prof.role!=="admin"||prof.active!==true){
     await signOut(auth);
     document.getElementById("loginScreen").style.display="flex";
     document.getElementById("appScreen").style.display="none";
-    document.getElementById("adminErr").textContent="このアカウントではログインできません";
+    document.getElementById("adminErr").textContent=
+      profErr?"ユーザー情報を取得できませんでした（"+(profErr.code||profErr.message)+"）。通信状況を確認してもう一度お試しください。"
+      :"このアカウントでは管理者画面にログインできません。";
     return;
   }
+  document.querySelector("header .htitle").textContent="管理者ダッシュボード（"+(prof.name||user.email)+"）";
   document.getElementById("loginScreen").style.display="none";
   document.getElementById("appScreen").style.display="block";
 
@@ -717,6 +738,7 @@ onAuthStateChanged(auth,async function(user){
   // CSV出力
   document.getElementById("csvExportBtn").addEventListener("click",async()=>{
     const y=kintaiMonth.getFullYear(),m=kintaiMonth.getMonth();
+    if(!selectedKintaiUid){showToast("対象の社員が選択されていません");return;}
     const emp=EMPLOYEES.find(e=>e.uid===selectedKintaiUid)||{name:selectedKintaiUid};
     const allRecs=await getRecsByUid(selectedKintaiUid);
     const pfx=y+"-"+p2(m+1);const recs={};Object.keys(allRecs).forEach(k=>{if(k.startsWith(pfx))recs[k]=allRecs[k];});
@@ -732,6 +754,9 @@ onAuthStateChanged(auth,async function(user){
   // 詳細モーダル
   document.getElementById("detailCloseBtn").addEventListener("click",closeDetailModal);
   document.getElementById("detailModal").addEventListener("click",e=>{if(e.target===e.currentTarget)closeDetailModal();});
+
+  // 社員リストを users コレクションから読み込む
+  await loadEmployees();
 
   // 初期表示
   await renderEmpCards();

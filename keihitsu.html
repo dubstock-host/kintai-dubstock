@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>経費・出張報告 - 結城健太</title>
+<title>経費・出張報告</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#F7F8FA;--surface:#fff;--s2:#F0F2F5;--bdr:#E2E5EA;--bdr2:#D0D5DD;--acc:#3B82F6;--acc2:#1D4ED8;--tx:#1E293B;--tx2:#64748B;--tx3:#94A3B8;--in:#059669;--out:#DC2626;--warn:#F59E0B;--lv:#7C3AED;}
@@ -259,8 +259,8 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
       <span style="font-family:'DM Mono',monospace;font-size:13px;letter-spacing:3px;text-transform:uppercase;font-weight:500;color:var(--acc);background:#EFF6FF;border:1.5px solid var(--acc);border-radius:8px;padding:6px 14px;">KEIHI</span>
     </div>
     <div class="uinfo">
-      <div class="avatar">結</div>
-      <span style="font-size:14px;font-weight:500;">結城 健太</span>
+      <div class="avatar" id="uavatar">－</div>
+      <span id="uname" style="font-size:14px;font-weight:500;">－</span>
       <button class="obtn" id="logoutBtn">ログアウト</button>
     </div>
   </header>
@@ -293,7 +293,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
     <div class="print-header" id="printHeader">
       <h1>経費精算書</h1>
       <div class="print-meta">
-        <div class="print-meta-item"><span class="print-meta-label">氏名：</span><span>結城 健太</span></div>
+        <div class="print-meta-item"><span class="print-meta-label">氏名：</span><span id="printName"></span></div>
         <div class="print-meta-item"><span class="print-meta-label">申請月：</span><span id="printMonth"></span></div>
         <div class="print-meta-item"><span class="print-meta-label">申請日：</span><span id="printDate"></span></div>
       </div>
@@ -413,7 +413,7 @@ const app=initializeApp(FB);
 const auth=getAuth(app);
 const db=getFirestore(app);
 
-const UID="yuuki_kenta",UNAME="結城 健太";
+let UID=null,UNAME="";   // ログイン時に users/{uid} から設定する
 let expMonth=new Date();
 let editingExpId=null;
 let editingTravelId=null;
@@ -426,8 +426,10 @@ function showToast(msg){const t=document.getElementById("toast");t.textContent=m
 
 // Firestore helpers
 async function getAllByUser(col){
-  const sn=await getDocs(collection(db,col));
-  const r=[];sn.forEach(d=>{if(d.data().userId===UID)r.push({id:d.id,...d.data()});});
+  // セキュリティルールが userId 一致を要求するため where で絞る。
+  // コレクション全件取得（where なし）はルール側で拒否される。
+  const sn=await getDocs(query(collection(db,col),where("userId","==",UID)));
+  const r=[];sn.forEach(d=>r.push({id:d.id,...d.data()}));
   return r;
 }
 
@@ -559,9 +561,16 @@ async function saveExp(){
   const amount=document.getElementById("expAmount").value;
   const er=document.getElementById("expModalErr");er.textContent="";
   if(!date||!desc||!amount){er.textContent="日付・内容・金額は必須です";return;}
-  const data={userId:UID,userName:UNAME,date,desc,payee,amount:Number(amount),method:document.getElementById("expMethod").value,receipt:document.getElementById("expReceipt").checked,note:document.getElementById("expNote").value.trim(),submitted:false,createdAt:new Date().toISOString()};
+  const fields={date,desc,payee,amount:Number(amount),method:document.getElementById("expMethod").value,receipt:document.getElementById("expReceipt").checked,note:document.getElementById("expNote").value.trim()};
   const id=editingExpId||(UID+"_exp_"+Date.now());
-  await setDoc(doc(db,"expenses",id),data);
+  try{
+    if(editingExpId){
+      // 既存明細は差分更新にする。setDoc で全置換すると submitted / approved が消えてしまう
+      await updateDoc(doc(db,"expenses",id),{...fields,userName:UNAME,updatedAt:new Date().toISOString()});
+    }else{
+      await setDoc(doc(db,"expenses",id),{userId:UID,userName:UNAME,...fields,submitted:false,createdAt:new Date().toISOString()});
+    }
+  }catch(e){er.textContent="保存に失敗しました: "+(e.code||e.message);return;}
   closeExpModal();showToast(editingExpId?"更新しました ✓":"追加しました ✓");renderExpenses();
 }
 
@@ -678,10 +687,14 @@ async function saveTravel(submit=false){
   const er=document.getElementById("travelModalErr");er.textContent="";
   if(!dest){er.textContent="出張先を入力してください";return;}
   const id=editingTravelId||(UID+"_travel_"+Date.now());
-  const data={userId:UID,userName:UNAME,dest,purpose:document.getElementById("tvPurpose").value.trim(),from:document.getElementById("tvFrom").value,to:document.getElementById("tvTo").value,reportDate:document.getElementById("tvReportDate").value,transport:document.getElementById("tvTransport").value.trim(),companion:document.getElementById("tvCompanion").value.trim(),report:document.getElementById("tvReport").value.trim(),schedules:tvSchedules,costs:tvCosts,status:submit?"pending":"draft",createdAt:editingTravelId?undefined:new Date().toISOString(),updatedAt:new Date().toISOString()};
+  const data={userId:UID,userName:UNAME,dest,purpose:document.getElementById("tvPurpose").value.trim(),from:document.getElementById("tvFrom").value,to:document.getElementById("tvTo").value,reportDate:document.getElementById("tvReportDate").value,transport:document.getElementById("tvTransport").value.trim(),companion:document.getElementById("tvCompanion").value.trim(),report:document.getElementById("tvReport").value.trim(),schedules:tvSchedules,costs:tvCosts,status:submit?"pending":"draft",updatedAt:new Date().toISOString()};
   if(submit)data.submittedAt=new Date().toISOString();
-  if(editingTravelId){await updateDoc(doc(db,"travels",id),data);}
-  else{data.createdAt=new Date().toISOString();await setDoc(doc(db,"travels",id),data);}
+  // createdAt はオブジェクトに直接書かない。Firestore は undefined を受け付けず、
+  // updateDoc に undefined が混ざると書き込み全体が例外になる。
+  try{
+    if(editingTravelId){await updateDoc(doc(db,"travels",id),data);}
+    else{data.createdAt=new Date().toISOString();await setDoc(doc(db,"travels",id),data);}
+  }catch(e){er.textContent="保存に失敗しました: "+(e.code||e.message);return;}
   closeTravelModal();showToast(submit?"提出しました ✓":"保存しました ✓");renderTravelList();
 }
 
@@ -697,13 +710,28 @@ function showTab(name){
 
 onAuthStateChanged(auth,async user=>{
   if(!user){document.getElementById("loginScreen").style.display="flex";document.getElementById("appScreen").style.display="none";return;}
-  if(user.email!=="yuki.k@dubstock.co.jp"){
+  // 権限判定は users/{uid} で行う（メールアドレスのハードコード判定は廃止）
+  let prof=null,profErr=null;
+  try{
+    const ps=await getDoc(doc(db,"users",user.uid));
+    if(ps.exists())prof=ps.data();
+  }catch(e){profErr=e;}
+  // role を必ず確認する。active だけだと管理者アカウントでも入れてしまう
+  if(profErr||!prof||prof.role!=="employee"||prof.active!==true){
     await signOut(auth);
     document.getElementById("loginScreen").style.display="flex";
     document.getElementById("appScreen").style.display="none";
-    document.getElementById("loginErr").textContent="このアカウントではログインできません";
+    document.getElementById("loginErr").textContent=
+      profErr?"ユーザー情報を取得できませんでした（"+(profErr.code||profErr.message)+"）。通信状況を確認してもう一度お試しください。"
+      :!prof?"このアカウントは登録されていません。管理者に連絡してください。"
+      :"このアカウントでは経費・出張画面を利用できません。";
     return;
   }
+  UID=user.uid;UNAME=prof.name||user.email||"";
+  document.getElementById("uname").textContent=UNAME;
+  document.getElementById("uavatar").textContent=UNAME.slice(0,1)||"－";
+  document.getElementById("printName").textContent=UNAME;
+  document.title="経費・出張報告 - "+UNAME;
   document.getElementById("loginScreen").style.display="none";
   document.getElementById("appScreen").style.display="block";
   if(window._expInitialized)return;
