@@ -1,0 +1,10 @@
+# GitHub Pages（Jekyll）の配信対象からアプリ本体以外を除外する。
+# ここに挙げたファイルは https://dubstock-host.github.io/kintai-dubstock/ から取得できなくなる。
+#
+# 注意：index.html / admin.html / keihitsu.html は YAML フロントマターを持たないため
+#       Jekyll は静的ファイルとしてそのままコピーする（Liquid 解釈は行われない）。
+exclude:
+  - firestore.rules
+  - MIGRATION.md
+  - README.md
+  - tools/

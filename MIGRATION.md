@@ -1,5 +1,24 @@
 # userId → Firebase Auth UID 移行 手順書
 
+> ## ✅ 実施済み（2026-09-22）
+>
+> | 手順 | 結果 |
+> |---|---|
+> | 0. バックアップ | `~/kintai-dubstock-backup/20260922-144530/` に176件 |
+> | 1. 新コード push | `ce65e75` |
+> | 2. 移行ツール実行 | kintai 117 / leaves 1 / expenses 57 / travels 1 を移行、293操作、旧 userId 残存 0 件 |
+> | 3. 動作確認（ルール適用前） | 問題なし |
+> | 4. firestore.rules 適用 | Firebase コンソールで公開済み |
+> | 5. 検証 | `verify-rules.sh` 6件すべて PASS。未認証の実データ取得が `403 PERMISSION_DENIED` に変化 |
+> | 6. 移行ツール削除 | 完了（`_config.yml` で Pages の配信対象からも除外） |
+>
+> **登録された UID**
+> - 従業員 結城健太 … `SGU2lbgiOAMabi5WCJWW1SGVM3w2`（role: employee / hireDate: 2025-09-01）
+> - 管理者 谷口誠也 … `VOuB6PnAAzb6NpExNXS8KHujzb72`（role: admin）
+>
+> 以下は記録として残す。再度同様の移行が必要になった場合、移行ツールは
+> `git show ce65e75:tools/migrate-to-authuid.html` で復元できる。
+
 独自ID `yuuki_kenta` を Firebase Auth の UID に置き換え、Firestore セキュリティルールで
 アクセス制御を有効にするための作業手順です。
 
