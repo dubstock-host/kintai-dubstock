@@ -399,6 +399,16 @@ function hms(ms){const s=Math.floor(ms/1000);return p2(Math.floor(s/3600))+":"+p
 function hm(ms){const m=Math.floor(ms/60000);return Math.floor(m/60)+":"+p2(m%60);}
 function ts2hm(ts){if(!ts)return "--:--";const d=new Date(ts);return p2(d.getHours())+":"+p2(d.getMinutes());}
 function ts2ts(date,str){const p=str.split(":");const d=new Date(date.replace(/-/g,"/"));d.setHours(+p[0],+p[1],0,0);return d.getTime();}
+// 有給の消化日数。「有給取得」の表示と残日数の計算で必ずこの関数を使うこと
+// （以前は表示が件数、計算が 0.5/0.25 刻みで食い違っていた）
+// ※ 振替休日を年次有給休暇1日として消化する扱いは労務上は別物。要再検討
+function leaveDays(type){
+  if(type==="午前半休"||type==="午後半休")return 0.5;
+  if(type==="時間休")return 0.25;
+  return 1;   // 全日 / 振替休日
+}
+function sumLeaveDays(list){return list.reduce((s,lv)=>s+leaveDays(lv.type),0);}
+function fmtDays(n){return (n%1===0?n:n.toFixed(1))+" 日";}
 function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2500);}
 function syncSt(s){const el=document.getElementById("syncStatus");const M={syncing:{t:"⏳ 保存中…",c:"var(--tx2)"},ok:{t:"&#x1F7E2; クラウドに保存済み",c:"var(--in)"},err:{t:"⚠️ 保存失敗",c:"var(--out)"}};if(!M[s])return;el.innerHTML=M[s].t;el.style.color=M[s].c;if(s==="ok")setTimeout(()=>{el.textContent="";},5000);}
 
@@ -518,7 +528,7 @@ function closeCancelLeaveModal(){document.getElementById("cancelLeaveOverlay").c
 async function renderLeaveBalance(){
   const lvs=await gMyLeaves();const now=new Date();let granted=0;const log=[];
   GRANTS.forEach(g=>{const gd=new Date(HIRE.getFullYear(),HIRE.getMonth()+g.m,HIRE.getDate());if(gd<=now){const exp=new Date(gd.getFullYear()+2,gd.getMonth(),gd.getDate());if(exp>now){granted+=g.d;log.push({date:gd,days:g.d});}}});
-  let taken=0;lvs.filter(lv=>lv.status==="approved").forEach(lv=>{if(lv.type==="全日"||lv.type==="振替休日")taken+=1;else if(lv.type==="午前半休"||lv.type==="午後半休")taken+=0.5;else if(lv.type==="時間休")taken+=0.25;});
+  const taken=sumLeaveDays(lvs.filter(lv=>lv.status==="approved"));
   let next=null;for(const g of GRANTS){const gd=new Date(HIRE.getFullYear(),HIRE.getMonth()+g.m,HIRE.getDate());if(gd>now){next={date:gd,days:g.d};break;}}
   const rem=Math.max(0,granted-taken);
   document.getElementById("leaveGranted").textContent=granted;
@@ -560,7 +570,6 @@ async function renderMonthly(){
       }
       continue;
     }
-    wd++;
     // 退勤打刻忘れの行：⚠️マークを表示して修正を促す
     if(shiftsMissing.length&&!shiftsComplete.length&&!isLv){
       const dow2=DOW[new Date(date).getDay()];
@@ -576,6 +585,9 @@ async function renderMonthly(){
       continue;
     }
     if(isLv&&!shifts.length){const dow=DOW[new Date(date).getDay()];tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td colspan=\"4\" style=\"text-align:center;\"><span style=\"background:#F5F3FF;color:var(--lv);border:1px solid #DDD6FE;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;\">有給休暇</span></td><td>―</td><td></td></tr>";continue;}
+    // 出勤日数は「出勤・退勤とも打刻が揃っている日」だけを数える。
+    // 有給の日と退勤未打刻の日はここに到達しないため加算されない。
+    wd++;
     const s=shifts[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);tw+=wms;to+=oms;
     const dow=DOW[new Date(date).getDay()];
     tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td>"+ts2hm(s.in)+"</td><td>"+ts2hm(s.out)+"</td><td>"+(bms>0?hm(bms):"―")+"</td><td>"+hm(wms)+"</td><td class=\""+(oms>0?"ot":"")+"\">"+(oms>0?hm(oms):"―")+"</td><td data-date=\""+date+"\"></td></tr>";
@@ -585,7 +597,7 @@ async function renderMonthly(){
   document.getElementById("totalDays").textContent=wd+" 日";
   document.getElementById("totalHours").textContent=hm(tw);
   document.getElementById("totalOT").textContent=hm(to);
-  document.getElementById("totalLeave").textContent=aLvs.length+" 日";
+  document.getElementById("totalLeave").textContent=fmtDays(sumLeaveDays(aLvs));
 }
 
 function jumpToEdit(date){
