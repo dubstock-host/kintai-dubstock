@@ -96,9 +96,8 @@ service cloud.firestore {
     //  従業員は pending でのみ申請でき、承認状態は変更できない
     //  （notifSeen の更新は status 不変なので許可される）
     match /leaves/{docId} {
-      // get : 存在しないドキュメントを読むと resource が null になる。
-      //       resource.data を直接参照すると PERMISSION_DENIED になってしまうため
-      //       null を許容する（打刻の無い日を gRec() で引く操作が常時発生する）。
+      // get : 存在しないドキュメントを読むと resource が null になるため null を許容する
+      //       （resource.data を直接参照すると PERMISSION_DENIED になってしまう）。
       allow get:    if isAdmin()
                     || (signedIn() && (resource == null
                                        || resource.data.userId == request.auth.uid));
@@ -120,9 +119,8 @@ service cloud.firestore {
     // ── expenses : 経費精算 ───────────────────────────────────
     //  承認/差し戻しフラグを立てられるのは管理者だけ
     match /expenses/{docId} {
-      // get : 存在しないドキュメントを読むと resource が null になる。
-      //       resource.data を直接参照すると PERMISSION_DENIED になってしまうため
-      //       null を許容する（打刻の無い日を gRec() で引く操作が常時発生する）。
+      // get : 存在しないドキュメントを読むと resource が null になるため null を許容する
+      //       （resource.data を直接参照すると PERMISSION_DENIED になってしまう）。
       allow get:    if isAdmin()
                     || (signedIn() && (resource == null
                                        || resource.data.userId == request.auth.uid));
@@ -139,9 +137,8 @@ service cloud.firestore {
     // ── travels : 出張報告 ────────────────────────────────────
     //  従業員が設定できる status は draft / pending のみ
     match /travels/{docId} {
-      // get : 存在しないドキュメントを読むと resource が null になる。
-      //       resource.data を直接参照すると PERMISSION_DENIED になってしまうため
-      //       null を許容する（打刻の無い日を gRec() で引く操作が常時発生する）。
+      // get : 存在しないドキュメントを読むと resource が null になるため null を許容する
+      //       （resource.data を直接参照すると PERMISSION_DENIED になってしまう）。
       allow get:    if isAdmin()
                     || (signedIn() && (resource == null
                                        || resource.data.userId == request.auth.uid));
