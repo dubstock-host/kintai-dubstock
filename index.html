@@ -312,9 +312,9 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 <!-- 有給申請モーダル -->
 <div class="overlay" id="leaveOverlay">
   <div class="modal">
-    <div class="mtitle">&#x1F4C5; 有給申請</div>
+    <div class="mtitle" id="leaveModalTitle">&#x1F4C5; 有給申請</div>
     <div class="msub">申請内容を入力してください</div>
-    <div class="mfield"><label>取得日</label><input type="date" id="leaveDate"></div>
+    <div class="mfield"><label id="leaveDateLabel">取得日</label><input type="date" id="leaveDate"></div>
     <div class="mfield"><label>種別</label>
       <select id="leaveType">
         <option value="全日">全日有給</option>
@@ -323,6 +323,10 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
         <option value="時間休">時間休</option>
         <option value="振替休日">振替休日</option>
       </select>
+    </div>
+    <div class="mfield" id="leaveSwapField" style="display:none;"><label>出勤する休日（振替元）</label>
+      <input type="date" id="leaveWorkDate">
+      <div style="font-size:11px;color:var(--tx3);margin-top:4px;line-height:1.5;">休日出勤する日を指定します。上の「休む日」がその代わりに休む労働日です。</div>
     </div>
     <div class="mfield" id="leaveTimeField" style="display:none;"><label>時間（開始〜終了）</label>
       <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;">
@@ -404,11 +408,17 @@ function ts2hm(ts){if(!ts)return "--:--";const d=new Date(ts);return p2(d.getHou
 function ts2ts(date,str){const p=str.split(":");const d=new Date(date.replace(/-/g,"/"));d.setHours(+p[0],+p[1],0,0);return d.getTime();}
 // 有給の消化日数。「有給取得」の表示と残日数の計算で必ずこの関数を使うこと
 // （以前は表示が件数、計算が 0.5/0.25 刻みで食い違っていた）
-// ※ 振替休日を年次有給休暇1日として消化する扱いは労務上は別物。要再検討
 function leaveDays(type){
+  // 振替休日は年次有給休暇ではないため、残日数を消化しない
+  if(type==="振替休日")return 0;
   if(type==="午前半休"||type==="午後半休")return 0.5;
   if(type==="時間休")return 0.25;
-  return 1;   // 全日 / 振替休日
+  return 1;   // 全日
+}
+// 申請の種別表示。振替休日は「何日の振替か」を併記する
+function leaveLabel(lv){
+  if(lv.type!=="振替休日")return lv.type+(lv.time?"・"+lv.time:"");
+  return "振替休日"+(lv.workDate?"（"+lv.workDate.slice(5).replace("-","/")+" の振替）":"");
 }
 function sumLeaveDays(list){return list.reduce((s,lv)=>s+leaveDays(lv.type),0);}
 function fmtDays(n){return (n%1===0?n:n.toFixed(1))+" 日";}
@@ -511,7 +521,7 @@ async function renderMyLeaveList(){
     div.className="notif-card notif-pending";
     div.style.cssText="display:flex;align-items:center;justify-content:space-between;";
     div.innerHTML=
-      "<div>&#x23F3; <strong>"+lv.date.slice(5)+"("+dow+")</strong> "+lv.type+(lv.time?"・"+lv.time:"")+"<br><span style=\"font-size:12px;\">"+( lv.reason||"")+"</span></div>"+
+      "<div>&#x23F3; <strong>"+lv.date.slice(5)+"("+dow+")</strong> "+leaveLabel(lv)+"<br><span style=\"font-size:12px;\">"+( lv.reason||"")+"</span></div>"+
       "<button style=\"background:transparent;border:1px solid currentColor;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;color:inherit;white-space:nowrap;margin-left:8px;\">取消</button>";
     div.querySelector("button").addEventListener("click",()=>openCancelLeaveModal(lv.id,lv.date,lv.type));
     document.getElementById("myLeaveList").appendChild(div);
@@ -556,7 +566,10 @@ async function renderMonthly(){
     const shiftsComplete=rec&&rec.shifts?rec.shifts.filter(s=>s&&s.in&&s.out):[];
     const shiftsMissing=rec&&rec.shifts?rec.shifts.filter(s=>s&&s.in&&!s.out):[];
     const shifts=shiftsComplete; // 互換性のため残す
-    const isLv=lvs.some(lv=>lv.date===date&&lv.status==="approved");
+    const lvOn=lvs.find(lv=>lv.date===date&&lv.status==="approved");
+    const isLv=!!lvOn;
+    // この日の休日出勤が、承認済みの振替休日から参照されているか
+    const swappedBy=lvs.find(lv=>lv.status==="approved"&&lv.workDate===date);
     const dateObj=new Date(date.replace(/-/g,"/"));
     const isWeekday=dateObj.getDay()>=1&&dateObj.getDay()<=5;
     // 退勤あり・有給・退勤忘れのいずれもない日
@@ -568,7 +581,7 @@ async function renderMonthly(){
           "<td>"+date.slice(5)+"("+dow2+") <span style=\"color:#DC2626;font-weight:600;font-size:11px;background:#FEE2E2;border:1px solid #FECACA;border-radius:4px;padding:1px 5px;\">⚠️ 未打刻</span></td>"+
           "<td style=\"color:#DC2626;\">―</td><td style=\"color:#DC2626;\">―</td>"+
           "<td>―</td><td>―</td><td>―</td>"+
-          "<td data-date=\""+date+"\"></td>"+
+          "<td data-date=\""+date+"\" data-swap=\"1\"></td>"+
           "</tr>";
       }
       continue;
@@ -587,16 +600,42 @@ async function renderMonthly(){
         "</tr>";
       continue;
     }
-    if(isLv&&!shifts.length){const dow=DOW[new Date(date).getDay()];tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td colspan=\"4\" style=\"text-align:center;\"><span style=\"background:#F5F3FF;color:var(--lv);border:1px solid #DDD6FE;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;\">有給休暇</span></td><td>―</td><td></td></tr>";continue;}
+    if(isLv&&!shifts.length){
+      const dow=DOW[new Date(date).getDay()];
+      const isSwap=lvOn.type==="振替休日";
+      const badge=isSwap
+        ?"<span style=\"background:#ECFEFF;color:#0E7490;border:1px solid #A5F3FC;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;\">🔄 振替休日</span>"
+         +(lvOn.workDate?"<span style=\"font-size:10px;color:var(--tx3);margin-left:6px;\">"+lvOn.workDate.slice(5).replace("-","/")+" の振替</span>":"")
+        :"<span style=\"background:#F5F3FF;color:var(--lv);border:1px solid #DDD6FE;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;\">有給休暇</span>"
+         +(lvOn.type!=="全日"?"<span style=\"font-size:10px;color:var(--tx3);margin-left:6px;\">"+lvOn.type+"</span>":"");
+      tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td colspan=\"4\" style=\"text-align:center;\">"+badge+"</td><td>―</td><td></td></tr>";
+      continue;
+    }
     // 出勤日数は「出勤・退勤とも打刻が揃っている日」だけを数える。
     // 有給の日と退勤未打刻の日はここに到達しないため加算されない。
     wd++;
     const s=shifts[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);tw+=wms;to+=oms;
     const dow=DOW[new Date(date).getDay()];
-    tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td>"+ts2hm(s.in)+"</td><td>"+ts2hm(s.out)+"</td><td>"+(bms>0?hm(bms):"―")+"</td><td>"+hm(wms)+"</td><td class=\""+(oms>0?"ot":"")+"\">"+(oms>0?hm(oms):"―")+"</td><td data-date=\""+date+"\"></td></tr>";
+    // 土日・祝日の出勤は印を付ける。振替休日から参照されていれば「振替済」
+    const isOffDay=dateObj.getDay()===0||dateObj.getDay()===6||HOLIDAYS.has(date);
+    const offBadge=!isOffDay?""
+      :swappedBy
+        ?" <span style=\"background:#ECFEFF;color:#0E7490;border:1px solid #A5F3FC;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;\">休日出勤・振替済</span>"
+        :" <span style=\"background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;\">休日出勤</span>";
+    tb+="<tr><td>"+date.slice(5)+"("+dow+")"+offBadge+"</td><td>"+ts2hm(s.in)+"</td><td>"+ts2hm(s.out)+"</td><td>"+(bms>0?hm(bms):"―")+"</td><td>"+hm(wms)+"</td><td class=\""+(oms>0?"ot":"")+"\">"+(oms>0?hm(oms):"―")+"</td><td data-date=\""+date+"\"></td></tr>";
   }
   const tbody=document.getElementById("monthlyLog");tbody.innerHTML=tb||"<tr><td colspan=\"7\" class=\"no-data\">記録なし</td></tr>";
-  tbody.querySelectorAll("td[data-date]").forEach(td=>{const btn=document.createElement("button");btn.className="ebtn";btn.textContent="✏️";btn.addEventListener("click",()=>jumpToEdit(td.dataset.date));td.appendChild(btn);});
+  tbody.querySelectorAll("td[data-date]").forEach(td=>{
+    const btn=document.createElement("button");btn.className="ebtn";btn.textContent="✏️";
+    btn.addEventListener("click",()=>jumpToEdit(td.dataset.date));td.appendChild(btn);
+    // 未打刻の日は、事後に振替休日として登録できるようにする
+    if(td.dataset.swap==="1"){
+      const sb=document.createElement("button");sb.className="ebtn";sb.textContent="🔄";
+      sb.title="この日を振替休日として申請する";sb.style.marginLeft="4px";
+      sb.addEventListener("click",()=>openLeaveModal(td.dataset.date,"振替休日"));
+      td.appendChild(sb);
+    }
+  });
   document.getElementById("totalDays").textContent=wd+" 日";
   document.getElementById("totalHours").textContent=hm(tw);
   document.getElementById("totalOT").textContent=hm(to);
@@ -629,7 +668,7 @@ async function renderHistLeave(){
   if(!lvs.length){el.innerHTML="<div class=\"no-data\">申請履歴はありません</div>";return;}
   el.innerHTML="<div class=\"twrap\"><table class=\"ltable\"><thead><tr><th>申請日</th><th>取得日</th><th>種別</th><th>理由</th><th>状態</th><th>コメント</th></tr></thead><tbody>"+
     lvs.map(lv=>{const at=new Date(lv.appliedAt);const atStr=(at.getMonth()+1)+"/"+at.getDate()+" "+p2(at.getHours())+":"+p2(at.getMinutes());const dow=DOW[new Date(lv.date.replace(/-/g,"/")).getDay()];
-      return "<tr><td style=\"font-family:sans-serif;font-size:11px;\">"+atStr+"</td><td>"+lv.date.slice(5)+"("+dow+")</td><td style=\"font-family:sans-serif;\">"+lv.type+(lv.time?"・"+lv.time:"")+"</td><td style=\"font-family:sans-serif;font-size:12px;\">"+( lv.reason||"―")+"</td><td>"+(sm[lv.status]||lv.status)+"</td><td style=\"font-family:sans-serif;font-size:12px;color:var(--out);\">"+( lv.comment||"―")+"</td></tr>";
+      return "<tr><td style=\"font-family:sans-serif;font-size:11px;\">"+atStr+"</td><td>"+lv.date.slice(5)+"("+dow+")</td><td style=\"font-family:sans-serif;\">"+leaveLabel(lv)+"</td><td style=\"font-family:sans-serif;font-size:12px;\">"+( lv.reason||"―")+"</td><td>"+(sm[lv.status]||lv.status)+"</td><td style=\"font-family:sans-serif;font-size:12px;color:var(--out);\">"+( lv.comment||"―")+"</td></tr>";
     }).join("")+"</tbody></table></div>";
 }
 
@@ -669,14 +708,17 @@ function openEditModal(date,idx,isNew){
 }
 
 // 有給申請モーダル
-function openLeaveModal(){
-  document.getElementById("leaveDate").value=getWD();
-  document.getElementById("leaveType").value="全日";
+// presetDate / presetType を渡すと初期値を指定できる
+// （月次タブの未打刻行から「振替」で開くときに使う）
+function openLeaveModal(presetDate,presetType){
+  document.getElementById("leaveDate").value=presetDate||getWD();
+  document.getElementById("leaveType").value=presetType||"全日";
   document.getElementById("leaveReason").value="";
   document.getElementById("leaveTimeFrom").value="";
   document.getElementById("leaveTimeTo").value="";
-  document.getElementById("leaveTimeField").style.display="none";
+  document.getElementById("leaveWorkDate").value="";
   document.getElementById("leaveErr").textContent="";
+  toggleLeaveTime();   // 種別に応じて入力欄を出し分ける
   document.getElementById("leaveOverlay").classList.add("open");
 }
 function closeLeaveModal(){document.getElementById("leaveOverlay").classList.remove("open");}
@@ -685,6 +727,12 @@ function toggleLeaveTime(){
   const t=document.getElementById("leaveType").value;
   const f=document.getElementById("leaveTimeField");
   const fr=document.getElementById("leaveTimeFrom");const to=document.getElementById("leaveTimeTo");
+  // 振替休日のときだけ振替元の日付欄を出し、見出しとラベルを切り替える
+  const isSwap=t==="振替休日";
+  document.getElementById("leaveSwapField").style.display=isSwap?"block":"none";
+  if(!isSwap)document.getElementById("leaveWorkDate").value="";
+  document.getElementById("leaveDateLabel").textContent=isSwap?"休む日（振替先）":"取得日";
+  document.getElementById("leaveModalTitle").innerHTML=isSwap?"&#x1F504; 振替休日の申請":"&#x1F4C5; 有給申請";
   if(t==="午前半休"){f.style.display="block";fr.value="10:00";to.value="14:00";fr.readOnly=to.readOnly=true;}
   else if(t==="午後半休"){f.style.display="block";fr.value="14:00";to.value="19:00";fr.readOnly=to.readOnly=true;}
   else if(t==="時間休"){f.style.display="block";fr.value="";to.value="";fr.readOnly=to.readOnly=false;}
@@ -779,7 +827,7 @@ onAuthStateChanged(auth,async user=>{
   // 打刻タブの有給申請ボタン
   // 打刻タブの有給申請ボタン（id=leaveQuickBtn）
   if(document.getElementById("leaveQuickBtn")){
-    document.getElementById("leaveQuickBtn").addEventListener("click",openLeaveModal);
+    document.getElementById("leaveQuickBtn").addEventListener("click",()=>openLeaveModal());
   }
 
   // 月次
@@ -840,8 +888,14 @@ onAuthStateChanged(auth,async user=>{
     if(!date){er.textContent="取得日を選択してください";return;}
     const tf=document.getElementById("leaveTimeFrom").value;const tt=document.getElementById("leaveTimeTo").value;
     const ts2v=type==="時間休"&&tf&&tt?tf+"〜"+tt:"";
+    const workDate=document.getElementById("leaveWorkDate").value;
+    if(type==="振替休日"){
+      if(!workDate){er.textContent="振替元（出勤する休日）を選択してください";return;}
+      if(workDate===date){er.textContent="振替元と休む日が同じ日になっています";return;}
+    }
     const id=UID+"_leave_"+Date.now();
     const lv={id,userId:UID,userName:UNAME,date,type,time:ts2v,reason,status:"pending",appliedAt:new Date().toISOString(),notifSeen:false};
+    if(type==="振替休日")lv.workDate=workDate;
     await sLeave(lv);
     closeLeaveModal();showToast("有給申請を送信しました ✓");
     renderMyLeaveList();renderLeaveBalance();

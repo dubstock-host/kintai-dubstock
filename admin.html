@@ -288,11 +288,17 @@ function ts2hm(ts){if(!ts)return "--:--";const d=new Date(ts);return p2(d.getHou
 function brkMs(a,b){if(!a||!b)return 0;const d=new Date(a),s=new Date(d),e=new Date(d);s.setHours(12,0,0,0);e.setHours(13,0,0,0);return Math.max(0,Math.min(b,e.getTime())-Math.max(a,s.getTime()));}
 // 有給の消化日数。「有給取得」の表示と残日数の計算で必ずこの関数を使うこと
 // （以前は表示が件数、計算が 0.5/0.25 刻みで食い違っていた）
-// ※ 振替休日を年次有給休暇1日として消化する扱いは労務上は別物。要再検討
 function leaveDays(type){
+  // 振替休日は年次有給休暇ではないため、残日数を消化しない
+  if(type==="振替休日")return 0;
   if(type==="午前半休"||type==="午後半休")return 0.5;
   if(type==="時間休")return 0.25;
-  return 1;   // 全日 / 振替休日
+  return 1;   // 全日
+}
+// 申請の種別表示。振替休日は「何日の振替か」を併記する
+function leaveLabel(lv){
+  if(lv.type!=="振替休日")return lv.type+(lv.time?"・"+lv.time:"");
+  return "振替休日"+(lv.workDate?"（"+lv.workDate.slice(5).replace("-","/")+" の振替）":"");
 }
 function sumLeaveDays(list){return list.reduce((s,lv)=>s+leaveDays(lv.type),0);}
 function fmtDays(n){return (n%1===0?n:n.toFixed(1))+" 日";}
@@ -399,7 +405,7 @@ async function renderPending(){
     card.innerHTML=
       "<div class=\"req-name\">"+empName+"</div>"+
       "<div class=\"req-date\">"+lv.date.slice(5)+"("+dow+")</div>"+
-      "<span class=\"req-type\">"+lv.type+(lv.time?"・"+lv.time:"")+"</span>"+
+      "<span class=\"req-type\">"+leaveLabel(lv)+"</span>"+
       "<div class=\"req-reason\">"+(lv.reason||"理由の記載なし")+"</div>"+
       "<div class=\"req-applied\">申請日時："+atStr+"</div>"+
       "<div class=\"req-btns\">"+
@@ -444,9 +450,20 @@ async function renderKintai(){
   for(let d=1;d<=days;d++){
     const date=y+"-"+p2(m+1)+"-"+p2(d);const rec=recs[date];
     const shifts=rec&&rec.shifts?rec.shifts.filter(s=>s&&s.in&&s.out):[];
-    const isLv=lvs.some(lv=>lv.date===date&&lv.status==="approved");
+    const lvOn=lvs.find(lv=>lv.date===date&&lv.status==="approved");
+    const isLv=!!lvOn;
     if(!shifts.length&&!isLv)continue;
-    if(isLv&&!shifts.length){const dow=DOW[new Date(date).getDay()];tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td colspan=\"4\" style=\"text-align:center;\"><span style=\"background:#F5F3FF;color:var(--lv);border:1px solid #DDD6FE;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;\">有給休暇</span></td><td>―</td></tr>";continue;}
+    if(isLv&&!shifts.length){
+      const dow=DOW[new Date(date).getDay()];
+      const isSwap=lvOn.type==="振替休日";
+      const badge=isSwap
+        ?"<span style=\"background:#ECFEFF;color:#0E7490;border:1px solid #A5F3FC;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;\">🔄 振替休日</span>"
+         +(lvOn.workDate?"<span style=\"font-size:10px;color:var(--tx3);margin-left:6px;\">"+lvOn.workDate.slice(5).replace("-","/")+" の振替</span>":"")
+        :"<span style=\"background:#F5F3FF;color:var(--lv);border:1px solid #DDD6FE;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;\">有給休暇</span>"
+         +(lvOn.type!=="全日"?"<span style=\"font-size:10px;color:var(--tx3);margin-left:6px;\">"+lvOn.type+"</span>":"");
+      tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td colspan=\"4\" style=\"text-align:center;\">"+badge+"</td><td>―</td></tr>";
+      continue;
+    }
     // 出勤日数は「出勤・退勤とも打刻が揃っている日」だけを数える（有給の日は除く）
     wd++;
     const s=shifts[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);tw+=wms;to+=oms;
@@ -468,7 +485,7 @@ async function renderHistory(){
   if(!lvs.length){el.innerHTML="<div class=\"no-data\">申請履歴はありません</div>";return;}
   el.innerHTML="<div class=\"twrap\"><table class=\"ltable\"><thead><tr><th>申請日</th><th>取得日</th><th>種別</th><th>理由</th><th>状態</th><th>コメント</th></tr></thead><tbody>"+
     lvs.map(lv=>{const at=new Date(lv.appliedAt);const atStr=(at.getMonth()+1)+"/"+at.getDate()+" "+p2(at.getHours())+":"+p2(at.getMinutes());const dow=DOW[new Date(lv.date.replace(/-/g,"/")).getDay()];
-      return "<tr><td style=\"font-family:sans-serif;\">"+atStr+"</td><td>"+lv.date.slice(5)+"("+dow+")</td><td style=\"font-family:sans-serif;\">"+lv.type+(lv.time?"・"+lv.time:"")+"</td><td style=\"font-family:sans-serif;font-size:12px;\">"+( lv.reason||"―")+"</td><td>"+(sm[lv.status]||lv.status)+"</td><td style=\"font-family:sans-serif;font-size:12px;color:var(--out);\">"+( lv.comment||"―")+"</td></tr>";
+      return "<tr><td style=\"font-family:sans-serif;\">"+atStr+"</td><td>"+lv.date.slice(5)+"("+dow+")</td><td style=\"font-family:sans-serif;\">"+leaveLabel(lv)+"</td><td style=\"font-family:sans-serif;font-size:12px;\">"+( lv.reason||"―")+"</td><td>"+(sm[lv.status]||lv.status)+"</td><td style=\"font-family:sans-serif;font-size:12px;color:var(--out);\">"+( lv.comment||"―")+"</td></tr>";
     }).join("")+"</tbody></table></div>";
 }
 
