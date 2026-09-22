@@ -114,6 +114,41 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .ti-label{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;font-weight:600;}
 .ti-val{font-size:13px;color:var(--tx);font-weight:500;}
 @media(max-width:600px){.sgrid{grid-template-columns:repeat(2,1fr);}.emp-cards{grid-template-columns:1fr;}.travel-info{grid-template-columns:repeat(2,1fr);}}
+
+/* ── 月次書き出し ───────────────────────────────── */
+.exp-chk{display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 0;cursor:pointer;}
+.exp-chk input{width:16px;height:16px;cursor:pointer;}
+.emp-chk{display:flex;align-items:center;gap:8px;font-size:14px;padding:8px 10px;border:1px solid var(--bdr);border-radius:8px;margin-bottom:6px;cursor:pointer;}
+.emp-chk input{width:16px;height:16px;cursor:pointer;}
+.emp-chk:has(input:checked){background:#EFF6FF;border-color:var(--acc);}
+#exportDoc{margin-top:20px;}
+.exp-doc{background:#fff;border:1px solid var(--bdr);border-radius:12px;padding:24px;margin-bottom:20px;}
+.exp-doc h2{font-size:17px;font-weight:700;margin:0 0 6px;}
+.exp-doc .doc-meta{font-size:12px;color:var(--tx2);margin-bottom:18px;display:flex;gap:18px;flex-wrap:wrap;}
+.exp-doc .doc-sec{font-size:13px;font-weight:700;border-left:4px solid var(--acc);padding-left:8px;margin:20px 0 10px;}
+.exp-doc table{width:100%;border-collapse:collapse;font-size:11px;}
+.exp-doc th{background:#F1F5F9;border:1px solid #CBD5E1;padding:5px 6px;font-weight:600;text-align:left;white-space:nowrap;}
+.exp-doc td{border:1px solid #CBD5E1;padding:5px 6px;}
+.exp-doc .num{text-align:right;font-family:"DM Mono",monospace;white-space:nowrap;}
+.exp-doc .sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px;margin-bottom:12px;}
+.exp-doc .sum>div{border:1px solid var(--bdr);border-radius:8px;padding:8px 10px;}
+.exp-doc .sum .k{font-size:10px;color:var(--tx3);}
+.exp-doc .sum .v{font-size:16px;font-weight:700;font-family:"DM Mono",monospace;}
+.exp-doc .tot{text-align:right;font-size:13px;font-weight:700;margin-top:6px;}
+.exp-doc .none{font-size:12px;color:var(--tx3);padding:6px 0;}
+
+@media print{
+  header,.tab-nav,.no-print,.overlay,.toast{display:none !important;}
+  body{background:#fff;padding:0;margin:0;}
+  .wrap{max-width:100%;padding:0;}
+  .tab-content{display:none !important;}
+  .export-tab{display:block !important;}
+  #exportDoc{margin:0;}
+  .exp-doc{border:none;border-radius:0;padding:0;margin:0;page-break-after:always;}
+  .exp-doc:last-child{page-break-after:auto;}
+  .exp-doc tr,.exp-doc .sum{page-break-inside:avoid;}
+  @page{size:A4;margin:12mm;}
+}
 </style>
 </head>
 <body>
@@ -151,6 +186,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
     <button class="tab-btn" data-tab="打刻">打刻記録</button>
     <button class="tab-btn" data-tab="経費">&#x1F4B0; 経費精算</button>
     <button class="tab-btn" data-tab="出張">&#x2708; 出張報告</button>
+    <button class="tab-btn" data-tab="書出">&#x1F4C4; 月次書き出し</button>
   </div>
 
   <div class="tab-content active" id="tab-概要">
@@ -208,6 +244,43 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
   <!-- 出張報告タブ -->
   <div class="tab-content" id="tab-出張">
     <div id="travelAdminList"><div class="no-data">読み込み中...</div></div>
+  </div>
+
+  <!-- 月次書き出しタブ：経理提出用の資料をまとめて作る -->
+  <div class="tab-content export-tab" id="tab-書出">
+    <div class="no-print">
+      <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#1D4ED8;line-height:1.7;">
+        &#x1F4C4; 経理提出用の資料をまとめて作成します。「資料を作成」で内容を確認してから「PDF出力」を押し、<br>
+        印刷ダイアログで<strong>保存先を「PDFとして保存」</strong>に変更してください。
+      </div>
+      <div class="mnav">
+        <button class="mbtn" id="exportPrevBtn">&#8249;</button>
+        <div class="mlabel" id="exportMonthLabel"></div>
+        <button class="mbtn" id="exportNextBtn">&#8250;</button>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:16px;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:11px;color:var(--tx3);letter-spacing:2px;text-transform:uppercase;font-weight:600;">対象社員</div>
+          <div style="display:flex;gap:6px;">
+            <button class="expbtn" id="exportSelAll" style="padding:4px 10px;font-size:11px;">全選択</button>
+            <button class="expbtn" id="exportSelNone" style="padding:4px 10px;font-size:11px;">全解除</button>
+          </div>
+        </div>
+        <div id="exportEmpList"><div class="no-data">読み込み中...</div></div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:16px;margin-bottom:12px;">
+        <div style="font-size:11px;color:var(--tx3);letter-spacing:2px;text-transform:uppercase;font-weight:600;margin-bottom:10px;">出力内容</div>
+        <label class="exp-chk"><input type="checkbox" id="optKintai" checked> 勤怠サマリー（出勤日数・実労働・残業・有給）</label>
+        <label class="exp-chk"><input type="checkbox" id="optExpense" checked> 立替精算書（経費明細）</label>
+        <label class="exp-chk"><input type="checkbox" id="optTravel" checked> 出張報告（回数・明細）</label>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="rbtn rbtn-approve" id="exportBuildBtn" style="flex:1;min-width:160px;padding:12px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:#ECFDF5;color:var(--in);border:1.5px solid #A7F3D0;">資料を作成</button>
+        <button class="rbtn" id="exportPrintBtn" style="display:none;flex:1;min-width:160px;padding:12px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:var(--acc);color:#fff;border:1.5px solid var(--acc);">&#x1F5A8; PDF出力</button>
+      </div>
+      <div class="merr" id="exportErr" style="color:var(--out);font-size:13px;min-height:18px;margin-top:8px;"></div>
+    </div>
+    <div id="exportDoc"></div>
   </div>
 </div>
 </div>
@@ -278,6 +351,7 @@ const EIGHT=8*3600000;
 let rejectTargetId=null;
 let kintaiMonth=new Date();
 let stampMonth=new Date();
+let exportMonth=new Date();
 let selectedKintaiUid=null;
 let selectedStampUid=null;
 let selectedHistUid=null;
@@ -538,6 +612,138 @@ async function renderStamp(){
   document.getElementById("stampLog").innerHTML=tb||"<tr><td colspan=\"6\" class=\"no-data\">記録なし</td></tr>";
 }
 
+// ══ 月次書き出し（経理提出用） ══
+// 出力する文書にはユーザー入力（経費の内容・出張先など）が入るため必ずエスケープする
+function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function wareki(y,m){return "令和"+(y-2018)+"年"+(m+1)+"月度";}
+
+async function renderExportTab(){
+  const y=exportMonth.getFullYear(),m=exportMonth.getMonth();
+  document.getElementById("exportMonthLabel").textContent="R"+(y-2018)+"年"+(m+1)+"月";
+  const el=document.getElementById("exportEmpList");
+  if(!EMPLOYEES.length){el.innerHTML="<div class=\"no-data\">社員が登録されていません</div>";return;}
+  el.innerHTML=EMPLOYEES.map(e=>
+    "<label class=\"emp-chk\"><input type=\"checkbox\" class=\"exp-emp\" value=\""+esc(e.uid)+"\" checked> "
+    +esc(e.name)+(e.active?"":"（退職）")+"</label>").join("");
+}
+
+// 社員1名・1か月分の文書を組み立てる
+async function buildEmpDoc(emp,y,m,pfx,opts,allExp,allTrv){
+  const recs=await getRecsByUid(emp.uid);
+  const lvs=await getLeavesByUid(emp.uid);
+  const days=new Date(y,m+1,0).getDate();
+  let wd=0,tw=0,to=0,rows="";
+  for(let d=1;d<=days;d++){
+    const date=y+"-"+p2(m+1)+"-"+p2(d);
+    const rec=recs[date];
+    const shifts=rec&&rec.shifts?rec.shifts.filter(x=>x&&x.in&&x.out):[];
+    const lvOn=lvs.find(l=>l.date===date&&l.status==="approved");
+    if(!shifts.length&&!lvOn)continue;
+    const dow=DOW[new Date(date.replace(/-/g,"/")).getDay()];
+    if(!shifts.length){
+      rows+="<tr><td>"+date.slice(5)+"("+dow+")</td><td colspan=\"5\">"+esc(leaveLabel(lvOn))+"</td></tr>";
+      continue;
+    }
+    // 出勤日数は出勤・退勤とも打刻が揃っている日のみ（画面表示と同じ定義）
+    wd++;
+    const x=shifts[0],bms=brkMs(x.in,x.out),wms=Math.max(0,x.out-x.in-bms),oms=Math.max(0,wms-EIGHT);
+    tw+=wms;to+=oms;
+    rows+="<tr><td>"+date.slice(5)+"("+dow+")</td><td>"+ts2hm(x.in)+"</td><td>"+ts2hm(x.out)+"</td>"
+      +"<td class=\"num\">"+(bms>0?hm(bms):"―")+"</td><td class=\"num\">"+hm(wms)+"</td>"
+      +"<td class=\"num\">"+(oms>0?hm(oms):"―")+"</td></tr>";
+  }
+  const mLvs=lvs.filter(l=>l.status==="approved"&&String(l.date).startsWith(pfx));
+  const paid=sumLeaveDays(mLvs);                                   // 振替休日は 0 日で計上される
+  const swaps=mLvs.filter(l=>l.type==="振替休日").length;
+
+  let h="<div class=\"exp-doc\">"
+    +"<h2>"+wareki(y,m)+"　勤怠・経費資料</h2>"
+    +"<div class=\"doc-meta\"><span>氏名："+esc(emp.name)+"</span>"
+    +"<span>対象期間："+y+"/"+p2(m+1)+"/01 〜 "+y+"/"+p2(m+1)+"/"+p2(days)+"</span>"
+    +"<span>出力日："+new Date().toLocaleDateString("ja-JP")+"</span></div>";
+
+  if(opts.kintai){
+    h+="<div class=\"doc-sec\">勤怠サマリー</div>"
+      +"<div class=\"sum\">"
+      +"<div><div class=\"k\">出勤日数</div><div class=\"v\">"+wd+" 日</div></div>"
+      +"<div><div class=\"k\">実労働時間</div><div class=\"v\">"+hm(tw)+"</div></div>"
+      +"<div><div class=\"k\">残業時間</div><div class=\"v\">"+hm(to)+"</div></div>"
+      +"<div><div class=\"k\">有給取得</div><div class=\"v\">"+fmtDays(paid)+"</div></div>"
+      +"<div><div class=\"k\">振替休日</div><div class=\"v\">"+swaps+" 日</div></div>"
+      +"</div>"
+      +"<table><thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実労働</th><th>残業</th></tr></thead>"
+      +"<tbody>"+(rows||"<tr><td colspan=\"6\">記録なし</td></tr>")+"</tbody></table>";
+  }
+
+  if(opts.expense){
+    const exps=allExp.filter(e=>e.userId===emp.uid&&e.date&&String(e.date).startsWith(pfx))
+                     .sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+    const total=exps.reduce((a,e)=>a+(Number(e.amount)||0),0);
+    h+="<div class=\"doc-sec\">立替精算書</div>";
+    if(!exps.length)h+="<div class=\"none\">この月の経費明細はありません。</div>";
+    else h+="<table><thead><tr><th>日付</th><th>内容・目的</th><th>支払先</th><th>支払方法</th><th>領収書・<br>レシート</th><th>金額</th><th>備考</th></tr></thead><tbody>"
+      +exps.map(e=>"<tr><td>"+esc(String(e.date).slice(5))+"</td><td>"+esc(e.desc)+"</td><td>"+esc(e.payee)+"</td>"
+        +"<td>"+esc(e.method)+"</td><td>"+(e.receipt?"有":"―")+"</td>"
+        +"<td class=\"num\">"+Number(e.amount||0).toLocaleString()+"</td><td>"+esc(e.note)+"</td></tr>").join("")
+      +"</tbody></table><div class=\"tot\">合計　"+fmtYen(total)+"</div>";
+  }
+
+  if(opts.travel){
+    // 出張の所属月は出発日（from）で判定する。無ければ報告日・作成日で代替
+    const td=t=>t.from||t.reportDate||String(t.createdAt||"").slice(0,10);
+    const trvs=allTrv.filter(t=>t.userId===emp.uid&&t.status!=="draft"&&String(td(t)).startsWith(pfx))
+                     .sort((a,b)=>String(td(a)).localeCompare(String(td(b))));
+    const cost=trvs.reduce((a,t)=>a+(t.costs||[]).reduce((b,c)=>b+(Number(c.amount)||0),0),0);
+    h+="<div class=\"doc-sec\">出張</div>"
+      +"<div class=\"sum\"><div><div class=\"k\">出張回数</div><div class=\"v\">"+trvs.length+" 回</div></div>"
+      +"<div><div class=\"k\">交通費・宿泊費合計</div><div class=\"v\">"+fmtYen(cost)+"</div></div></div>";
+    if(!trvs.length)h+="<div class=\"none\">この月の出張報告はありません。</div>";
+    else h+="<table><thead><tr><th>期間</th><th>出張先</th><th>目的</th><th>交通手段</th><th>同行者</th><th>費用</th><th>状態</th></tr></thead><tbody>"
+      +trvs.map(t=>{
+        const c=(t.costs||[]).reduce((a,x)=>a+(Number(x.amount)||0),0);
+        const per=esc(t.from||"")+(t.to&&t.to!==t.from?" 〜 "+esc(t.to):"");
+        const st=t.status==="approved"?"承認済":t.status==="rejected"?"差し戻し":"提出済";
+        return "<tr><td>"+per+"</td><td>"+esc(t.dest)+"</td><td>"+esc(t.purpose)+"</td><td>"+esc(t.transport)+"</td>"
+          +"<td>"+esc(t.companion)+"</td><td class=\"num\">"+fmtYen(c)+"</td><td>"+st+"</td></tr>";
+      }).join("")+"</tbody></table>";
+  }
+  return h+"</div>";
+}
+
+async function buildExport(){
+  const err=document.getElementById("exportErr");err.textContent="";
+  const uids=[...document.querySelectorAll(".exp-emp:checked")].map(i=>i.value);
+  if(!uids.length){err.textContent="対象社員を選択してください";return;}
+  const opts={kintai:document.getElementById("optKintai").checked,
+              expense:document.getElementById("optExpense").checked,
+              travel:document.getElementById("optTravel").checked};
+  if(!opts.kintai&&!opts.expense&&!opts.travel){err.textContent="出力内容を1つ以上選択してください";return;}
+  const btn=document.getElementById("exportBuildBtn");
+  btn.disabled=true;btn.textContent="作成中…";
+  try{
+    const y=exportMonth.getFullYear(),m=exportMonth.getMonth(),pfx=y+"-"+p2(m+1);
+    // 経費・出張は全件を1回だけ取得して社員ごとに振り分ける
+    const allExp=opts.expense?await getAllDocs("expenses"):[];
+    const allTrv=opts.travel?await getAllDocs("travels"):[];
+    let html="";
+    for(const uid of uids){
+      const emp=EMPLOYEES.find(e=>e.uid===uid)||{uid,name:uid,active:true};
+      html+=await buildEmpDoc(emp,y,m,pfx,opts,allExp,allTrv);
+    }
+    document.getElementById("exportDoc").innerHTML=html;
+    document.getElementById("exportPrintBtn").style.display="block";
+    showToast("資料を作成しました ✓");
+  }catch(e){
+    err.textContent="作成に失敗しました: "+(e.code||e.message);
+  }finally{btn.disabled=false;btn.textContent="資料を作成";}
+}
+
+// 月やチェックを変えたら作り直しが必要なので、作成済みの文書は破棄する
+function resetExport(){
+  document.getElementById("exportDoc").innerHTML="";
+  document.getElementById("exportPrintBtn").style.display="none";
+}
+
 // タブ切替
 function showTab(name){
   document.querySelectorAll(".tab-content").forEach(e=>e.classList.remove("active"));
@@ -550,6 +756,7 @@ function showTab(name){
   if(name==="申請")renderPending();
   if(name==="経費")renderExpAdmin();
   if(name==="出張")renderTravelAdmin();
+  if(name==="書出"){resetExport();renderExportTab();}
 }
 
 // ══ 経費精算 管理 ══
@@ -786,6 +993,16 @@ onAuthStateChanged(auth,async function(user){
     a.download=emp.name+"_R"+(y-2018)+"_"+p2(m+1)+"_勤怠.csv";a.click();
     showToast("CSVをダウンロードしました");
   });
+
+  // 月次書き出し
+  document.getElementById("exportPrevBtn").addEventListener("click",()=>{exportMonth.setMonth(exportMonth.getMonth()-1);resetExport();renderExportTab();});
+  document.getElementById("exportNextBtn").addEventListener("click",()=>{exportMonth.setMonth(exportMonth.getMonth()+1);resetExport();renderExportTab();});
+  document.getElementById("exportSelAll").addEventListener("click",()=>{document.querySelectorAll(".exp-emp").forEach(i=>i.checked=true);resetExport();});
+  document.getElementById("exportSelNone").addEventListener("click",()=>{document.querySelectorAll(".exp-emp").forEach(i=>i.checked=false);resetExport();});
+  document.getElementById("exportBuildBtn").addEventListener("click",buildExport);
+  document.getElementById("exportPrintBtn").addEventListener("click",()=>window.print());
+  ["optKintai","optExpense","optTravel"].forEach(id=>document.getElementById(id).addEventListener("change",resetExport));
+  document.getElementById("exportEmpList").addEventListener("change",e=>{if(e.target.classList.contains("exp-emp"))resetExport();});
 
   // 詳細モーダル
   document.getElementById("detailCloseBtn").addEventListener("click",closeDetailModal);
