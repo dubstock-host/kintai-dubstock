@@ -145,7 +145,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 
   <div class="tab-nav">
     <button class="tab-btn active" data-tab="概要">全社員概要</button>
-    <button class="tab-btn" data-tab="申請">有給申請<span class="tbadge" id="reqBadge"></span></button>
+    <button class="tab-btn" data-tab="申請">休日申請<span class="tbadge" id="reqBadge"></span></button>
     <button class="tab-btn" data-tab="勤怠">勤怠確認</button>
     <button class="tab-btn" data-tab="履歴">申請履歴</button>
     <button class="tab-btn" data-tab="打刻">打刻記録</button>
@@ -391,7 +391,7 @@ async function renderEmpCards(){
   }
 }
 
-// 有給申請（承認待ち）
+// 休日申請（承認待ち）
 async function renderPending(){
   const lvs=await getAllLeaves();
   const pending=lvs.filter(lv=>lv.status==="pending");

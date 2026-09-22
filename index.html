@@ -180,7 +180,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
   <div class="tab-nav">
     <!-- 表示タブを3つに簡略化（打刻修正・履歴確認タブは非表示だが機能は保持） -->
     <button class="tab-btn active" data-tab="打刻">打刻<span class="badge-dot" id="notifDot"></span></button>
-    <button class="tab-btn" data-tab="有給">有給申請</button>
+    <button class="tab-btn" data-tab="有給">休日申請</button>
     <button class="tab-btn" data-tab="月次">月次</button>
   </div>
 
@@ -202,14 +202,14 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
         <button class="btn btn-out" id="bo1" disabled>退勤</button>
         <button class="btn-cancel" id="bcan1" style="display:none">取消</button>
       </div>
-      <button class="btn-leave" id="leaveQuickBtn">&#x1F4C5; 有給申請</button>
+      <button class="btn-leave" id="leaveQuickBtn">&#x1F4C5; 休日申請</button>
     </div>
     <div class="stitle">本日のタイムライン</div>
     <div class="log-card" id="todayLog"><div class="no-data">まだ記録がありません</div></div>
     <div id="syncStatus"></div>
   </div>
 
-  <!-- 有給申請タブ -->
+  <!-- 休日申請タブ（data-tab / id は内部キーのため "有給" のまま） -->
   <div class="tab-content" id="tab-有給">
     <div style="background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:18px;margin-bottom:16px;">
       <div style="font-size:10px;color:var(--tx3);letter-spacing:2px;text-transform:uppercase;font-weight:600;margin-bottom:12px;">有給残日数</div>
@@ -220,7 +220,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
       </div>
       <div id="leaveNextGrant" style="font-size:11px;color:var(--tx3);line-height:1.6;"></div>
     </div>
-    <button class="btn-leave" id="leaveNewBtn" style="margin-bottom:16px;">&#xFF0B; 新規有給申請</button>
+    <button class="btn-leave" id="leaveNewBtn" style="margin-bottom:16px;">&#xFF0B; 新規申請</button>
     <div id="myLeaveList"></div>
   </div>
 
@@ -266,7 +266,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
   <!-- 履歴確認タブ -->
   <div class="tab-content" id="tab-履歴">
     <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#1D4ED8;">
-      &#x1F512; 過去の打刻・有給申請の履歴を確認できます。
+      &#x1F512; 過去の打刻・休日申請の履歴を確認できます。
     </div>
     <div class="stitle">打刻履歴</div>
     <div class="mnav">
@@ -280,13 +280,13 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
         <tbody id="histStampLog"><tr><td colspan="6" class="no-data">読み込み中...</td></tr></tbody>
       </table>
     </div>
-    <div class="stitle">有給申請履歴</div>
+    <div class="stitle">休日申請履歴</div>
     <div id="histLeaveList"><div class="no-data">読み込み中...</div></div>
   </div>
 </div>
 </div>
 
-<!-- 打刻修正モーダル（有給申請モーダルとは別の独立したモーダル） -->
+<!-- 打刻修正モーダル（休日申請モーダルとは別の独立したモーダル） -->
 <div class="overlay" id="editOverlay">
   <div class="modal">
     <div class="mtitle" id="editModalTitle">&#x270F;&#xFE0F; 打刻修正</div>
@@ -309,10 +309,10 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
   </div>
 </div>
 
-<!-- 有給申請モーダル -->
+<!-- 休日申請モーダル（有給・振替休日の両方をここで申請する） -->
 <div class="overlay" id="leaveOverlay">
   <div class="modal">
-    <div class="mtitle" id="leaveModalTitle">&#x1F4C5; 有給申請</div>
+    <div class="mtitle" id="leaveModalTitle">&#x1F4C5; 休日申請</div>
     <div class="msub">申請内容を入力してください</div>
     <div class="mfield"><label id="leaveDateLabel">取得日</label><input type="date" id="leaveDate"></div>
     <div class="mfield"><label>種別</label>
@@ -494,7 +494,7 @@ async function renderLeaveNotif(){
     const isApproved=lv.status==="approved";
     const cls=isApproved?"notif-approved":"notif-rejected";
     const icon=isApproved?"✅":"❌";
-    const title=isApproved?"有給申請が承認されました":"有給申請が差し戻されました";
+    const title=isApproved?"休日申請が承認されました":"休日申請が差し戻されました";
     const dow=DOW[new Date(lv.date.replace(/-/g,"/")).getDay()];
     return "<div class=\"notif-card "+cls+"\" data-lid=\""+lv.id+"\">"+
       "<div class=\"notif-title\">"+icon+" "+title+"</div>"+
@@ -511,7 +511,7 @@ async function renderLeaveNotif(){
   });
 }
 
-// 有給申請（承認待ち一覧）
+// 休日申請（承認待ち一覧）
 async function renderMyLeaveList(){
   const lvs=await gMyLeaves();
   const el=document.getElementById("myLeaveList");
@@ -710,7 +710,7 @@ function openEditModal(date,idx,isNew){
   document.getElementById("editOverlay").classList.add("open");
 }
 
-// 有給申請モーダル
+// 休日申請モーダル
 // presetDate / presetType を渡すと初期値を指定できる
 // （月次タブの未打刻行から「振替」で開くときに使う）
 function openLeaveModal(presetDate,presetType){
@@ -735,7 +735,7 @@ function toggleLeaveTime(){
   document.getElementById("leaveSwapField").style.display=isSwap?"block":"none";
   if(!isSwap)document.getElementById("leaveWorkDate").value="";
   document.getElementById("leaveDateLabel").textContent=isSwap?"休む日（振替先）":"取得日";
-  document.getElementById("leaveModalTitle").innerHTML=isSwap?"&#x1F504; 振替休日の申請":"&#x1F4C5; 有給申請";
+  document.getElementById("leaveModalTitle").innerHTML=isSwap?"&#x1F504; 振替休日の申請":"&#x1F4C5; 休日申請";
   if(t==="午前半休"){f.style.display="block";fr.value="10:00";to.value="14:00";fr.readOnly=to.readOnly=true;}
   else if(t==="午後半休"){f.style.display="block";fr.value="14:00";to.value="19:00";fr.readOnly=to.readOnly=true;}
   else{f.style.display="none";fr.value="";to.value="";fr.readOnly=to.readOnly=false;}
@@ -826,8 +826,7 @@ onAuthStateChanged(auth,async user=>{
     else{if(!confirm("出勤打刻を取り消しますか？"))return;await dRec(date);showToast("出勤を取り消しました");refreshUI({shifts:[]});}
   });
 
-  // 打刻タブの有給申請ボタン
-  // 打刻タブの有給申請ボタン（id=leaveQuickBtn）
+  // 打刻タブの休日申請ボタン（id=leaveQuickBtn）
   if(document.getElementById("leaveQuickBtn")){
     document.getElementById("leaveQuickBtn").addEventListener("click",()=>openLeaveModal());
   }
@@ -878,7 +877,7 @@ onAuthStateChanged(auth,async user=>{
     }catch(e){er.textContent="保存に失敗しました";}
   });
 
-  // 有給申請モーダル
+  // 休日申請モーダル
   document.getElementById("leaveOverlay").addEventListener("click",(e)=>{if(e.target===e.currentTarget)closeLeaveModal();});
   document.getElementById("leaveCancelBtn").addEventListener("click",closeLeaveModal);
   document.getElementById("leaveType").addEventListener("change",toggleLeaveTime);
@@ -897,7 +896,7 @@ onAuthStateChanged(auth,async user=>{
     const lv={id,userId:UID,userName:UNAME,date,type,time:"",reason,status:"pending",appliedAt:new Date().toISOString(),notifSeen:false};
     if(type==="振替休日")lv.workDate=workDate;
     await sLeave(lv);
-    closeLeaveModal();showToast("有給申請を送信しました ✓");
+    closeLeaveModal();showToast("申請を送信しました ✓");
     renderMyLeaveList();renderLeaveBalance();
   });
 
