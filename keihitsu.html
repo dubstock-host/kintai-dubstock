@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>経費・出張報告</title>
+<title>きん太 - 経費管理</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#F7F8FA;--surface:#fff;--s2:#F0F2F5;--bdr:#E2E5EA;--bdr2:#D0D5DD;--acc:#3B82F6;--acc2:#1D4ED8;--tx:#1E293B;--tx2:#64748B;--tx3:#94A3B8;--in:#059669;--out:#DC2626;--warn:#F59E0B;--lv:#7C3AED;}
@@ -11,7 +11,7 @@
 body{font-family:"Noto Sans JP",sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;}
 #loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
 .lcard{background:var(--surface);border:1px solid var(--bdr);border-radius:20px;padding:40px 32px;width:100%;max-width:360px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.08);}
-.llogo{font-family:"DM Mono",monospace;font-size:13px;color:var(--acc);letter-spacing:4px;text-transform:uppercase;margin-bottom:32px;}
+.llogo{font-size:26px;font-weight:700;color:var(--acc);letter-spacing:2px;margin-bottom:32px;}
 .ltitle{font-size:22px;font-weight:700;margin-bottom:8px;}
 .lsub{font-size:13px;color:var(--tx3);margin-bottom:32px;}
 .lfield{margin-bottom:16px;text-align:left;}
@@ -23,7 +23,12 @@ body{font-family:"Noto Sans JP",sans-serif;background:var(--bg);color:var(--tx);
 #appScreen{display:none;}
 .wrap{max-width:680px;margin:0 auto;padding:24px 16px 80px;}
 header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--bdr);}
-.logo{font-family:"DM Mono",monospace;font-size:13px;color:var(--acc);letter-spacing:3px;text-transform:uppercase;font-weight:500;}
+.brand{font-size:19px;font-weight:700;color:var(--acc);letter-spacing:1px;line-height:1;white-space:nowrap;}
+.brandnav{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.modnav{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.mod{font-family:"DM Mono",monospace;font-size:13px;letter-spacing:3px;text-transform:uppercase;font-weight:500;color:var(--tx3);background:transparent;border:1px solid var(--bdr);border-radius:8px;padding:6px 14px;text-decoration:none;white-space:nowrap;}
+.mod.active{color:var(--acc);background:#EFF6FF;border:1.5px solid var(--acc);}
+.mod.soon{opacity:.38;pointer-events:none;}
 .uinfo{display:flex;align-items:center;gap:10px;}
 .avatar{width:36px;height:36px;border-radius:50%;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;}
 .obtn{font-size:11px;color:var(--tx3);background:transparent;border:1px solid var(--bdr);border-radius:6px;padding:4px 10px;cursor:pointer;}
@@ -240,8 +245,8 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 
 <div id="loginScreen">
   <div class="lcard">
-    <div class="llogo">DUBSTOCK</div>
-    <div class="ltitle">経費・出張報告</div>
+    <div class="llogo">きん太</div>
+    <div class="ltitle">経費管理</div>
     <div class="lsub">アカウントでログイン</div>
     <div class="lfield"><label>メールアドレス</label><input type="email" id="loginEmail" placeholder="example@email.com"></div>
     <div class="lfield"><label>パスワード</label><input type="password" id="loginPass" placeholder="password"></div>
@@ -253,10 +258,20 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 <div id="appScreen">
 <div class="wrap">
   <header>
-    <!-- アプリ切替ボタン：KEIHIが現在のページなのでアクティブ表示 -->
-    <div style="display:flex;align-items:center;gap:6px;">
-      <a href="index.html" style="font-family:'DM Mono',monospace;font-size:13px;letter-spacing:3px;text-transform:uppercase;font-weight:500;color:var(--tx3);background:transparent;border:1px solid var(--bdr);border-radius:8px;padding:6px 14px;text-decoration:none;">KINTAI</a>
-      <span style="font-family:'DM Mono',monospace;font-size:13px;letter-spacing:3px;text-transform:uppercase;font-weight:500;color:var(--acc);background:#EFF6FF;border:1.5px solid var(--acc);border-radius:8px;padding:6px 14px;">KEIHI</span>
+    <div class="brandnav">
+      <span class="brand">きん太</span>
+      <nav class="modnav">
+        <a class="mod" href="index.html">KINTAI</a>
+        <span class="mod active">KEIHI</span>
+        <!-- 将来実装のモジュール。実装時にコメントを外す
+        <a class="mod" href="shift.html">SHIFT</a>
+        <a class="mod" href="motiva.html">MOTIVA</a>
+        <a class="mod" href="feedback.html">FB</a>
+        SHIFT  : シフト管理（アルバイトアカウントのみ）
+        MOTIVA : モチバ（モチベーション管理・離職防止）
+        FB     : フィードバック（評価）
+        -->
+      </nav>
     </div>
     <div class="uinfo">
       <div class="avatar" id="uavatar">－</div>
@@ -731,7 +746,7 @@ onAuthStateChanged(auth,async user=>{
   document.getElementById("uname").textContent=UNAME;
   document.getElementById("uavatar").textContent=UNAME.slice(0,1)||"－";
   document.getElementById("printName").textContent=UNAME;
-  document.title="経費・出張報告 - "+UNAME;
+  document.title="きん太 - 経費管理 - "+UNAME;
   document.getElementById("loginScreen").style.display="none";
   document.getElementById("appScreen").style.display="block";
   if(window._expInitialized)return;
