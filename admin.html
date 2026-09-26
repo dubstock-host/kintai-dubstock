@@ -115,6 +115,19 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .ti-val{font-size:13px;color:var(--tx);font-weight:500;}
 @media(max-width:600px){.sgrid{grid-template-columns:repeat(2,1fr);}.emp-cards{grid-template-columns:1fr;}.travel-info{grid-template-columns:repeat(2,1fr);}}
 
+/* ── 社員管理 ───────────────────────────────── */
+.mem-card{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:16px;margin-bottom:14px;}
+.mem-h{font-size:11px;color:var(--tx3);letter-spacing:2px;font-weight:600;margin-bottom:12px;}
+.mem-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;}
+.mem-grid label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--tx2);font-weight:600;}
+.mem-grid input,.mem-grid select{padding:9px 10px;border:1px solid var(--bdr2);border-radius:8px;font-size:14px;font-family:inherit;background:var(--s2);color:var(--tx);}
+.mem-note{font-size:11px;color:var(--tx3);margin-top:8px;line-height:1.6;}
+.mem-btn{width:100%;padding:12px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:var(--acc);color:#fff;border:none;}
+.mem-btn:disabled{opacity:.5;cursor:wait;}
+.mem-tag{display:inline-block;font-size:10px;font-weight:600;border-radius:4px;padding:1px 6px;}
+.mem-off{opacity:.5;}
+@media(max-width:560px){.mem-grid{grid-template-columns:1fr;}}
+
 /* ── 月次書き出し ───────────────────────────────── */
 .exp-chk{display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 0;cursor:pointer;}
 .exp-chk input{width:16px;height:16px;cursor:pointer;}
@@ -229,6 +242,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
     <button class="tab-btn" data-tab="経費">&#x1F4B0; 経費精算</button>
     <button class="tab-btn" data-tab="出張">&#x2708; 出張報告</button>
     <button class="tab-btn" data-tab="書出">&#x1F4C4; 月次書き出し</button>
+    <button class="tab-btn" data-tab="社員">&#x1F464; 社員管理</button>
   </div>
 
   <div class="tab-content active" id="tab-概要">
@@ -324,6 +338,32 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
     </div>
     <div id="exportDoc"></div>
   </div>
+
+  <!-- 社員管理タブ：アカウントの登録と退職の切替 -->
+  <div class="tab-content" id="tab-社員">
+    <div class="mem-card">
+      <div class="mem-h">社員一覧</div>
+      <div id="memberList"><div class="no-data">読み込み中...</div></div>
+    </div>
+    <div class="mem-card">
+      <div class="mem-h">新規登録</div>
+      <div class="mem-grid">
+        <label>氏名<input id="memName" type="text" placeholder="例：山田 花子"></label>
+        <label>雇用形態
+          <select id="memType"><option value="full">正社員</option><option value="part">パート</option></select>
+        </label>
+        <label>メールアドレス（ログインID）<input id="memEmail" type="email" autocomplete="off"></label>
+        <label>初期パスワード（6文字以上）<input id="memPw" type="text" autocomplete="off"></label>
+        <label>入社日<input id="memHire" type="date"></label>
+        <span></span>
+        <label class="mem-part">週の勤務日数<input id="memDays" type="number" min="1" max="7" placeholder="例：3"></label>
+        <label class="mem-part">週の勤務時間<input id="memHours" type="number" min="1" max="60" step="0.5" placeholder="例：20"></label>
+      </div>
+      <div class="mem-note mem-part">週30時間未満かつ週4日以下の場合、有給の付与日数は勤務日数に応じて自動で少なくなります（労働基準法第39条第3項）。</div>
+      <div class="merr" id="memErr" style="color:var(--out);font-size:13px;min-height:18px;margin:8px 0;"></div>
+      <button id="memRegBtn" class="mem-btn">登録する</button>
+    </div>
+  </div>
 </div>
 </div>
 
@@ -362,9 +402,9 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 <div class="toast" id="toast"></div>
 
 <script type="module">
-import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import {getFirestore,doc,collection,getDocs,getDoc,updateDoc,query,where} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {initializeApp,deleteApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged,createUserWithEmailAndPassword} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {getFirestore,doc,collection,getDocs,getDoc,setDoc,updateDoc,query,where} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const FB={apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",authDomain:"kintai-dubstock.firebaseapp.com",projectId:"kintai-dubstock",storageBucket:"kintai-dubstock.firebasestorage.app",messagingSenderId:"1030065146975",appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"};
 const app=initializeApp(FB);
@@ -379,7 +419,9 @@ async function loadEmployees(){
   const list=[];
   sn.forEach(d=>{
     const u=d.data();
-    list.push({uid:d.id,name:u.name||d.id,avatar:u.avatar||(u.name||"?").slice(0,1),active:u.active!==false});
+    list.push({uid:d.id,name:u.name||d.id,avatar:u.avatar||(u.name||"?").slice(0,1),active:u.active!==false,
+      employmentType:u.employmentType||"full",hireDate:u.hireDate||"",weeklyDays:u.weeklyDays||null,
+      weeklyHours:u.weeklyHours||null,email:u.email||""});
   });
   list.sort((a,b)=>String(a.name).localeCompare(String(b.name),"ja"));
   EMPLOYEES=list;
@@ -401,7 +443,10 @@ let selectedHistUid=null;
 function p2(n){return String(n).padStart(2,"0");}
 function hm(ms){const m=Math.floor(ms/60000);return Math.floor(m/60)+":"+p2(m%60);}
 function ts2hm(ts){if(!ts)return "--:--";const d=new Date(ts);return p2(d.getHours())+":"+p2(d.getMinutes());}
-function brkMs(a,b){if(!a||!b)return 0;const d=new Date(a),s=new Date(d),e=new Date(d);s.setHours(12,0,0,0);e.setHours(13,0,0,0);return Math.max(0,Math.min(b,e.getTime())-Math.max(a,s.getTime()));}
+// 休憩：6時間以下の勤務は引かない。6時間を超えたら 12:00〜13:00 と重なる分を引く。
+// 2026-09-01 以降の勤務に適用する（締め済みの月の数字は変えないため）
+const SHORT_SHIFT_RULE_FROM=new Date(2026,8,1).getTime();
+function brkMs(a,b){if(!a||!b)return 0;if(a>=SHORT_SHIFT_RULE_FROM&&b-a<=6*3600000)return 0;const d=new Date(a),s=new Date(d),e=new Date(d);s.setHours(12,0,0,0);e.setHours(13,0,0,0);return Math.max(0,Math.min(b,e.getTime())-Math.max(a,s.getTime()));}
 // 有給の消化日数。「有給取得」の表示と残日数の計算で必ずこの関数を使うこと
 // （以前は表示が件数、計算が 0.5/0.25 刻みで食い違っていた）
 function leaveDays(type){
@@ -701,6 +746,7 @@ async function buildEmpDoc(emp,y,m,pfx,opts,allExp,allTrv){
   let h="<div class=\"exp-doc\">"
     +"<h2>"+wareki(y,m)+"　勤怠・経費資料</h2>"
     +"<div class=\"doc-meta\"><span>氏名："+esc(emp.name)+"</span>"
+    +(emp.employmentType==="part"?"<span>雇用形態：パート</span>":"")
     +"<span>対象期間："+y+"/"+p2(m+1)+"/01 〜 "+y+"/"+p2(m+1)+"/"+p2(days)+"</span>"
     +"<span>出力日："+new Date().toLocaleDateString("ja-JP")+"</span></div>";
 
@@ -786,6 +832,81 @@ function resetExport(){
   document.getElementById("exportPrintBtn").style.display="none";
 }
 
+// ══ 社員管理 ══
+function renderMembers(){
+  const el=document.getElementById("memberList");
+  if(!EMPLOYEES.length){el.innerHTML="<div class=\"no-data\">まだ社員が登録されていません</div>";return;}
+  el.innerHTML="<div class=\"twrap\"><table class=\"ltable\"><thead><tr><th>氏名</th><th>雇用形態</th><th>入社日</th><th>週の勤務</th><th>状態</th><th></th></tr></thead><tbody>"
+    +EMPLOYEES.map(e=>{
+      const type=e.employmentType==="part"
+        ?"<span class=\"mem-tag\" style=\"background:#FEF9C3;color:#92400E;\">パート</span>"
+        :"<span class=\"mem-tag\" style=\"background:#EFF6FF;color:var(--acc);\">正社員</span>";
+      const week=e.employmentType==="part"?(e.weeklyDays?e.weeklyDays+"日":"―")+" / "+(e.weeklyHours?e.weeklyHours+"h":"―"):"―";
+      return "<tr class=\""+(e.active?"":"mem-off")+"\"><td>"+esc(e.name)+"<div style=\"font-size:11px;color:var(--tx3);\">"+esc(e.email)+"</div></td>"
+        +"<td>"+type+"</td><td>"+esc(e.hireDate||"―")+"</td><td>"+week+"</td>"
+        +"<td>"+(e.active?"在職":"退職")+"</td>"
+        +"<td><button class=\"expbtn mem-toggle\" data-uid=\""+esc(e.uid)+"\" data-active=\""+(e.active?"1":"0")+"\" style=\"padding:4px 10px;font-size:11px;\">"+(e.active?"退職にする":"在職に戻す")+"</button></td></tr>";
+    }).join("")+"</tbody></table></div>";
+  el.querySelectorAll(".mem-toggle").forEach(b=>b.addEventListener("click",async()=>{
+    const toActive=b.dataset.active!=="1";
+    const e=EMPLOYEES.find(x=>x.uid===b.dataset.uid);
+    if(!confirm((e?e.name:"")+" さんを"+(toActive?"在職に戻しますか？":"退職にしますか？\n（ログインできなくなります。過去の記録は残ります）")))return;
+    await updateDoc(doc(db,"users",b.dataset.uid),{active:toActive,updatedAt:new Date().toISOString()});
+    await loadEmployees();renderMembers();showToast(toActive?"在職に戻しました":"退職にしました");
+  }));
+}
+
+function toggleMemType(){
+  const part=document.getElementById("memType").value==="part";
+  document.querySelectorAll(".mem-part").forEach(x=>x.style.display=part?"":"none");
+}
+
+async function registerMember(){
+  const err=document.getElementById("memErr");err.textContent="";
+  const name=document.getElementById("memName").value.trim();
+  const type=document.getElementById("memType").value;
+  const email=document.getElementById("memEmail").value.trim();
+  const pw=document.getElementById("memPw").value;
+  const hire=document.getElementById("memHire").value;
+  const days=Number(document.getElementById("memDays").value);
+  const hours=Number(document.getElementById("memHours").value);
+  if(!name){err.textContent="氏名を入力してください";return;}
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){err.textContent="メールアドレスの形式が正しくありません";return;}
+  if(pw.length<6){err.textContent="初期パスワードは6文字以上にしてください";return;}
+  if(!hire){err.textContent="入社日を入力してください（有給の付与日数の計算に使います）";return;}
+  if(type==="part"&&(!(days>=1&&days<=7)||!(hours>0))){err.textContent="パートは週の勤務日数と時間を入力してください";return;}
+  if(!confirm(name+" さんを登録します。よろしいですか？"))return;
+
+  const btn=document.getElementById("memRegBtn");btn.disabled=true;btn.textContent="登録中…";
+  // 管理者のログイン状態を保ったまま新しいアカウントを作るため、別の Firebase アプリを一時的に使う
+  const sec=initializeApp(FB,"register-"+Date.now());
+  let uid=null;
+  try{
+    const secAuth=getAuth(sec);
+    const cred=await createUserWithEmailAndPassword(secAuth,email,pw);
+    uid=cred.user.uid;
+    await signOut(secAuth);
+    const prof={name,role:"employee",active:true,avatar:name.slice(0,1),employmentType:type,hireDate:hire,email,
+      createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+    if(type==="part"){prof.weeklyDays=days;prof.weeklyHours=hours;}
+    await setDoc(doc(db,"users",uid),prof);
+    ["memName","memEmail","memPw","memHire","memDays","memHours"].forEach(id=>document.getElementById(id).value="");
+    await loadEmployees();renderMembers();
+    showToast(name+" さんを登録しました ✓");
+    alert("登録しました。\n\nログインID："+email+"\n初期パスワード：（入力したもの）\n\n本人にお伝えください。ログイン画面は勤怠画面（index.html）と同じです。");
+  }catch(e){
+    const M={"auth/email-already-in-use":"このメールアドレスは既に登録されています",
+             "auth/invalid-email":"メールアドレスの形式が正しくありません",
+             "auth/weak-password":"パスワードが弱すぎます（6文字以上）",
+             "auth/operation-not-allowed":"Firebase でメール/パスワードのアカウント作成が無効になっています"};
+    err.textContent=(M[e.code]||("登録に失敗しました："+(e.code||e.message)))
+      +(uid?"（アカウントは作成済み UID："+uid+"。プロフィールの保存に失敗しました）":"");
+  }finally{
+    await deleteApp(sec);
+    btn.disabled=false;btn.textContent="登録する";
+  }
+}
+
 // タブ切替
 function showTab(name){
   document.querySelectorAll(".tab-content").forEach(e=>e.classList.remove("active"));
@@ -799,6 +920,7 @@ function showTab(name){
   if(name==="経費")renderExpAdmin();
   if(name==="出張")renderTravelAdmin();
   if(name==="書出"){resetExport();renderExportTab();}
+  if(name==="社員"){renderMembers();toggleMemType();}
 }
 
 // ══ 経費精算 管理 ══
@@ -1035,6 +1157,10 @@ onAuthStateChanged(auth,async function(user){
     a.download=emp.name+"_R"+(y-2018)+"_"+p2(m+1)+"_勤怠.csv";a.click();
     showToast("CSVをダウンロードしました");
   });
+
+  // 社員管理
+  document.getElementById("memType").addEventListener("change",toggleMemType);
+  document.getElementById("memRegBtn").addEventListener("click",registerMember);
 
   // 月次書き出し
   document.getElementById("exportPrevBtn").addEventListener("click",()=>{exportMonth.setMonth(exportMonth.getMonth()-1);resetExport();renderExportTab();});

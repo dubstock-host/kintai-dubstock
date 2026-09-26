@@ -175,7 +175,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
     <div class="clock-time" id="clock">--:--:--</div>
     <div class="clock-date" id="dateStr"></div>
     <div class="day-badge" id="dayLabel"></div>
-    <div style="font-size:11px;color:var(--tx3);margin-top:5px;">定時 10:00〜19:00　休憩 12:00〜13:00</div>
+    <div id="scheduleNote" style="font-size:11px;color:var(--tx3);margin-top:5px;">定時 10:00〜19:00　休憩 12:00〜13:00</div>
   </div>
   <div class="tab-nav">
     <!-- 表示タブを3つに簡略化（打刻修正・履歴確認タブは非表示だが機能は保持） -->
@@ -366,7 +366,7 @@ const app=initializeApp(FB);
 const auth=getAuth(app);
 const db=getFirestore(app);
 
-let UID=null,UNAME="";   // ログイン時に users/{uid} から設定する
+let UID=null,UNAME="",PROF=null;   // ログイン時に users/{uid} から設定する
 const DOW=["日","月","火","水","木","金","土"];
 const EIGHT=8*3600000;
 let HIRE=new Date(2025,8,1);     // users/{uid}.hireDate があれば上書きされる
@@ -389,7 +389,17 @@ const HOLIDAYS=new Set([
   "2027-04-29","2027-05-03","2027-05-04","2027-05-05","2027-07-19","2027-08-11",
   "2027-09-20","2027-09-23","2027-10-11","2027-11-03","2027-11-23",
 ]);
+// 年次有給休暇の付与日数（労働基準法第39条）。m は入社からの月数
+// 通常：週30時間以上 または 週5日以上
 const GRANTS=[{m:6,d:10},{m:18,d:11},{m:30,d:12},{m:42,d:14},{m:54,d:16},{m:66,d:18},{m:78,d:20}];
+// 比例付与：週30時間未満 かつ 週4日以下（労働基準法第39条第3項・施行規則第24条の3）
+const GRANTS_PART={4:[7,8,9,10,12,13,15],3:[5,6,6,8,9,10,11],2:[3,4,4,5,6,6,7],1:[1,2,2,2,3,3,3]};
+function grantTable(prof){
+  const days=Number(prof&&prof.weeklyDays)||5,hours=Number(prof&&prof.weeklyHours)||40;
+  if(hours>=30||days>=5)return GRANTS;
+  const row=GRANTS_PART[Math.max(1,Math.min(4,days))];
+  return GRANTS.map((g,i)=>({m:g.m,d:row[i]}));
+}
 const GAS="https://script.google.com/macros/s/AKfycbxkgq98e6Rq6WUytkom_SUoagYlov5CrQChwHiSc1YgOZSd6Q2nP6A7Yql-_mKqhn7Mig/exec";
 let curMonth=new Date();
 let histMonth=new Date();
@@ -400,7 +410,10 @@ let elTmr=null;
 function p2(n){return String(n).padStart(2,"0");}
 function getWD(ts){const d=ts?new Date(ts):new Date();if(d.getHours()<5)d.setDate(d.getDate()-1);return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate());}
 function toR(s){const p=s.split("-");return "R"+(parseInt(p[0])-2018)+"."+p[1]+"."+p[2];}
-function brkMs(a,b){if(!a||!b)return 0;const d=new Date(a),s=new Date(d),e=new Date(d);s.setHours(12,0,0,0);e.setHours(13,0,0,0);return Math.max(0,Math.min(b,e.getTime())-Math.max(a,s.getTime()));}
+// 休憩：6時間以下の勤務は引かない。6時間を超えたら 12:00〜13:00 と重なる分を引く。
+// 2026-09-01 以降の勤務に適用する（締め済みの月の数字は変えないため）
+const SHORT_SHIFT_RULE_FROM=new Date(2026,8,1).getTime();
+function brkMs(a,b){if(!a||!b)return 0;if(a>=SHORT_SHIFT_RULE_FROM&&b-a<=6*3600000)return 0;const d=new Date(a),s=new Date(d),e=new Date(d);s.setHours(12,0,0,0);e.setHours(13,0,0,0);return Math.max(0,Math.min(b,e.getTime())-Math.max(a,s.getTime()));}
 function hms(ms){const s=Math.floor(ms/1000);return p2(Math.floor(s/3600))+":"+p2(Math.floor((s%3600)/60))+":"+p2(s%60);}
 function hm(ms){const m=Math.floor(ms/60000);return Math.floor(m/60)+":"+p2(m%60);}
 function ts2hm(ts){if(!ts)return "--:--";const d=new Date(ts);return p2(d.getHours())+":"+p2(d.getMinutes());}
@@ -543,9 +556,10 @@ function closeCancelLeaveModal(){document.getElementById("cancelLeaveOverlay").c
 // 有給残日数
 async function renderLeaveBalance(){
   const lvs=await gMyLeaves();const now=new Date();let granted=0;const log=[];
-  GRANTS.forEach(g=>{const gd=new Date(HIRE.getFullYear(),HIRE.getMonth()+g.m,HIRE.getDate());if(gd<=now){const exp=new Date(gd.getFullYear()+2,gd.getMonth(),gd.getDate());if(exp>now){granted+=g.d;log.push({date:gd,days:g.d});}}});
+  const G=grantTable(PROF);
+  G.forEach(g=>{const gd=new Date(HIRE.getFullYear(),HIRE.getMonth()+g.m,HIRE.getDate());if(gd<=now){const exp=new Date(gd.getFullYear()+2,gd.getMonth(),gd.getDate());if(exp>now){granted+=g.d;log.push({date:gd,days:g.d});}}});
   const taken=sumLeaveDays(lvs.filter(lv=>lv.status==="approved"));
-  let next=null;for(const g of GRANTS){const gd=new Date(HIRE.getFullYear(),HIRE.getMonth()+g.m,HIRE.getDate());if(gd>now){next={date:gd,days:g.d};break;}}
+  let next=null;for(const g of G){const gd=new Date(HIRE.getFullYear(),HIRE.getMonth()+g.m,HIRE.getDate());if(gd>now){next={date:gd,days:g.d};break;}}
   const rem=Math.max(0,granted-taken);
   document.getElementById("leaveGranted").textContent=granted;
   document.getElementById("leaveTaken").textContent=taken%1===0?taken:taken.toFixed(1);
@@ -773,7 +787,12 @@ onAuthStateChanged(auth,async user=>{
       :"このアカウントでは勤怠画面を利用できません。";
     return;
   }
-  UID=user.uid;UNAME=prof.name||user.email||"";
+  UID=user.uid;UNAME=prof.name||user.email||"";PROF=prof;
+  if(prof.employmentType==="part"){
+    document.getElementById("scheduleNote").textContent="パート"
+      +(prof.weeklyDays?"　週"+prof.weeklyDays+"日":"")+(prof.weeklyHours?"・"+prof.weeklyHours+"時間":"")
+      +"　休憩 6時間を超える勤務は 12:00〜13:00";
+  }
   if(prof.hireDate){const hp=prof.hireDate.split("-");HIRE=new Date(+hp[0],+hp[1]-1,+hp[2]);}
   document.getElementById("uname").textContent=UNAME;
   document.getElementById("uavatar").textContent=UNAME.slice(0,1)||"－";
