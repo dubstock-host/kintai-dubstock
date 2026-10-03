@@ -862,7 +862,7 @@ async function renderMonthly(){
     const wage=wageFor(PROF,pfx);pc.style.display="";
     document.getElementById("totalPay").textContent=wage?yen(payOf(tw,to,tn,wage)):"時給未設定";
     document.getElementById("payNote").textContent=wage
-      ?"時給 "+wage.toLocaleString()+" 円 × 実労働 "+hm(tw)+(to>0?"　＋残業割増 "+hm(to):"")+(tn>0?"　＋深夜割増 "+hm(tn):"")+"\n交通費・有給の日の賃金は含みません。確定額は管理者が確認します"
+      ?"時給 "+wage.toLocaleString()+" 円 × 実労働 "+hm(tw)+(to>0?"　＋残業割増 "+hm(to):"")+(tn>0?"　＋深夜割増 "+hm(tn):"")+"\n交通費は含みません。交通費は上の「KEIHI」から経費申請してください。確定額は管理者が確認します"
       :"管理者が時給を登録すると表示されます";
     document.getElementById("payNote").style.whiteSpace="pre-line";
   }else pc.style.display="none";
