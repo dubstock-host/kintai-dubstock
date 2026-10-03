@@ -242,6 +242,20 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
   gap: 6px;
 }
 #printBtn:hover { background: #334155; }
+
+/* ── iPad・タッチ端末向け ───────────────────────────────── */
+html{-webkit-text-size-adjust:100%;}
+button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+@media (pointer:coarse){
+  /* iPad/iPhone の Safari は 16px 未満の入力欄をタップすると画面を拡大するため */
+  input,select,textarea{font-size:16px !important;}
+  /* 指で押しやすい大きさにする */
+  button{min-height:36px;}
+  .obtn{padding:8px 12px;font-size:12px;}
+  .mbtn{width:40px;height:40px;}
+  .tab-btn{min-height:44px;}
+}
+@media (min-width:768px){.wrap{max-width:760px;}}
 </style>
 </head>
 <body>

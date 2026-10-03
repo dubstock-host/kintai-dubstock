@@ -169,6 +169,29 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .s-approved{background:#ECFDF5;color:var(--in);border:1px solid #A7F3D0;}
 .s-rejected{background:#FEF2F2;color:var(--out);border:1px solid #FECACA;}
 @media(max-width:400px){.clock-time{font-size:38px;}.trow{grid-template-columns:repeat(2,1fr);}}
+
+/* ── iPad・タッチ端末向け ───────────────────────────────── */
+html{-webkit-text-size-adjust:100%;}
+button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+@media (pointer:coarse){
+  /* iPad/iPhone の Safari は 16px 未満の入力欄をタップすると画面を拡大するため */
+  input,select,textarea{font-size:16px !important;}
+  /* 指で押しやすい大きさにする */
+  button{min-height:36px;}
+  .obtn{padding:8px 12px;font-size:12px;}
+  .mbtn{width:40px;height:40px;}
+  .tab-btn{min-height:44px;}
+}
+/* キーボードが出て画面が狭くなっても、モーダルの上下が切れずにスクロールできるように */
+.overlay{overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch;}
+.overlay.open{align-items:flex-start;}
+.modal{margin:auto;}
+@media (min-width:768px){
+  .wrap{max-width:720px;}
+  .cal-c{min-height:72px;}
+  .cal-t{font-size:11px;}
+}
+@media (pointer:coarse){.ebtn{min-width:40px;padding:6px 10px;font-size:13px;}}
 </style>
 </head>
 <body>
