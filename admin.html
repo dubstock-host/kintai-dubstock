@@ -353,7 +353,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
           <select id="memType"><option value="full">正社員</option><option value="part">パート</option></select>
         </label>
         <label>メールアドレス（ログインID）<input id="memEmail" type="email" autocomplete="off"></label>
-        <label>初期パスワード（6文字以上）<input id="memPw" type="text" autocomplete="off"></label>
+        <label>パスワード（6文字以上）<input id="memPw" type="text" autocomplete="off"></label>
         <label>入社日<input id="memHire" type="date"></label>
         <span></span>
         <label class="mem-part">週の勤務日数<input id="memDays" type="number" min="1" max="7" placeholder="例：3"></label>
@@ -362,6 +362,18 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
       <div class="mem-note mem-part">週30時間未満かつ週4日以下の場合、有給の付与日数は勤務日数に応じて自動で少なくなります（労働基準法第39条第3項）。</div>
       <div class="merr" id="memErr" style="color:var(--out);font-size:13px;min-height:18px;margin:8px 0;"></div>
       <button id="memRegBtn" class="mem-btn">登録する</button>
+    </div>
+    <div class="mem-card">
+      <div class="mem-h">パスワードの変更</div>
+      <div class="mem-grid">
+        <label>社員<select id="pwEmp"></select></label>
+        <label>メールアドレス（ログインID）<input id="pwEmail" type="email" autocomplete="off"></label>
+        <label>今のパスワード<input id="pwOld" type="text" autocomplete="off"></label>
+        <label>新しいパスワード（6文字以上）<input id="pwNew" type="text" autocomplete="off"></label>
+      </div>
+      <div class="mem-note">パスワードは管理者だけが決めて管理します。アプリにもFirebaseにも後から表示できないので、変更したら必ず控えてください。</div>
+      <div class="merr" id="pwErr" style="color:var(--out);font-size:13px;min-height:18px;margin:8px 0;"></div>
+      <button id="pwBtn" class="mem-btn">変更する</button>
     </div>
   </div>
 </div>
@@ -403,7 +415,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 
 <script type="module">
 import {initializeApp,deleteApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged,createUserWithEmailAndPassword} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged,createUserWithEmailAndPassword,updatePassword} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {getFirestore,doc,collection,getDocs,getDoc,setDoc,updateDoc,query,where} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const FB={apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",authDomain:"kintai-dubstock.firebaseapp.com",projectId:"kintai-dubstock",storageBucket:"kintai-dubstock.firebasestorage.app",messagingSenderId:"1030065146975",appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"};
@@ -847,6 +859,9 @@ function renderMembers(){
         +"<td>"+(e.active?"在職":"退職")+"</td>"
         +"<td><button class=\"expbtn mem-toggle\" data-uid=\""+esc(e.uid)+"\" data-active=\""+(e.active?"1":"0")+"\" style=\"padding:4px 10px;font-size:11px;\">"+(e.active?"退職にする":"在職に戻す")+"</button></td></tr>";
     }).join("")+"</tbody></table></div>";
+  const sel=document.getElementById("pwEmp"),cur=sel.value;
+  sel.innerHTML="<option value=\"\">選んでください</option>"+EMPLOYEES.map(e=>"<option value=\""+esc(e.uid)+"\">"+esc(e.name)+"</option>").join("");
+  sel.value=cur;
   el.querySelectorAll(".mem-toggle").forEach(b=>b.addEventListener("click",async()=>{
     const toActive=b.dataset.active!=="1";
     const e=EMPLOYEES.find(x=>x.uid===b.dataset.uid);
@@ -854,6 +869,51 @@ function renderMembers(){
     await updateDoc(doc(db,"users",b.dataset.uid),{active:toActive,updatedAt:new Date().toISOString()});
     await loadEmployees();renderMembers();showToast(toActive?"在職に戻しました":"退職にしました");
   }));
+}
+
+function pickPwEmp(){
+  const e=EMPLOYEES.find(x=>x.uid===document.getElementById("pwEmp").value);
+  document.getElementById("pwEmail").value=e&&e.email?e.email:"";
+}
+
+// 社員側には変更画面を置かない。管理者が今のパスワードで一時的にログインし、新しいものに書き換える
+async function changeMemberPw(){
+  const err=document.getElementById("pwErr");err.textContent="";
+  const e=EMPLOYEES.find(x=>x.uid===document.getElementById("pwEmp").value);
+  const email=document.getElementById("pwEmail").value.trim();
+  const oldPw=document.getElementById("pwOld").value;
+  const newPw=document.getElementById("pwNew").value;
+  if(!e){err.textContent="社員を選んでください";return;}
+  if(!email){err.textContent="メールアドレスを入力してください";return;}
+  if(!oldPw){err.textContent="今のパスワードを入力してください";return;}
+  if(newPw.length<6){err.textContent="新しいパスワードは6文字以上にしてください";return;}
+  if(newPw===oldPw){err.textContent="今と同じパスワードです";return;}
+  if(!confirm(e.name+" さんのパスワードを変更します。よろしいですか？"))return;
+
+  const btn=document.getElementById("pwBtn");btn.disabled=true;btn.textContent="変更中…";
+  const sec=initializeApp(FB,"pw-"+Date.now());
+  try{
+    const secAuth=getAuth(sec);
+    const cred=await signInWithEmailAndPassword(secAuth,email,oldPw);
+    if(cred.user.uid!==e.uid){await signOut(secAuth);err.textContent="このメールアドレスは "+e.name+" さんのものではありません";return;}
+    await updatePassword(cred.user,newPw);
+    await signOut(secAuth);
+    if(!e.email)await updateDoc(doc(db,"users",e.uid),{email,updatedAt:new Date().toISOString()});
+    ["pwOld","pwNew"].forEach(id=>document.getElementById(id).value="");
+    await loadEmployees();renderMembers();
+    showToast(e.name+" さんのパスワードを変更しました ✓");
+  }catch(x){
+    const M={"auth/invalid-credential":"メールアドレスか今のパスワードが違います",
+             "auth/wrong-password":"今のパスワードが違います",
+             "auth/user-not-found":"このメールアドレスのアカウントがありません",
+             "auth/user-disabled":"このアカウントは Firebase で無効になっています",
+             "auth/too-many-requests":"失敗が続いたため一時的にロックされています。しばらくしてから試してください",
+             "auth/weak-password":"新しいパスワードが弱すぎます（6文字以上）"};
+    err.textContent=M[x.code]||("変更に失敗しました："+(x.code||x.message));
+  }finally{
+    await deleteApp(sec);
+    btn.disabled=false;btn.textContent="変更する";
+  }
 }
 
 function toggleMemType(){
@@ -872,7 +932,7 @@ async function registerMember(){
   const hours=Number(document.getElementById("memHours").value);
   if(!name){err.textContent="氏名を入力してください";return;}
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){err.textContent="メールアドレスの形式が正しくありません";return;}
-  if(pw.length<6){err.textContent="初期パスワードは6文字以上にしてください";return;}
+  if(pw.length<6){err.textContent="パスワードは6文字以上にしてください";return;}
   if(!hire){err.textContent="入社日を入力してください（有給の付与日数の計算に使います）";return;}
   if(type==="part"&&(!(days>=1&&days<=7)||!(hours>0))){err.textContent="パートは週の勤務日数と時間を入力してください";return;}
   if(!confirm(name+" さんを登録します。よろしいですか？"))return;
@@ -893,7 +953,7 @@ async function registerMember(){
     ["memName","memEmail","memPw","memHire","memDays","memHours"].forEach(id=>document.getElementById(id).value="");
     await loadEmployees();renderMembers();
     showToast(name+" さんを登録しました ✓");
-    alert("登録しました。\n\nログインID："+email+"\n初期パスワード：（入力したもの）\n\n本人にお伝えください。ログイン画面は勤怠画面（index.html）と同じです。");
+    alert("登録しました。\n\nログインID："+email+"\nパスワード：（入力したもの）\n\n控えてから本人にお伝えください。ログイン画面は勤怠画面（index.html）と同じです。");
   }catch(e){
     const M={"auth/email-already-in-use":"このメールアドレスは既に登録されています",
              "auth/invalid-email":"メールアドレスの形式が正しくありません",
@@ -1161,6 +1221,8 @@ onAuthStateChanged(auth,async function(user){
   // 社員管理
   document.getElementById("memType").addEventListener("change",toggleMemType);
   document.getElementById("memRegBtn").addEventListener("click",registerMember);
+  document.getElementById("pwEmp").addEventListener("change",pickPwEmp);
+  document.getElementById("pwBtn").addEventListener("click",changeMemberPw);
 
   // 月次書き出し
   document.getElementById("exportPrevBtn").addEventListener("click",()=>{exportMonth.setMonth(exportMonth.getMonth()-1);resetExport();renderExportTab();});
