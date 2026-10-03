@@ -248,7 +248,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
       <div class="sc"><div class="slabel">予定時間</div><div class="sval" id="shiftHours">-</div></div>
     </div>
     <div class="log-card" id="shiftList"><div class="no-data">読み込み中...</div></div>
-    <div style="font-size:11px;color:var(--tx3);margin:10px 2px 16px;line-height:1.6;">シフトはGoogleカレンダーから自動で取り込まれます。変更はカレンダー側で行ってください。</div>
+    <div id="shiftSyncSt" style="font-size:11px;color:var(--tx3);margin:10px 2px 16px;line-height:1.6;">シフトはGoogleカレンダーから取り込まれます。変更はカレンダー側で行ってください。</div>
     <button class="btn-leave" id="shiftLeaveBtn">&#x1F4C5; 有給・振替休日の申請</button>
   </div>
 
@@ -624,6 +624,9 @@ async function renderLeaveBalance(){
 // ── パート：シフト（Googleカレンダー由来）と業務内容 ──
 const isPart=()=>!!(PROF&&PROF.employmentType==="part");
 let shiftMonth=new Date(),PLANS_ERR=null;
+// シフトタブを開いたときだけ、GAS（tools/gas-shift-sync.gs）にその月の同期を頼む。定期同期はしない
+const SHIFT_SYNC_URL="https://script.google.com/macros/s/AKfycbytlfJQeqet41SlgX30xkIpObMmF4YRYTxnnxbZsSdLY6psdh0dlZEp_RiZ3TZXC_PiQg/exec";
+let shiftSyncSeq=0;
 // shifts/{uid}_{date} = {userId,date,items:[{start:"HH:MM",end:"HH:MM",title}]}
 async function gMonthPlans(y,m){
   PLANS_ERR=null;const r={};const pfx=y+"-"+p2(m);
@@ -635,8 +638,19 @@ async function gMonthPlans(y,m){
 }
 const hm2min=t=>{const [h,m]=String(t).split(":").map(Number);return h*60+m;};
 function planMs(pl){return pl.items.reduce((t,i)=>{let d=hm2min(i.end)-hm2min(i.start);if(d<=0)d+=1440;return t+d*60000;},0);}
-async function renderShiftTab(){
+async function renderShiftTab(sync=true){
   const y=shiftMonth.getFullYear(),m=shiftMonth.getMonth();
+  if(sync&&SHIFT_SYNC_URL){
+    const seq=++shiftSyncSeq,stEl=document.getElementById("shiftSyncSt");
+    stEl.textContent="🔄 Googleカレンダーと同期しています…";
+    fetch(SHIFT_SYNC_URL+"?uid="+encodeURIComponent(UID)+"&ym="+y+"-"+p2(m+1))
+      .then(r=>r.json()).then(j=>{
+        if(seq!==shiftSyncSeq)return;   // 月を切り替えた後に古い結果が返ってきた
+        stEl.textContent=j.ok?"✓ Googleカレンダーと同期しました（"+new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})+"）。変更はカレンダー側で行ってください。"
+          :"⚠ 同期できませんでした（"+(j.error||"不明なエラー")+"）。前回取り込んだシフトを表示しています。";
+        if(j.ok)renderShiftTab(false);
+      }).catch(()=>{if(seq===shiftSyncSeq)stEl.textContent="⚠ 同期できませんでした（通信エラー）。前回取り込んだシフトを表示しています。";});
+  }
   document.getElementById("shiftMonthLabel").textContent="R"+(y-2018)+"年"+(m+1)+"月";
   const plans=await gMonthPlans(y,m+1);const recs=await gMonthRecs(y,m+1);
   const el=document.getElementById("shiftList");
