@@ -236,6 +236,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
       <div class="sc"><div class="slabel">総実労働時間</div><div class="sval" id="totalHours">0:00</div></div>
       <div class="sc"><div class="slabel">残業時間</div><div class="sval" id="totalOT" style="color:var(--out)">0:00</div><div style="font-size:11px;color:var(--tx3);margin-top:2px;">実労働8h超/日</div></div>
       <div class="sc"><div class="slabel">有休取得日数</div><div class="sval" id="totalLeave" style="color:var(--lv)">0 日</div></div>
+      <div class="sc" id="payCard" style="grid-column:1/-1;display:none;"><div class="slabel">給与見込み（時給計算）</div><div class="sval" id="totalPay">-</div><div id="payNote" style="font-size:11px;color:var(--tx3);margin-top:4px;line-height:1.6;"></div></div>
     </div>
     <div class="twrap">
       <table class="ltable">
@@ -394,6 +395,14 @@ const HOLIDAYS=new Set([
 const GRANTS=[{m:6,d:10},{m:18,d:11},{m:30,d:12},{m:42,d:14},{m:54,d:16},{m:66,d:18},{m:78,d:20}];
 // 比例付与：週30時間未満 かつ 週4日以下（労働基準法第39条第3項・施行規則第24条の3）
 const GRANTS_PART={4:[7,8,9,10,12,13,15],3:[5,6,6,8,9,10,11],2:[3,4,4,5,6,6,7],1:[1,2,2,2,3,3,3]};
+// ── パートの時給計算（index.html と admin.html に同じものを置く）──
+// 時給は users.hourlyWages=[{from:"YYYY-MM",wage}]。対象月以前で一番新しいものを使う（昇給しても過去の月は変わらない）
+function wageFor(prof,ym){const l=((prof&&prof.hourlyWages)||[]).filter(w=>w&&w.from<=ym&&Number(w.wage)>0).sort((a,b)=>a.from<b.from?1:-1);return l.length?Number(l[0].wage):0;}
+// 深夜（22:00〜翌5:00）にかかる時間
+function nightMs(a,b){if(!a||!b)return 0;let t=0;const d=new Date(a);for(let k=-1;k<=1;k++){const s=new Date(d.getFullYear(),d.getMonth(),d.getDate()+k,22,0).getTime();t+=Math.max(0,Math.min(b,s+7*3600000)-Math.max(a,s));}return t;}
+// 月の支給見込み＝実労働×時給 ＋（1日8h超＋深夜）×時給×25%。1分単位で計算し、円未満は月の合計で四捨五入
+function payOf(wMs,otMs,ntMs,wage){return Math.round((wMs+0.25*otMs+0.25*ntMs)/3600000*wage);}
+function yen(n){return Number(n||0).toLocaleString()+" 円";}
 function grantTable(prof){
   const days=Number(prof&&prof.weeklyDays)||5,hours=Number(prof&&prof.weeklyHours)||40;
   if(hours>=30||days>=5)return GRANTS;
@@ -575,7 +584,7 @@ async function renderMonthly(){
   const y=curMonth.getFullYear(),m=curMonth.getMonth();const r=y-2018;
   document.getElementById("monthLabel").textContent="R"+r+"年"+(m+1)+"月";
   const recs=await gMonthRecs(y,m+1);const lvs=await gMyLeaves();
-  const days=new Date(y,m+1,0).getDate();let tw=0,to=0,wd=0,tb="";
+  const days=new Date(y,m+1,0).getDate();let tw=0,to=0,tn=0,wd=0,tb="";const pfx=y+"-"+p2(m+1);
   const aLvs=lvs.filter(lv=>{const d=new Date(lv.date.replace(/-/g,"/"));return d.getFullYear()===y&&d.getMonth()===m&&lv.status==="approved";});
   for(let d=1;d<=days;d++){
     const date=y+"-"+p2(m+1)+"-"+p2(d);const rec=recs[date];
@@ -631,7 +640,7 @@ async function renderMonthly(){
     // 出勤日数は「出勤・退勤とも打刻が揃っている日」だけを数える。
     // 有給の日と退勤未打刻の日はここに到達しないため加算されない。
     wd++;
-    const s=shifts[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);tw+=wms;to+=oms;
+    const s=shifts[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);tw+=wms;to+=oms;tn+=nightMs(s.in,s.out);
     const dow=DOW[new Date(date).getDay()];
     // 土日・祝日の出勤は印を付ける。振替休日から参照されていれば「振替済」
     const isOffDay=dateObj.getDay()===0||dateObj.getDay()===6||HOLIDAYS.has(date);
@@ -657,6 +666,15 @@ async function renderMonthly(){
   document.getElementById("totalHours").textContent=hm(tw);
   document.getElementById("totalOT").textContent=hm(to);
   document.getElementById("totalLeave").textContent=fmtDays(sumLeaveDays(aLvs));
+  const pc=document.getElementById("payCard");
+  if(PROF&&PROF.employmentType==="part"){
+    const wage=wageFor(PROF,pfx);pc.style.display="";
+    document.getElementById("totalPay").textContent=wage?yen(payOf(tw,to,tn,wage)):"時給未設定";
+    document.getElementById("payNote").textContent=wage
+      ?"時給 "+wage.toLocaleString()+" 円 × 実労働 "+hm(tw)+(to>0?"　＋残業割増 "+hm(to):"")+(tn>0?"　＋深夜割増 "+hm(tn):"")+"\n交通費・有給の日の賃金は含みません。確定額は管理者が確認します"
+      :"管理者が時給を登録すると表示されます";
+    document.getElementById("payNote").style.whiteSpace="pre-line";
+  }else pc.style.display="none";
 }
 
 function jumpToEdit(date){

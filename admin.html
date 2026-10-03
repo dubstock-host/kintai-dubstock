@@ -266,6 +266,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
       <div class="sc"><div class="slabel">総実労働</div><div class="sval" id="totalHours">-</div></div>
       <div class="sc"><div class="slabel">残業時間</div><div class="sval" id="totalOT" style="color:var(--out)">-</div></div>
       <div class="sc"><div class="slabel">有休取得</div><div class="sval" id="totalLeave" style="color:var(--lv)">-</div></div>
+      <div class="sc" id="payCard" style="grid-column:1/-1;display:none;"><div class="slabel">給与見込み（時給計算）</div><div class="sval" id="totalPay">-</div><div id="payNote" style="font-size:11px;color:var(--tx3);margin-top:4px;line-height:1.6;"></div></div>
     </div>
     <div class="twrap"><table class="ltable">
       <thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実労働</th><th>残業</th></tr></thead>
@@ -358,6 +359,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
         <span></span>
         <label class="mem-part">週の勤務日数<input id="memDays" type="number" min="1" max="7" placeholder="例：3"></label>
         <label class="mem-part">週の勤務時間<input id="memHours" type="number" min="1" max="60" step="0.5" placeholder="例：20"></label>
+        <label class="mem-part">時給（円）<input id="memWage" type="number" min="1" step="1" placeholder="例：1500"></label>
       </div>
       <div class="mem-note mem-part">週30時間未満かつ週4日以下の場合、有給の付与日数は勤務日数に応じて自動で少なくなります（労働基準法第39条第3項）。</div>
       <div class="merr" id="memErr" style="color:var(--out);font-size:13px;min-height:18px;margin:8px 0;"></div>
@@ -435,7 +437,7 @@ async function loadEmployees(){
     const u=d.data();
     list.push({uid:d.id,name:u.name||d.id,avatar:u.avatar||(u.name||"?").slice(0,1),active:u.active!==false,
       employmentType:u.employmentType||"full",hireDate:u.hireDate||"",weeklyDays:u.weeklyDays||null,
-      weeklyHours:u.weeklyHours||null,email:u.email||""});
+      weeklyHours:u.weeklyHours||null,email:u.email||"",hourlyWages:Array.isArray(u.hourlyWages)?u.hourlyWages:[]});
   });
   list.sort((a,b)=>String(a.name).localeCompare(String(b.name),"ja"));
   EMPLOYEES=list;
@@ -463,6 +465,14 @@ const SHORT_SHIFT_RULE_FROM=new Date(2026,8,1).getTime();
 function brkMs(a,b){if(!a||!b)return 0;if(a>=SHORT_SHIFT_RULE_FROM&&b-a<=6*3600000)return 0;const d=new Date(a),s=new Date(d),e=new Date(d);s.setHours(12,0,0,0);e.setHours(13,0,0,0);return Math.max(0,Math.min(b,e.getTime())-Math.max(a,s.getTime()));}
 // 有給の消化日数。「有給取得」の表示と残日数の計算で必ずこの関数を使うこと
 // （以前は表示が件数、計算が 0.5/0.25 刻みで食い違っていた）
+// ── パートの時給計算（index.html と admin.html に同じものを置く）──
+// 時給は users.hourlyWages=[{from:"YYYY-MM",wage}]。対象月以前で一番新しいものを使う（昇給しても過去の月は変わらない）
+function wageFor(prof,ym){const l=((prof&&prof.hourlyWages)||[]).filter(w=>w&&w.from<=ym&&Number(w.wage)>0).sort((a,b)=>a.from<b.from?1:-1);return l.length?Number(l[0].wage):0;}
+// 深夜（22:00〜翌5:00）にかかる時間
+function nightMs(a,b){if(!a||!b)return 0;let t=0;const d=new Date(a);for(let k=-1;k<=1;k++){const s=new Date(d.getFullYear(),d.getMonth(),d.getDate()+k,22,0).getTime();t+=Math.max(0,Math.min(b,s+7*3600000)-Math.max(a,s));}return t;}
+// 月の支給見込み＝実労働×時給 ＋（1日8h超＋深夜）×時給×25%。1分単位で計算し、円未満は月の合計で四捨五入
+function payOf(wMs,otMs,ntMs,wage){return Math.round((wMs+0.25*otMs+0.25*ntMs)/3600000*wage);}
+function yen(n){return Number(n||0).toLocaleString()+" 円";}
 function leaveDays(type){
   // 振替休日は年次有給休暇ではないため、残日数を消化しない
   if(type==="振替休日")return 0;
@@ -624,7 +634,7 @@ async function renderKintai(){
   const allRecs=await getRecsByUid(selectedKintaiUid);
   const pfx=y+"-"+p2(m+1);const recs={};Object.keys(allRecs).forEach(k=>{if(k.startsWith(pfx))recs[k]=allRecs[k];});
   const lvs=await getLeavesByUid(selectedKintaiUid);
-  const days=new Date(y,m+1,0).getDate();let tw=0,to=0,wd=0,tb="";
+  const days=new Date(y,m+1,0).getDate();let tw=0,to=0,tn=0,wd=0,tb="";
   const aLvs=lvs.filter(lv=>{const d=new Date(lv.date.replace(/-/g,"/"));return d.getFullYear()===y&&d.getMonth()===m&&lv.status==="approved";});
   for(let d=1;d<=days;d++){
     const date=y+"-"+p2(m+1)+"-"+p2(d);const rec=recs[date];
@@ -645,7 +655,7 @@ async function renderKintai(){
     }
     // 出勤日数は「出勤・退勤とも打刻が揃っている日」だけを数える（有給の日は除く）
     wd++;
-    const s=shifts[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);tw+=wms;to+=oms;
+    const s=shifts[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);tw+=wms;to+=oms;tn+=nightMs(s.in,s.out);
     const dow=DOW[new Date(date).getDay()];
     tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td>"+ts2hm(s.in)+"</td><td>"+ts2hm(s.out)+"</td><td>"+(bms>0?hm(bms):"―")+"</td><td>"+hm(wms)+"</td><td class=\""+(oms>0?"ot":"")+"\">"+(oms>0?hm(oms):"―")+"</td></tr>";
   }
@@ -654,6 +664,16 @@ async function renderKintai(){
   document.getElementById("totalHours").textContent=hm(tw);
   document.getElementById("totalOT").textContent=hm(to);
   document.getElementById("totalLeave").textContent=fmtDays(sumLeaveDays(aLvs));
+  const emp=EMPLOYEES.find(e=>e.uid===selectedKintaiUid);
+  const pc=document.getElementById("payCard");
+  if(emp&&emp.employmentType==="part"){
+    const wage=wageFor(emp,pfx);pc.style.display="";
+    document.getElementById("totalPay").textContent=wage?yen(payOf(tw,to,tn,wage)):"時給未設定";
+    document.getElementById("payNote").textContent=wage
+      ?"時給 "+wage.toLocaleString()+" 円 × 実労働 "+hm(tw)+(to>0?"　＋残業割増 "+hm(to):"")+(tn>0?"　＋深夜割増 "+hm(tn):"")+"\n交通費・有給の日の賃金は含みません。確定前に内容を確認してください"
+      :"管理者が時給を登録すると表示されます";
+    document.getElementById("payNote").style.whiteSpace="pre-line";
+  }else pc.style.display="none";
 }
 
 // 申請履歴
@@ -733,7 +753,7 @@ async function buildEmpDoc(emp,y,m,pfx,opts,allExp,allTrv){
   const recs=await getRecsByUid(emp.uid);
   const lvs=await getLeavesByUid(emp.uid);
   const days=new Date(y,m+1,0).getDate();
-  let wd=0,tw=0,to=0,rows="";
+  let wd=0,tw=0,to=0,tn=0,rows="";
   for(let d=1;d<=days;d++){
     const date=y+"-"+p2(m+1)+"-"+p2(d);
     const rec=recs[date];
@@ -748,7 +768,7 @@ async function buildEmpDoc(emp,y,m,pfx,opts,allExp,allTrv){
     // 出勤日数は出勤・退勤とも打刻が揃っている日のみ（画面表示と同じ定義）
     wd++;
     const x=shifts[0],bms=brkMs(x.in,x.out),wms=Math.max(0,x.out-x.in-bms),oms=Math.max(0,wms-EIGHT);
-    tw+=wms;to+=oms;
+    tw+=wms;to+=oms;tn+=nightMs(x.in,x.out);
     rows+="<tr><td>"+date.slice(5)+"("+dow+")</td><td>"+ts2hm(x.in)+"</td><td>"+ts2hm(x.out)+"</td>"
       +"<td class=\"num\">"+(bms>0?hm(bms):"―")+"</td><td class=\"num\">"+hm(wms)+"</td>"
       +"<td class=\"num\">"+(oms>0?hm(oms):"―")+"</td></tr>";
@@ -772,6 +792,10 @@ async function buildEmpDoc(emp,y,m,pfx,opts,allExp,allTrv){
       +"<div><div class=\"k\">残業時間</div><div class=\"v\">"+hm(to)+"</div></div>"
       +"<div><div class=\"k\">有給取得</div><div class=\"v\">"+fmtDays(paid)+"</div></div>"
       +"<div><div class=\"k\">振替休日</div><div class=\"v\">"+swaps+" 日</div></div>"
+      +(emp.employmentType==="part"?(()=>{const w=wageFor(emp,pfx);
+          return "<div><div class=\"k\">時給</div><div class=\"v\">"+(w?w.toLocaleString()+" 円":"未設定")+"</div></div>"
+            +"<div><div class=\"k\">支給見込み</div><div class=\"v\">"+(w?yen(payOf(tw,to,tn,w)):"―")+"</div></div>"
+            +(tn>0?"<div><div class=\"k\">深夜時間</div><div class=\"v\">"+hm(tn)+"</div></div>":"");})():"")
       +"</div>"
       +"<table class=\"t-kin\"><thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実労働</th><th>残業</th></tr></thead>"
       +"<tbody>"+(rows||"<tr><td colspan=\"6\">記録なし</td></tr>")+"</tbody></table>";
@@ -850,7 +874,7 @@ function resetExport(){
 function renderMembers(){
   const el=document.getElementById("memberList");
   if(!EMPLOYEES.length){el.innerHTML="<div class=\"no-data\">まだ社員が登録されていません</div>";return;}
-  el.innerHTML="<div class=\"twrap\"><table class=\"ltable\"><thead><tr><th>氏名</th><th>雇用形態</th><th>入社日</th><th>週の勤務</th><th>状態</th><th></th></tr></thead><tbody>"
+  el.innerHTML="<div class=\"twrap\"><table class=\"ltable\"><thead><tr><th>氏名</th><th>雇用形態</th><th>入社日</th><th>週の勤務</th><th>時給</th><th>状態</th><th></th></tr></thead><tbody>"
     +EMPLOYEES.map(e=>{
       const type=e.employmentType==="part"
         ?"<span class=\"mem-tag\" style=\"background:#FEF9C3;color:#92400E;\">パート</span>"
@@ -858,12 +882,15 @@ function renderMembers(){
       const week=e.employmentType==="part"?(e.weeklyDays?e.weeklyDays+"日":"―")+" / "+(e.weeklyHours?e.weeklyHours+"h":"―"):"―";
       return "<tr class=\""+(e.active?"":"mem-off")+"\"><td>"+esc(e.name)+"<div style=\"font-size:11px;color:var(--tx3);\">"+esc(e.email)+"</div></td>"
         +"<td>"+type+"</td><td>"+esc(e.hireDate||"―")+"</td><td>"+week+"</td>"
+        +"<td>"+(e.employmentType==="part"?(()=>{const w=wageFor(e,CUR_YM());return (w?w.toLocaleString()+"円":"<span style=\"color:var(--out);\">未設定</span>")
+          +" <button class=\"expbtn mem-wage\" data-uid=\""+esc(e.uid)+"\" style=\"padding:2px 8px;font-size:11px;\">変更</button>";})():"―")+"</td>"
         +"<td>"+(e.active?"在職":"退職")+"</td>"
         +"<td><button class=\"expbtn mem-toggle\" data-uid=\""+esc(e.uid)+"\" data-active=\""+(e.active?"1":"0")+"\" style=\"padding:4px 10px;font-size:11px;\">"+(e.active?"退職にする":"在職に戻す")+"</button></td></tr>";
     }).join("")+"</tbody></table></div>";
   const sel=document.getElementById("pwEmp"),cur=sel.value;
   sel.innerHTML="<option value=\"\">選んでください</option>"+EMPLOYEES.map(e=>"<option value=\""+esc(e.uid)+"\">"+esc(e.name)+"</option>").join("");
   sel.value=cur;
+  el.querySelectorAll(".mem-wage").forEach(b=>b.addEventListener("click",()=>setWage(b.dataset.uid)));
   el.querySelectorAll(".mem-toggle").forEach(b=>b.addEventListener("click",async()=>{
     const toActive=b.dataset.active!=="1";
     const e=EMPLOYEES.find(x=>x.uid===b.dataset.uid);
@@ -871,6 +898,21 @@ function renderMembers(){
     await updateDoc(doc(db,"users",b.dataset.uid),{active:toActive,updatedAt:new Date().toISOString()});
     await loadEmployees();renderMembers();showToast(toActive?"在職に戻しました":"退職にしました");
   }));
+}
+
+function CUR_YM(){const d=new Date();return d.getFullYear()+"-"+p2(d.getMonth()+1);}
+// 時給は履歴で持つ。適用開始月より前の月の計算には、それまでの時給が使われる
+async function setWage(uid){
+  const e=EMPLOYEES.find(x=>x.uid===uid);if(!e)return;
+  const cur=wageFor(e,CUR_YM());
+  const w=prompt(e.name+" さんの時給（円）",cur||"");if(w===null)return;
+  const wage=Number(String(w).replace(/[,，円\s]/g,""));
+  if(!(wage>0)){alert("時給は数字で入力してください");return;}
+  const from=prompt("いつの勤務から適用しますか？（例：2026-09）",CUR_YM());if(from===null)return;
+  if(!/^\d{4}-\d{2}$/.test(from.trim())){alert("「2026-09」の形で入力してください");return;}
+  const list=(e.hourlyWages||[]).filter(x=>x.from!==from.trim()).concat([{from:from.trim(),wage}]).sort((a,b)=>a.from<b.from?-1:1);
+  await updateDoc(doc(db,"users",uid),{hourlyWages:list,updatedAt:new Date().toISOString()});
+  await loadEmployees();renderMembers();showToast(e.name+" さんの時給を "+wage.toLocaleString()+" 円にしました（"+from.trim()+" から）");
 }
 
 function pickPwEmp(){
@@ -932,11 +974,13 @@ async function registerMember(){
   const hire=document.getElementById("memHire").value;
   const days=Number(document.getElementById("memDays").value);
   const hours=Number(document.getElementById("memHours").value);
+  const wage=Number(document.getElementById("memWage").value);
   if(!name){err.textContent="氏名を入力してください";return;}
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){err.textContent="メールアドレスの形式が正しくありません";return;}
   if(pw.length<6){err.textContent="パスワードは6文字以上にしてください";return;}
   if(!hire){err.textContent="入社日を入力してください（有給の付与日数の計算に使います）";return;}
   if(type==="part"&&(!(days>=1&&days<=7)||!(hours>0))){err.textContent="パートは週の勤務日数と時間を入力してください";return;}
+  if(type==="part"&&!(wage>0)){err.textContent="パートは時給を入力してください";return;}
   if(!confirm(name+" さんを登録します。よろしいですか？"))return;
 
   const btn=document.getElementById("memRegBtn");btn.disabled=true;btn.textContent="登録中…";
@@ -950,9 +994,9 @@ async function registerMember(){
     await signOut(secAuth);
     const prof={name,role:"employee",active:true,avatar:name.slice(0,1),employmentType:type,hireDate:hire,email,
       createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
-    if(type==="part"){prof.weeklyDays=days;prof.weeklyHours=hours;}
+    if(type==="part"){prof.weeklyDays=days;prof.weeklyHours=hours;prof.hourlyWages=[{from:hire.slice(0,7),wage}];}
     await setDoc(doc(db,"users",uid),prof);
-    ["memName","memEmail","memPw","memHire","memDays","memHours"].forEach(id=>document.getElementById(id).value="");
+    ["memName","memEmail","memPw","memHire","memDays","memHours","memWage"].forEach(id=>document.getElementById(id).value="");
     await loadEmployees();renderMembers();
     showToast(name+" さんを登録しました ✓");
     alert("登録しました。\n\nログインID："+email+"\nパスワード：（入力したもの）\n\n控えてから本人にお伝えください。ログイン画面は勤怠画面（index.html）と同じです。");
