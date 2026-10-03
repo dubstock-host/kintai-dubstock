@@ -140,7 +140,10 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .shift-st{font-size:11px;font-weight:600;border-radius:4px;padding:2px 7px;white-space:nowrap;}
 .st-done{background:#DCFCE7;color:#166534;}.st-miss{background:#FEE2E2;color:#DC2626;}.st-open{background:#FEF9C3;color:#92400E;}
 .st-today{background:#DBEAFE;color:#1D4ED8;}.st-plan{background:var(--s2);color:var(--tx3);}
-.wn-row td{font-size:11px;color:var(--tx2);padding-top:0 !important;border-top:none !important;text-align:left !important;}
+.wn-row td{font-size:11px;color:var(--tx2);padding-top:0 !important;border-top:none !important;text-align:left !important;white-space:pre-line;line-height:1.6;}
+.wn-row td.wn-btn{vertical-align:top;white-space:nowrap;}
+.wn-hint{font-size:11px;color:var(--tx3);background:var(--s2);border-radius:8px;padding:9px 12px;margin-bottom:12px;line-height:1.6;}
+.mfield .wn-ta{min-height:58px;}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;}
 .overlay.open{display:flex;}
 .modal{background:var(--surface);border-radius:16px;padding:28px;width:100%;max-width:400px;margin:16px;box-shadow:0 8px 32px rgba(0,0,0,0.15);}
@@ -397,9 +400,12 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 <!-- 業務内容モーダル（パートの退勤後に表示） -->
 <div class="overlay" id="workNoteOverlay">
   <div class="modal">
-    <div class="mtitle">&#x1F4DD; 今日の業務内容</div>
+    <div class="mtitle">&#x1F4DD; 今日の振り返り</div>
     <div class="msub" id="workNoteSub"></div>
-    <div class="mfield"><label>業務内容</label><textarea id="workNoteText" placeholder="例：大田区ベーカリー現調・白図作成"></textarea></div>
+    <div class="wn-hint">&#x1F4A1; 「何を・どこまで・どのくらい」を書くと、あとで見返したときに伝わりやすくなります</div>
+    <div class="mfield"><label>やったこと（必須）</label><textarea class="wn-ta" id="workNoteDone" placeholder="例：大田区ベーカリーの展開図を作成。客席側4面のうち3面まで完了"></textarea></div>
+    <div class="mfield"><label>うまくいったこと・気づき</label><textarea class="wn-ta" id="workNoteGood" placeholder="例：寸法の拾い方に慣れて、1面あたりの時間が短くなった"></textarea></div>
+    <div class="mfield"><label>困ったこと・次回やること</label><textarea class="wn-ta" id="workNoteNext" placeholder="例：仕上げ材の品番が不明。次回、確認してから残り1面を仕上げる"></textarea></div>
     <div class="merr" id="workNoteErr"></div>
     <div class="mbtns">
       <button class="mbtn2 mb-cancel" id="workNoteLaterBtn">あとで書く</button>
@@ -722,7 +728,7 @@ function showShiftDetail(date){
   h+=pl?pl.items.map(i=>"<div class=\"cal-dr\"><span class=\"cal-dk\">シフト</span><span class=\"shift-time\">"+esc(i.start)+"〜"+esc(i.end)+"</span>"+(i.title?" <span class=\"shift-title\" style=\"display:inline;\">"+esc(i.title)+"</span>":"")+"</div>").join("")
     :"<div class=\"cal-dr\"><span class=\"cal-dk\">シフト</span>なし</div>";
   if(sh&&sh.in)h+="<div class=\"cal-dr\"><span class=\"cal-dk\">打刻</span><span class=\"shift-time\">"+ts2hm(sh.in)+"〜"+(sh.out?ts2hm(sh.out):"")+"</span></div>";
-  if(sh&&sh.workNote)h+="<div class=\"cal-dr\"><span class=\"cal-dk\">業務内容</span>"+esc(sh.workNote)+"</div>";
+  if(sh&&sh.workNote)h+="<div class=\"cal-dr\"><span class=\"cal-dk\">業務内容</span><span style=\"white-space:pre-line;\">"+esc(sh.workNote)+"</span></div>";
   if(lv)h+="<div class=\"cal-dr\"><span class=\"cal-dk\">申請</span>"+esc(leaveLabel(lv))+(lv.status==="pending"?"（承認待ち）":"")+"</div>";
   el.innerHTML=h;
 }
@@ -733,19 +739,28 @@ async function openWorkNote(date){
   workNoteDate=date;const rec=await gRec(date);const sh=rec.shifts&&rec.shifts[0];
   const d=new Date(date.replace(/-/g,"/"));
   document.getElementById("workNoteSub").textContent=(d.getMonth()+1)+"月"+d.getDate()+"日（"+DOW[d.getDay()]+"）"+(sh&&sh.in?"　"+ts2hm(sh.in)+"〜"+(sh.out?ts2hm(sh.out):""):"");
-  document.getElementById("workNoteText").value=sh&&sh.workNote?sh.workNote:"";
+  // 振り返りは workReflect に項目ごとに持つ。以前の1行だけの業務内容は「やったこと」に入れる
+  const wr=sh&&sh.workReflect?sh.workReflect:{done:sh&&sh.workNote?sh.workNote:""};
+  document.getElementById("workNoteDone").value=wr.done||"";
+  document.getElementById("workNoteGood").value=wr.good||"";
+  document.getElementById("workNoteNext").value=wr.next||"";
   document.getElementById("workNoteErr").textContent="";
   document.getElementById("workNoteOverlay").classList.add("open");
-  setTimeout(()=>document.getElementById("workNoteText").focus(),50);
+  setTimeout(()=>document.getElementById("workNoteDone").focus(),50);
 }
 async function saveWorkNote(){
-  const t=document.getElementById("workNoteText").value.trim();const er=document.getElementById("workNoteErr");
-  if(!t){er.textContent="業務内容を入力してください";return;}
+  const v=id=>document.getElementById(id).value.trim();
+  const wr={done:v("workNoteDone"),good:v("workNoteGood"),next:v("workNoteNext")};
+  const er=document.getElementById("workNoteErr");
+  if(!wr.done){er.textContent="「やったこと」を入力してください";return;}
   const rec=await gRec(workNoteDate);
   if(!rec.shifts||!rec.shifts[0]){er.textContent="この日の打刻がありません";return;}
-  rec.shifts[0].workNote=t;
-  try{await sRec(workNoteDate,rec);document.getElementById("workNoteOverlay").classList.remove("open");showToast("業務内容を保存しました ✓");
-    if(document.getElementById("tab-月次").classList.contains("active"))renderMonthly();}
+  // workNote は管理者画面・PDF・カレンダーで表示する全文。項目は workReflect に残す
+  rec.shifts[0].workReflect=wr;
+  rec.shifts[0].workNote=[wr.done,wr.good?"気づき："+wr.good:"",wr.next?"次回："+wr.next:""].filter(Boolean).join("\n");
+  try{await sRec(workNoteDate,rec);document.getElementById("workNoteOverlay").classList.remove("open");showToast("振り返りを保存しました ✓");
+    if(document.getElementById("tab-月次").classList.contains("active"))renderMonthly();
+    if(document.getElementById("tab-シフト").classList.contains("active"))renderShiftTab(false);}
   catch(e){er.textContent="保存に失敗しました";}
 }
 
@@ -822,7 +837,8 @@ async function renderMonthly(){
         ?" <span style=\"background:#ECFEFF;color:#0E7490;border:1px solid #A5F3FC;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;\">休日出勤・振替済</span>"
         :" <span style=\"background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;\">休日出勤</span>";
     tb+="<tr><td>"+date.slice(5)+"("+dow+")"+offBadge+"</td><td>"+ts2hm(s.in)+"</td><td>"+ts2hm(s.out)+"</td><td>"+(bms>0?hm(bms):"―")+"</td><td>"+hm(wms)+"</td><td class=\""+(oms>0?"ot":"")+"\">"+(oms>0?hm(oms):"―")+"</td><td data-date=\""+date+"\"></td></tr>";
-    if(isPart())tb+="<tr class=\"wn-row\"><td colspan=\"7\">"+(s.workNote?"📝 "+esc(s.workNote)+" <button class=\"ebtn\" data-note=\""+date+"\">直す</button>":"<span style=\"color:#D97706;\">📝 業務内容が未記入です</span> <button class=\"ebtn\" data-note=\""+date+"\">書く</button>")+"</td></tr>";
+    if(isPart())tb+="<tr class=\"wn-row\"><td colspan=\"6\">"+(s.workNote?esc(s.workNote):"<span style=\"color:#D97706;\">業務内容が未記入です</span>")+"</td>"
+      +"<td class=\"wn-btn\"><button class=\"ebtn\" data-note=\""+date+"\" title=\"業務内容を"+(s.workNote?"直す":"書く")+"\">📝</button></td></tr>";
   }
   const tbody=document.getElementById("monthlyLog");tbody.innerHTML=tb||"<tr><td colspan=\"7\" class=\"no-data\">記録なし</td></tr>";
   tbody.querySelectorAll("button[data-note]").forEach(b=>b.addEventListener("click",()=>openWorkNote(b.dataset.note)));
@@ -1082,6 +1098,7 @@ onAuthStateChanged(auth,async user=>{
     const sh2={in:it,edited:true,editedAt:new Date().toISOString(),editedBy:UNAME};
     if(ot)sh2.out=ot;
     if(rec.shifts[idx]&&rec.shifts[idx].workNote)sh2.workNote=rec.shifts[idx].workNote;
+    if(rec.shifts[idx]&&rec.shifts[idx].workReflect)sh2.workReflect=rec.shifts[idx].workReflect;
     rec.shifts[idx]=sh2;
     try{
       await sRec(date,rec);
