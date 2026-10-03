@@ -419,7 +419,9 @@ import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged,createUser
 import {getFirestore,doc,collection,getDocs,getDoc,setDoc,updateDoc,query,where} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const FB={apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",authDomain:"kintai-dubstock.firebaseapp.com",projectId:"kintai-dubstock",storageBucket:"kintai-dubstock.firebasestorage.app",messagingSenderId:"1030065146975",appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"};
-const app=initializeApp(FB);
+// 名前付きアプリにして、社員画面（index / keihitsu）とログイン状態を分ける。
+// 共有だと、同じブラウザで社員がログインした瞬間にこの画面が signOut し、社員側も一緒に追い出される
+const app=initializeApp(FB,"admin");
 const auth=getAuth(app);
 const db=getFirestore(app);
 
