@@ -72,7 +72,42 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .no-data{text-align:center;padding:40px;color:var(--tx3);font-size:13px;}
 .expbtn{background:var(--acc);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;}
 .emp-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:24px;}
-.emp-card{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:20px;}
+.emp-card{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:20px;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+.emp-card:hover{border-color:var(--acc);box-shadow:0 2px 10px rgba(59,130,246,.12);}
+.emp-card-go{font-size:11px;color:var(--acc);margin-top:12px;text-align:right;}
+.dash-back{background:none;border:none;color:var(--acc);font-size:13px;cursor:pointer;padding:0;margin-bottom:12px;}
+.dash-head{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:20px;margin-bottom:16px;}
+.dash-top{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
+.dash-top .emp-avatar{width:52px;height:52px;font-size:20px;}
+.dash-name{font-size:20px;font-weight:700;}
+.dash-tag{display:inline-block;font-size:11px;font-weight:600;border-radius:4px;padding:2px 8px;margin-right:6px;}
+.dash-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.dash-meta>div{background:var(--s2);border-radius:8px;padding:7px 12px;}
+.dash-meta .k{font-size:10px;color:var(--tx3);margin-bottom:2px;}
+.dash-meta .v{font-size:13px;font-weight:600;word-break:break-all;}
+.dash-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+.dash-kpi{background:var(--surface);border:1px solid var(--bdr);border-radius:10px;padding:12px 14px;}
+.dash-kpi .k{font-size:11px;color:var(--tx3);}
+.dash-kpi .v{font-family:"DM Mono",monospace;font-size:20px;font-weight:600;margin-top:2px;}
+.dash-kpi .s{font-size:10px;color:var(--tx3);margin-top:2px;}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.dash-sec{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:16px;min-width:0;}
+.dash-sec-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.dash-sec-t{font-size:14px;font-weight:700;}
+.dash-link{background:var(--s2);border:1px solid var(--bdr);color:var(--tx2);border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;}
+.dash-list{max-height:340px;overflow-y:auto;}
+.dash-row{display:flex;gap:10px;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--bdr);font-size:12px;}
+.dash-row:last-child{border-bottom:none;}
+.dash-row .d{min-width:62px;font-family:"DM Mono",monospace;color:var(--tx2);}
+.dash-row .m{flex:1;min-width:0;}
+.dash-row .r{font-family:"DM Mono",monospace;white-space:nowrap;}
+.dash-note{font-size:11px;color:var(--tx3);white-space:pre-line;margin-top:2px;}
+.dash-sum{display:flex;gap:16px;font-size:12px;color:var(--tx2);margin-bottom:8px;}
+.dash-sum b{font-family:"DM Mono",monospace;font-size:15px;color:var(--tx);}
+.dash-badge{display:inline-block;font-size:10px;font-weight:600;border-radius:4px;padding:1px 6px;}
+.dash-empty{font-size:12px;color:var(--tx3);padding:10px 0;}
+@media(max-width:760px){.dash-grid{grid-template-columns:1fr;}.dash-kpis,.dash-meta{grid-template-columns:repeat(2,1fr);}}
+
 .emp-card-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
 .emp-avatar{width:40px;height:40px;border-radius:50%;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;}
 .emp-card-name{font-size:15px;font-weight:700;}
@@ -249,6 +284,9 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
   <div class="tab-content active" id="tab-概要">
     <div class="emp-cards" id="empCards"><div class="no-data">読み込み中...</div></div>
   </div>
+
+  <!-- 個人ダッシュボード（全社員概要のカードから開く。タブボタンは無い） -->
+  <div class="tab-content" id="tab-個人"><div id="empDash"></div></div>
 
   <div class="tab-content" id="tab-申請">
     <div id="pendingList"><div class="no-data">読み込み中...</div></div>
@@ -547,6 +585,158 @@ async function doReject(){
 }
 
 // 全社員概要
+// ══ 個人ダッシュボード ══
+// 祝日と有給付与の表は index.html と同じものを置く（祝日は毎年追記が必要）
+const HOLIDAYS=new Set([
+  // 2025年（入社後）
+  "2025-09-15","2025-09-23","2025-10-13","2025-11-03","2025-11-23","2025-11-24",
+  // 2026年
+  "2026-01-01","2026-01-12","2026-02-11","2026-02-23","2026-03-20","2026-04-29",
+  "2026-05-03","2026-05-04","2026-05-05","2026-05-06","2026-07-20","2026-08-11",
+  "2026-09-21","2026-09-22","2026-09-23","2026-10-12","2026-11-03","2026-11-23",
+  // 2027年
+  "2027-01-01","2027-01-11","2027-02-11","2027-02-23","2027-03-21","2027-03-22",
+  "2027-04-29","2027-05-03","2027-05-04","2027-05-05","2027-07-19","2027-08-11",
+  "2027-09-20","2027-09-23","2027-10-11","2027-11-03","2027-11-23",
+]);
+const GRANTS=[{m:6,d:10},{m:18,d:11},{m:30,d:12},{m:42,d:14},{m:54,d:16},{m:66,d:18},{m:78,d:20}];
+const GRANTS_PART={4:[7,8,9,10,12,13,15],3:[5,6,6,8,9,10,11],2:[3,4,4,5,6,6,7],1:[1,2,2,2,3,3,3]};
+function grantTable(prof){
+  const days=Number(prof&&prof.weeklyDays)||5,hours=Number(prof&&prof.weeklyHours)||40;
+  if(hours>=30||days>=5)return GRANTS;
+  const row=GRANTS_PART[Math.max(1,Math.min(4,days))];
+  return GRANTS.map((g,i)=>({m:g.m,d:row[i]}));
+}
+
+function leaveBalance(emp,lvs){
+  const now=new Date();let granted=0,next=null;
+  if(!emp.hireDate)return null;
+  const hp=emp.hireDate.split("-"),H=new Date(+hp[0],+hp[1]-1,+hp[2]);
+  for(const g of grantTable(emp)){
+    const gd=new Date(H.getFullYear(),H.getMonth()+g.m,H.getDate());
+    if(gd<=now){if(new Date(gd.getFullYear()+2,gd.getMonth(),gd.getDate())>now)granted+=g.d;}
+    else if(!next)next={date:gd,days:g.d};
+  }
+  const taken=sumLeaveDays(lvs.filter(l=>l.status==="approved"));
+  return {granted,taken,rem:Math.max(0,granted-taken),next};
+}
+function tenure(hire){
+  if(!hire)return "";
+  const hp=hire.split("-"),n=new Date();let mo=(n.getFullYear()-hp[0])*12+(n.getMonth()+1-hp[1]);if(n.getDate()<+hp[2])mo--;
+  if(mo<0)return "入社前";return (mo>=12?Math.floor(mo/12)+"年":"")+(mo%12)+"か月";
+}
+let dashUid=null,dashMonth=new Date();
+function openEmpDash(uid){dashUid=uid;dashMonth=new Date();showTab("個人");window.scrollTo(0,0);}
+async function renderEmpDash(){
+  const el=document.getElementById("empDash");
+  const emp=EMPLOYEES.find(e=>e.uid===dashUid);
+  if(!emp){el.innerHTML="<div class=\"no-data\">社員が見つかりません</div>";return;}
+  el.innerHTML="<div class=\"no-data\">読み込み中...</div>";
+  const y=dashMonth.getFullYear(),m=dashMonth.getMonth(),pfx=y+"-"+p2(m+1),days=new Date(y,m+1,0).getDate();
+  const isPart=emp.employmentType==="part";
+  const [recs,lvs,allExp,allTrv,plans]=await Promise.all([
+    getRecsByUid(emp.uid),getLeavesByUid(emp.uid),getAllDocs("expenses"),getAllDocs("travels"),
+    isPart?getDocs(query(collection(db,"shifts"),where("userId","==",emp.uid))).then(sn=>{const r={};sn.forEach(d=>{const v=d.data();if(Array.isArray(v.items)&&v.items.length)r[v.date]=v;});return r;}).catch(()=>({})):Promise.resolve({})
+  ]);
+  const today=(()=>{const d=new Date();if(d.getHours()<5)d.setDate(d.getDate()-1);return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate());})();
+
+  // ── 勤怠 ──
+  let wd=0,tw=0,to=0,tn=0,miss=0,noNote=0,rows="";
+  for(let d=1;d<=days;d++){
+    const date=pfx+"-"+p2(d),dt=new Date(y,m,d),dow=DOW[dt.getDay()];
+    const rec=recs[date],sh=rec&&rec.shifts&&rec.shifts[0];
+    const lv=lvs.find(l=>l.date===date&&l.status==="approved");
+    const label=date.slice(5).replace("-","/")+"("+dow+")";
+    if(sh&&sh.in&&sh.out){
+      wd++;const b=brkMs(sh.in,sh.out),w=Math.max(0,sh.out-sh.in-b),o=Math.max(0,w-EIGHT);tw+=w;to+=o;tn+=nightMs(sh.in,sh.out);
+      if(isPart&&!sh.workNote)noNote++;
+      rows+="<div class=\"dash-row\"><span class=\"d\">"+label+"</span><span class=\"m\">"+ts2hm(sh.in)+"〜"+ts2hm(sh.out)
+        +(sh.workNote?"<div class=\"dash-note\">"+esc(sh.workNote)+"</div>":isPart?"<div class=\"dash-note\" style=\"color:#D97706;\">業務内容 未記入</div>":"")
+        +"</span><span class=\"r\">"+hm(w)+(o>0?" <span style=\"color:var(--out);\">+"+hm(o)+"</span>":"")+"</span></div>";
+    }else if(sh&&sh.in){
+      rows+="<div class=\"dash-row\" style=\"background:#FFFBEB;\"><span class=\"d\">"+label+"</span><span class=\"m\">"+ts2hm(sh.in)+"〜 <span class=\"dash-badge\" style=\"background:#FEF9C3;color:#92400E;\">退勤未打刻</span></span><span class=\"r\">―</span></div>";
+    }else if(lv){
+      rows+="<div class=\"dash-row\"><span class=\"d\">"+label+"</span><span class=\"m\"><span class=\"dash-badge\" style=\"background:#F5F3FF;color:var(--lv);\">"+esc(leaveLabel(lv))+"</span></span><span class=\"r\">―</span></div>";
+    }else{
+      // 勤務予定日：正社員は平日（祝日を除く）、パートはシフトのある日
+      const planned=isPart?!!plans[date]:(dt.getDay()>=1&&dt.getDay()<=5&&!HOLIDAYS.has(date));
+      const afterHire=!emp.hireDate||date>=emp.hireDate;
+      if(planned&&date<today&&afterHire){miss++;
+        rows+="<div class=\"dash-row\" style=\"background:#FFF1F2;\"><span class=\"d\">"+label+"</span><span class=\"m\"><span class=\"dash-badge\" style=\"background:#FEE2E2;color:var(--out);\">未打刻</span></span><span class=\"r\">―</span></div>";}
+    }
+  }
+  const mLvs=lvs.filter(l=>l.status==="approved"&&String(l.date).startsWith(pfx));
+  const bal=leaveBalance(emp,lvs);
+  const wage=isPart?wageFor(emp,pfx):0;
+  const shiftDays=isPart?Object.keys(plans).filter(k=>k.startsWith(pfx)).length:0;
+
+  // ── 申請 ──
+  const pend=lvs.filter(l=>l.status==="pending").sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  const lvRows=pend.map(l=>"<div class=\"dash-row\"><span class=\"d\">"+esc(String(l.date).slice(5).replace("-","/"))+"</span><span class=\"m\">"+esc(leaveLabel(l))+(l.reason?"<div class=\"dash-note\">"+esc(l.reason)+"</div>":"")+"</span><span class=\"r\"><span class=\"dash-badge\" style=\"background:#FFFBEB;color:#92400E;\">承認待ち</span></span></div>").join("")
+    +lvs.filter(l=>l.status!=="pending"&&String(l.date).startsWith(pfx)).map(l=>"<div class=\"dash-row\"><span class=\"d\">"+esc(String(l.date).slice(5).replace("-","/"))+"</span><span class=\"m\">"+esc(leaveLabel(l))+"</span><span class=\"r\">"+(l.status==="approved"?"<span class=\"dash-badge\" style=\"background:#ECFDF5;color:var(--in);\">承認済</span>":"<span class=\"dash-badge\" style=\"background:#FEF2F2;color:var(--out);\">却下</span>")+"</span></div>").join("");
+
+  // ── 経費 ──
+  const exps=allExp.filter(e=>e.userId===emp.uid&&e.date&&String(e.date).startsWith(pfx)).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  const expTotal=exps.reduce((a,e)=>a+(Number(e.amount)||0),0);
+  const expSt=exps.some(e=>e.approved)?"approved":exps.some(e=>e.rejected)?"rejected":exps.some(e=>e.submitted)?"pending":exps.length?"draft":"";
+  const expRows=exps.map(e=>"<div class=\"dash-row\"><span class=\"d\">"+esc(String(e.date).slice(5).replace("-","/"))+"</span><span class=\"m\">"+esc(e.desc)+(e.payee?"<div class=\"dash-note\">"+esc(e.payee)+"</div>":"")+"</span><span class=\"r\">"+fmtYen(e.amount)+"</span></div>").join("");
+
+  // ── 出張 ──
+  const td=t=>t.from||t.reportDate||String(t.createdAt||"").slice(0,10);
+  const trvs=allTrv.filter(t=>t.userId===emp.uid&&String(td(t)).startsWith(pfx)).sort((a,b)=>String(td(a)).localeCompare(String(td(b))));
+  const trvCost=trvs.reduce((a,t)=>a+(t.costs||[]).reduce((b,c)=>b+(Number(c.amount)||0),0),0);
+  const trvRows=trvs.map(t=>{const st=t.status==="approved"?"承認済":t.status==="rejected"?"差し戻し":t.status==="draft"?"下書き":"提出済";
+    return "<div class=\"dash-row\"><span class=\"d\">"+esc(String(td(t)).slice(5).replace("-","/"))+"</span><span class=\"m\">"+esc(t.dest)+(t.purpose?"<div class=\"dash-note\">"+esc(t.purpose)+"</div>":"")+"</span><span class=\"r\">"+st+"</span></div>";}).join("");
+
+  // ── 描画 ──
+  const tag=(t,bg,fg)=>"<span class=\"dash-tag\" style=\"background:"+bg+";color:"+fg+";\">"+t+"</span>";
+  const kpi=(k,v,s,c)=>"<div class=\"dash-kpi\"><div class=\"k\">"+k+"</div><div class=\"v\""+(c?" style=\"color:"+c+";\"":"")+">"+v+"</div>"+(s?"<div class=\"s\">"+s+"</div>":"")+"</div>";
+  const sec=(t,btn,sum,list,empty)=>"<div class=\"dash-sec\"><div class=\"dash-sec-h\"><span class=\"dash-sec-t\">"+t+"</span>"+(btn||"")+"</div>"+(sum||"")+"<div class=\"dash-list\">"+(list||"<div class=\"dash-empty\">"+empty+"</div>")+"</div></div>";
+  const meta=(k,v)=>"<div><div class=\"k\">"+k+"</div><div class=\"v\">"+v+"</div></div>";
+  el.innerHTML=
+    "<button class=\"dash-back\" id=\"dashBack\">‹ 全社員概要にもどる</button>"
+   +"<div class=\"dash-head\"><div class=\"dash-top\"><div class=\"emp-avatar\">"+esc(emp.avatar)+"</div><div>"
+   +"<div class=\"dash-name\">"+esc(emp.name)+"</div><div style=\"margin-top:4px;\">"
+   +(isPart?tag("パート","#FEF9C3","#92400E"):tag("正社員","#EFF6FF","var(--acc)"))
+   +(emp.active?tag("在職","#ECFDF5","var(--in)"):tag("退職","#F1F5F9","var(--tx2)"))
+   +(pend.length?tag("承認待ち "+pend.length+"件","#FEF2F2","var(--out)"):"")+"</div></div></div>"
+   +"<div class=\"dash-meta\">"
+   +meta("入社日",emp.hireDate?esc(emp.hireDate.replace(/-/g,"/"))+"（"+tenure(emp.hireDate)+"）":"未設定")
+   +(isPart?meta("週の勤務",(emp.weeklyDays?emp.weeklyDays+"日":"―")+" / "+(emp.weeklyHours?emp.weeklyHours+"時間":"―"))+meta("時給",wage?wage.toLocaleString()+" 円":"未設定"):"")
+   +meta("有給の残り",bal?(bal.rem%1===0?bal.rem:bal.rem.toFixed(1))+" 日（付与 "+bal.granted+" / 取得 "+(bal.taken%1===0?bal.taken:bal.taken.toFixed(1))+"）":"入社日が未設定")
+   +(bal&&bal.next?meta("次の有給付与",bal.next.date.getFullYear()+"/"+p2(bal.next.date.getMonth()+1)+"/"+p2(bal.next.date.getDate())+"（"+bal.next.days+"日）"):"")
+   +meta("ログインID",esc(emp.email||"―"))
+   +"</div></div>"
+   +"<div class=\"mnav\"><button class=\"mbtn\" id=\"dashPrev\">&#8249;</button><div class=\"mlabel\">"+y+"年"+(m+1)+"月</div><button class=\"mbtn\" id=\"dashNext\">&#8250;</button></div>"
+   +"<div class=\"dash-kpis\">"
+   +kpi("出勤日数",wd+" 日",isPart?"シフト "+shiftDays+" 日":"")
+   +kpi("実労働",hm(tw))
+   +kpi("残業",hm(to),"",to>0?"var(--out)":"")
+   +kpi("有給取得",fmtDays(sumLeaveDays(mLvs)),"","var(--lv)")
+   +kpi("未打刻",miss+" 日",isPart?"シフトのある日":"平日（祝日除く）",miss>0?"var(--out)":"")
+   +(isPart?kpi("給与見込み",wage?yen(payOf(tw,to,tn,wage)):"時給未設定","交通費は含まない"):"")
+   +kpi("経費",fmtYen(expTotal),exps.length+" 件")
+   +kpi("出張",trvs.length+" 回",trvCost?fmtYen(trvCost):"")
+   +"</div>"
+   +"<div class=\"dash-grid\">"
+   +sec("📋 勤怠","<button class=\"dash-link\" data-go=\"勤怠\">勤怠確認で開く</button>",
+        isPart&&noNote?"<div class=\"dash-sum\" style=\"color:#D97706;\">業務内容の未記入 "+noNote+" 日</div>":"",rows,"この月の記録はありません")
+   +sec("📅 休日申請","<button class=\"dash-link\" data-go=\"申請\">休日申請で開く</button>",
+        "<div class=\"dash-sum\"><span>承認待ち <b>"+pend.length+"</b> 件</span><span>今月の取得 <b>"+fmtDays(sumLeaveDays(mLvs)).replace(" 日","")+"</b> 日</span></div>",lvRows,"承認待ちや今月の申請はありません")
+   +sec("💰 経費","<button class=\"dash-link\" data-go=\"経費\">経費精算で開く</button>",
+        "<div class=\"dash-sum\"><span>合計 <b>"+fmtYen(expTotal)+"</b></span><span>"+exps.length+" 件</span>"+(expSt?(statusMap[expSt]||""):"")+"</div>",expRows,"この月の経費はありません")
+   +sec("✈ 出張","<button class=\"dash-link\" data-go=\"出張\">出張報告で開く</button>",
+        "<div class=\"dash-sum\"><span><b>"+trvs.length+"</b> 回</span><span>費用 <b>"+fmtYen(trvCost)+"</b></span></div>",trvRows,"この月の出張はありません")
+   +"</div>";
+  document.getElementById("dashBack").addEventListener("click",()=>showTab("概要"));
+  document.getElementById("dashPrev").addEventListener("click",()=>{dashMonth.setMonth(dashMonth.getMonth()-1);renderEmpDash();});
+  document.getElementById("dashNext").addEventListener("click",()=>{dashMonth.setMonth(dashMonth.getMonth()+1);renderEmpDash();});
+  el.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>{
+    if(b.dataset.go==="勤怠"){selectedKintaiUid=emp.uid;kintaiMonth=new Date(y,m,1);}
+    showTab(b.dataset.go);window.scrollTo(0,0);
+  }));
+}
+
 async function renderEmpCards(){
   const el=document.getElementById("empCards");el.innerHTML="";
   if(!EMPLOYEES.length){el.innerHTML="<div class=\"no-data\">社員が登録されていません（users コレクションに role=\"employee\" のドキュメントを作成してください）</div>";return;}
@@ -564,15 +754,16 @@ async function renderEmpCards(){
     }
     const aLvs=lvs.filter(lv=>{const d=new Date(lv.date.replace(/-/g,"/"));return d.getFullYear()===y&&d.getMonth()===m-1&&lv.status==="approved";});
     const card=document.createElement("div");card.className="emp-card";
+    card.addEventListener("click",()=>openEmpDash(emp.uid));
     card.innerHTML=
       "<div class=\"emp-card-header\"><div class=\"emp-avatar\">"+emp.avatar+"</div><div>"+
       "<div class=\"emp-card-name\">"+emp.name+(emp.active?"":"（退職）")+(pending>0?" <span style=\"background:var(--out);color:#fff;border-radius:100px;font-size:10px;font-weight:700;padding:1px 7px;\">申請"+pending+"件</span>":"")+"</div>"+
-      "<div class=\"emp-card-sub\">R"+r+"年"+m+"月</div></div></div>"+
+      "<div class=\"emp-card-sub\">今月（"+y+"年"+m+"月）</div></div></div>"+
       "<div class=\"emp-stats\">"+
       "<div class=\"emp-stat\"><div class=\"emp-stat-label\">出勤</div><div class=\"emp-stat-val\">"+wd+"日</div></div>"+
       "<div class=\"emp-stat\"><div class=\"emp-stat-label\">実労働</div><div class=\"emp-stat-val\" style=\"font-size:12px;\">"+hm(tw)+"</div></div>"+
       "<div class=\"emp-stat\"><div class=\"emp-stat-label\">有休</div><div class=\"emp-stat-val\" style=\"color:var(--lv);\">"+fmtDays(sumLeaveDays(aLvs)).replace(" ","")+"</div></div>"+
-      "</div>";
+      "</div><div class=\"emp-card-go\">詳しく見る ›</div>";
     el.appendChild(card);
   }
 }
@@ -1021,7 +1212,8 @@ function showTab(name){
   document.querySelectorAll(".tab-content").forEach(e=>e.classList.remove("active"));
   document.querySelectorAll(".tab-btn").forEach(e=>e.classList.remove("active"));
   document.getElementById("tab-"+name).classList.add("active");
-  document.querySelector("[data-tab=\""+name+"\"]").classList.add("active");
+  const tb=document.querySelector("[data-tab=\""+(name==="個人"?"概要":name)+"\"]");if(tb)tb.classList.add("active");
+  if(name==="個人")renderEmpDash();
   if(name==="勤怠"){buildEmpSelector("kintaiEmpSel",()=>selectedKintaiUid,v=>{selectedKintaiUid=v;},renderKintai);renderKintai();}
   if(name==="履歴"){buildEmpSelector("histEmpSel",()=>selectedHistUid,v=>{selectedHistUid=v;},renderHistory);renderHistory();}
   if(name==="打刻"){buildEmpSelector("stampEmpSel",()=>selectedStampUid,v=>{selectedStampUid=v;},renderStamp);renderStamp();}
