@@ -144,6 +144,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .exp-doc td{border:1px solid #CBD5E1;padding:5px 6px;}
 .exp-doc .num{text-align:right;font-family:"DM Mono",monospace;white-space:nowrap;}
 .exp-doc .sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px;margin-bottom:12px;}
+.exp-doc tr.wn td{font-size:10px;color:var(--tx2);text-align:left;padding-top:0;}
 .exp-doc .sum>div{border:1px solid var(--bdr);border-radius:8px;padding:8px 10px;}
 .exp-doc .sum .k{font-size:10px;color:var(--tx3);}
 .exp-doc .sum .v{font-size:16px;font-weight:700;font-family:"DM Mono",monospace;}
@@ -658,6 +659,7 @@ async function renderKintai(){
     const s=shifts[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);tw+=wms;to+=oms;tn+=nightMs(s.in,s.out);
     const dow=DOW[new Date(date).getDay()];
     tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td>"+ts2hm(s.in)+"</td><td>"+ts2hm(s.out)+"</td><td>"+(bms>0?hm(bms):"―")+"</td><td>"+hm(wms)+"</td><td class=\""+(oms>0?"ot":"")+"\">"+(oms>0?hm(oms):"―")+"</td></tr>";
+    if(s.workNote)tb+="<tr><td colspan=\"6\" style=\"font-size:11px;color:var(--tx2);padding-top:0;border-top:none;text-align:left;\">📝 "+esc(s.workNote)+"</td></tr>";
   }
   document.getElementById("kintaiLog").innerHTML=tb||"<tr><td colspan=\"6\" class=\"no-data\">記録なし</td></tr>";
   document.getElementById("totalDays").textContent=wd+" 日";
@@ -772,6 +774,7 @@ async function buildEmpDoc(emp,y,m,pfx,opts,allExp,allTrv){
     rows+="<tr><td>"+date.slice(5)+"("+dow+")</td><td>"+ts2hm(x.in)+"</td><td>"+ts2hm(x.out)+"</td>"
       +"<td class=\"num\">"+(bms>0?hm(bms):"―")+"</td><td class=\"num\">"+hm(wms)+"</td>"
       +"<td class=\"num\">"+(oms>0?hm(oms):"―")+"</td></tr>";
+    if(x.workNote)rows+="<tr class=\"wn\"><td colspan=\"6\">業務内容："+esc(x.workNote)+"</td></tr>";
   }
   const mLvs=lvs.filter(l=>l.status==="approved"&&String(l.date).startsWith(pfx));
   const paid=sumLeaveDays(mLvs);                                   // 振替休日は 0 日で計上される

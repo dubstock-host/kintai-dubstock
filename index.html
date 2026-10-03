@@ -106,6 +106,17 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .ltable td:first-child{color:var(--tx);}
 .ot{color:var(--out)!important;font-weight:600;}
 .ebtn{background:var(--s2);border:1px solid var(--bdr);color:var(--tx2);border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;}
+.shift-row{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-bottom:1px solid var(--bdr);}
+.shift-row:last-child{border-bottom:none;}
+.shift-date{min-width:64px;font-weight:600;font-size:14px;}
+.shift-body{flex:1;font-size:13px;line-height:1.6;}
+.shift-time{font-family:"DM Mono",monospace;font-weight:600;white-space:nowrap;}
+.shift-title{display:block;font-size:11px;color:var(--tx3);}
+.shift-date{white-space:nowrap;}
+.shift-st{font-size:11px;font-weight:600;border-radius:4px;padding:2px 7px;white-space:nowrap;}
+.st-done{background:#DCFCE7;color:#166534;}.st-miss{background:#FEE2E2;color:#DC2626;}.st-open{background:#FEF9C3;color:#92400E;}
+.st-today{background:#DBEAFE;color:#1D4ED8;}.st-plan{background:var(--s2);color:var(--tx3);}
+.wn-row td{font-size:11px;color:var(--tx2);padding-top:0 !important;border-top:none !important;text-align:left !important;}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;}
 .overlay.open{display:flex;}
 .modal{background:var(--surface);border-radius:16px;padding:28px;width:100%;max-width:400px;margin:16px;box-shadow:0 8px 32px rgba(0,0,0,0.15);}
@@ -180,7 +191,8 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
   <div class="tab-nav">
     <!-- 表示タブを3つに簡略化（打刻修正・履歴確認タブは非表示だが機能は保持） -->
     <button class="tab-btn active" data-tab="打刻">打刻<span class="badge-dot" id="notifDot"></span></button>
-    <button class="tab-btn" data-tab="有給">休日申請</button>
+    <button class="tab-btn" data-tab="シフト" id="shiftTabBtn" style="display:none;">シフト</button>
+    <button class="tab-btn" data-tab="有給" id="leaveTabBtn">休日申請</button>
     <button class="tab-btn" data-tab="月次">月次</button>
   </div>
 
@@ -222,6 +234,22 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
     </div>
     <button class="btn-leave" id="leaveNewBtn" style="margin-bottom:16px;">&#xFF0B; 新規申請</button>
     <div id="myLeaveList"></div>
+  </div>
+
+  <!-- シフトタブ（パートのみ。Googleカレンダーの予定を GAS が shifts コレクションに書き写したものを表示） -->
+  <div class="tab-content" id="tab-シフト">
+    <div class="mnav">
+      <button class="mbtn" id="shiftPrevBtn">&#8249;</button>
+      <div class="mlabel" id="shiftMonthLabel"></div>
+      <button class="mbtn" id="shiftNextBtn">&#8250;</button>
+    </div>
+    <div class="sgrid">
+      <div class="sc"><div class="slabel">シフト日数</div><div class="sval" id="shiftDays">-</div></div>
+      <div class="sc"><div class="slabel">予定時間</div><div class="sval" id="shiftHours">-</div></div>
+    </div>
+    <div class="log-card" id="shiftList"><div class="no-data">読み込み中...</div></div>
+    <div style="font-size:11px;color:var(--tx3);margin:10px 2px 16px;line-height:1.6;">シフトはGoogleカレンダーから自動で取り込まれます。変更はカレンダー側で行ってください。</div>
+    <button class="btn-leave" id="shiftLeaveBtn">&#x1F4C5; 有給・振替休日の申請</button>
   </div>
 
   <!-- 月次タブ -->
@@ -338,6 +366,20 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
     <div class="mbtns">
       <button class="mbtn2 mb-cancel" id="leaveCancelBtn">キャンセル</button>
       <button class="mbtn2 mb-leave" id="leaveSubmitBtn">申請する</button>
+    </div>
+  </div>
+</div>
+
+<!-- 業務内容モーダル（パートの退勤後に表示） -->
+<div class="overlay" id="workNoteOverlay">
+  <div class="modal">
+    <div class="mtitle">&#x1F4DD; 今日の業務内容</div>
+    <div class="msub" id="workNoteSub"></div>
+    <div class="mfield"><label>業務内容</label><textarea id="workNoteText" placeholder="例：大田区ベーカリー現調・白図作成"></textarea></div>
+    <div class="merr" id="workNoteErr"></div>
+    <div class="mbtns">
+      <button class="mbtn2 mb-cancel" id="workNoteLaterBtn">あとで書く</button>
+      <button class="mbtn2 mb-save" id="workNoteSaveBtn">保存</button>
     </div>
   </div>
 </div>
@@ -579,11 +621,73 @@ async function renderLeaveBalance(){
   const nel=document.getElementById("leaveNextGrant");nel.style.whiteSpace="pre";nel.textContent=info;
 }
 
+// ── パート：シフト（Googleカレンダー由来）と業務内容 ──
+const isPart=()=>!!(PROF&&PROF.employmentType==="part");
+let shiftMonth=new Date(),PLANS_ERR=null;
+// shifts/{uid}_{date} = {userId,date,items:[{start:"HH:MM",end:"HH:MM",title}]}
+async function gMonthPlans(y,m){
+  PLANS_ERR=null;const r={};const pfx=y+"-"+p2(m);
+  try{
+    const sn=await getDocs(query(collection(db,"shifts"),where("userId","==",UID)));
+    sn.forEach(d=>{const v=d.data();if(String(v.date).startsWith(pfx)&&Array.isArray(v.items)&&v.items.length)r[v.date]=v;});
+  }catch(e){PLANS_ERR=e;}
+  return r;
+}
+const hm2min=t=>{const [h,m]=String(t).split(":").map(Number);return h*60+m;};
+function planMs(pl){return pl.items.reduce((t,i)=>{let d=hm2min(i.end)-hm2min(i.start);if(d<=0)d+=1440;return t+d*60000;},0);}
+async function renderShiftTab(){
+  const y=shiftMonth.getFullYear(),m=shiftMonth.getMonth();
+  document.getElementById("shiftMonthLabel").textContent="R"+(y-2018)+"年"+(m+1)+"月";
+  const plans=await gMonthPlans(y,m+1);const recs=await gMonthRecs(y,m+1);
+  const el=document.getElementById("shiftList");
+  if(PLANS_ERR){el.innerHTML="<div class=\"no-data\">シフトを読み込めませんでした（Googleカレンダーとの連携準備中）</div>";
+    document.getElementById("shiftDays").textContent="-";document.getElementById("shiftHours").textContent="-";return;}
+  const dates=Object.keys(plans).sort();const today=getWD();let total=0,h="";
+  for(const date of dates){
+    const pl=plans[date];total+=planMs(pl);
+    const sh=recs[date]&&recs[date].shifts&&recs[date].shifts[0];
+    const st=sh&&sh.in&&sh.out?"<span class=\"shift-st st-done\">出勤 "+ts2hm(sh.in)+"〜"+ts2hm(sh.out)+"</span>"
+      :sh&&sh.in?"<span class=\"shift-st st-open\">"+(date<today?"退勤未打刻":"勤務中")+"</span>"
+      :date<today?"<span class=\"shift-st st-miss\">未打刻</span>"
+      :date===today?"<span class=\"shift-st st-today\">今日</span>":"<span class=\"shift-st st-plan\">予定</span>";
+    const dow=DOW[new Date(date.replace(/-/g,"/")).getDay()];
+    h+="<div class=\"shift-row\"><div class=\"shift-date\">"+date.slice(5).replace("-","/")+"("+dow+")</div><div class=\"shift-body\">"
+      +pl.items.map(i=>"<div><span class=\"shift-time\">"+esc(i.start)+"〜"+esc(i.end)+"</span>"+(i.title?" <span class=\"shift-title\">"+esc(i.title)+"</span>":"")+"</div>").join("")
+      +"</div>"+st+"</div>";
+  }
+  el.innerHTML=h||"<div class=\"no-data\">この月のシフトはまだありません</div>";
+  document.getElementById("shiftDays").textContent=dates.length+" 日";
+  document.getElementById("shiftHours").textContent=hm(total);
+}
+function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+let workNoteDate=null;
+async function openWorkNote(date){
+  workNoteDate=date;const rec=await gRec(date);const sh=rec.shifts&&rec.shifts[0];
+  const d=new Date(date.replace(/-/g,"/"));
+  document.getElementById("workNoteSub").textContent=(d.getMonth()+1)+"月"+d.getDate()+"日（"+DOW[d.getDay()]+"）"+(sh&&sh.in?"　"+ts2hm(sh.in)+"〜"+(sh.out?ts2hm(sh.out):""):"");
+  document.getElementById("workNoteText").value=sh&&sh.workNote?sh.workNote:"";
+  document.getElementById("workNoteErr").textContent="";
+  document.getElementById("workNoteOverlay").classList.add("open");
+  setTimeout(()=>document.getElementById("workNoteText").focus(),50);
+}
+async function saveWorkNote(){
+  const t=document.getElementById("workNoteText").value.trim();const er=document.getElementById("workNoteErr");
+  if(!t){er.textContent="業務内容を入力してください";return;}
+  const rec=await gRec(workNoteDate);
+  if(!rec.shifts||!rec.shifts[0]){er.textContent="この日の打刻がありません";return;}
+  rec.shifts[0].workNote=t;
+  try{await sRec(workNoteDate,rec);document.getElementById("workNoteOverlay").classList.remove("open");showToast("業務内容を保存しました ✓");
+    if(document.getElementById("tab-月次").classList.contains("active"))renderMonthly();}
+  catch(e){er.textContent="保存に失敗しました";}
+}
+
 // 月次
 async function renderMonthly(){
   const y=curMonth.getFullYear(),m=curMonth.getMonth();const r=y-2018;
   document.getElementById("monthLabel").textContent="R"+r+"年"+(m+1)+"月";
   const recs=await gMonthRecs(y,m+1);const lvs=await gMyLeaves();
+  const plans=isPart()?await gMonthPlans(y,m+1):{};
   const days=new Date(y,m+1,0).getDate();let tw=0,to=0,tn=0,wd=0,tb="";const pfx=y+"-"+p2(m+1);
   const aLvs=lvs.filter(lv=>{const d=new Date(lv.date.replace(/-/g,"/"));return d.getFullYear()===y&&d.getMonth()===m&&lv.status==="approved";});
   for(let d=1;d<=days;d++){
@@ -600,8 +704,10 @@ async function renderMonthly(){
     const isWeekday=dateObj.getDay()>=1&&dateObj.getDay()<=5;
     // 退勤あり・有給・退勤忘れのいずれもない日
     if(!shiftsComplete.length&&!shiftsMissing.length&&!isLv){
-      // 過去の平日（入社日以降）は未打刻として表示
-      if(isWeekday&&!HOLIDAYS.has(date)&&date<getWD()&&dateObj>=HIRE){
+      // 過去の勤務予定日（入社日以降）は未打刻として表示。
+      // 正社員は平日（祝日を除く）、パートはシフトのある日だけが勤務予定日
+      const isPlanned=isPart()?!!plans[date]:(isWeekday&&!HOLIDAYS.has(date));
+      if(isPlanned&&date<getWD()&&dateObj>=HIRE){
         const dow2=DOW[dateObj.getDay()];
         tb+="<tr style=\"background:#FFF1F2;\">"+
           "<td>"+date.slice(5)+"("+dow2+") <span style=\"color:#DC2626;font-weight:600;font-size:11px;background:#FEE2E2;border:1px solid #FECACA;border-radius:4px;padding:1px 5px;\">⚠️ 未打刻</span></td>"+
@@ -649,8 +755,10 @@ async function renderMonthly(){
         ?" <span style=\"background:#ECFEFF;color:#0E7490;border:1px solid #A5F3FC;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;\">休日出勤・振替済</span>"
         :" <span style=\"background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;\">休日出勤</span>";
     tb+="<tr><td>"+date.slice(5)+"("+dow+")"+offBadge+"</td><td>"+ts2hm(s.in)+"</td><td>"+ts2hm(s.out)+"</td><td>"+(bms>0?hm(bms):"―")+"</td><td>"+hm(wms)+"</td><td class=\""+(oms>0?"ot":"")+"\">"+(oms>0?hm(oms):"―")+"</td><td data-date=\""+date+"\"></td></tr>";
+    if(isPart())tb+="<tr class=\"wn-row\"><td colspan=\"7\">"+(s.workNote?"📝 "+esc(s.workNote)+" <button class=\"ebtn\" data-note=\""+date+"\">直す</button>":"<span style=\"color:#D97706;\">📝 業務内容が未記入です</span> <button class=\"ebtn\" data-note=\""+date+"\">書く</button>")+"</td></tr>";
   }
   const tbody=document.getElementById("monthlyLog");tbody.innerHTML=tb||"<tr><td colspan=\"7\" class=\"no-data\">記録なし</td></tr>";
+  tbody.querySelectorAll("button[data-note]").forEach(b=>b.addEventListener("click",()=>openWorkNote(b.dataset.note)));
   tbody.querySelectorAll("td[data-date]").forEach(td=>{
     const btn=document.createElement("button");btn.className="ebtn";btn.textContent="✏️";
     btn.addEventListener("click",()=>jumpToEdit(td.dataset.date));td.appendChild(btn);
@@ -780,6 +888,7 @@ function showTab(name){
   document.getElementById("tab-"+name).classList.add("active");
   document.querySelector("[data-tab=\""+name+"\"]").classList.add("active");
   if(name==="月次")renderMonthly();
+  if(name==="シフト")renderShiftTab();
   if(name==="有給"){renderMyLeaveList();renderLeaveBalance();}
   if(name==="修正"){document.getElementById("editDatePicker").value=getWD();loadEditDay();}
   if(name==="履歴"){renderHistStamp();renderHistLeave();}
@@ -810,6 +919,9 @@ onAuthStateChanged(auth,async user=>{
     document.getElementById("scheduleNote").textContent="パート"
       +(prof.weeklyDays?"　週"+prof.weeklyDays+"日":"")+(prof.weeklyHours?"・"+prof.weeklyHours+"時間":"")
       +"　休憩 6時間を超える勤務は 12:00〜13:00";
+    // パートは「休日申請」タブを「シフト」に差し替える（申請はシフトタブのボタンから）
+    document.getElementById("shiftTabBtn").style.display="";
+    document.getElementById("leaveTabBtn").style.display="none";
   }
   if(prof.hireDate){const hp=prof.hireDate.split("-");HIRE=new Date(+hp[0],+hp[1]-1,+hp[2]);}
   document.getElementById("uname").textContent=UNAME;
@@ -854,7 +966,7 @@ onAuthStateChanged(auth,async user=>{
     const date=getWD();const rec=await gRec(date);
     if(!rec.shifts||!rec.shifts[0]||!rec.shifts[0].in||rec.shifts[0].out)return;
     rec.shifts[0].out=Date.now();syncSt("syncing");
-    try{await sRec(date,rec);showToast("退勤しました ✓");refreshUI(rec);syncSt("ok");syncGAS(date,rec);}catch(e){syncSt("err");}
+    try{await sRec(date,rec);showToast("退勤しました ✓");refreshUI(rec);syncSt("ok");syncGAS(date,rec);if(isPart())openWorkNote(date);}catch(e){syncSt("err");}
   });
   document.getElementById("bcan1").addEventListener("click",async()=>{
     const date=getWD();const rec=await gRec(date);const sh=rec.shifts&&rec.shifts[0];
@@ -902,6 +1014,7 @@ onAuthStateChanged(auth,async user=>{
     // Firestore は undefined を保存できないため、退勤が未入力なら out キー自体を作らない
     const sh2={in:it,edited:true,editedAt:new Date().toISOString(),editedBy:UNAME};
     if(ot)sh2.out=ot;
+    if(rec.shifts[idx]&&rec.shifts[idx].workNote)sh2.workNote=rec.shifts[idx].workNote;
     rec.shifts[idx]=sh2;
     try{
       await sRec(date,rec);
@@ -913,6 +1026,13 @@ onAuthStateChanged(auth,async user=>{
       renderMonthly();
     }catch(e){er.textContent="保存に失敗しました";}
   });
+
+  // シフトタブ・業務内容
+  document.getElementById("shiftPrevBtn").addEventListener("click",()=>{shiftMonth.setMonth(shiftMonth.getMonth()-1);renderShiftTab();});
+  document.getElementById("shiftNextBtn").addEventListener("click",()=>{shiftMonth.setMonth(shiftMonth.getMonth()+1);renderShiftTab();});
+  document.getElementById("shiftLeaveBtn").addEventListener("click",()=>showTab("有給"));
+  document.getElementById("workNoteSaveBtn").addEventListener("click",saveWorkNote);
+  document.getElementById("workNoteLaterBtn").addEventListener("click",()=>{document.getElementById("workNoteOverlay").classList.remove("open");showToast("月次タブからあとで書けます");});
 
   // 休日申請モーダル
   document.getElementById("leaveOverlay").addEventListener("click",(e)=>{if(e.target===e.currentTarget)closeLeaveModal();});

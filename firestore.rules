@@ -92,6 +92,17 @@ service cloud.firestore {
       allow delete: if isAdmin() || (isActive() && isMine());
     }
 
+    // ── shifts : パートのシフト（Googleカレンダーから GAS が書き写す）──
+    //  ドキュメントIDは "<authUid>_<YYYY-MM-DD>"。本人は読むだけ、書き込みは管理者のみ。
+    //  GAS は Google アカウントの OAuth トークンで REST を呼ぶため、このルールを通らずに書ける。
+    match /shifts/{docId} {
+      allow get:   if isAdmin()
+                   || (signedIn() && (resource == null
+                                      || resource.data.userId == request.auth.uid));
+      allow list:  if isAdmin() || isMine();
+      allow write: if isAdmin();
+    }
+
     // ── leaves : 有給申請 ─────────────────────────────────────
     //  従業員は pending でのみ申請でき、承認状態は変更できない
     //  （notifSeen の更新は status 不変なので許可される）
