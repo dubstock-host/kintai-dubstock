@@ -106,6 +106,30 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .ltable td:first-child{color:var(--tx);}
 .ot{color:var(--out)!important;font-weight:600;}
 .ebtn{background:var(--s2);border:1px solid var(--bdr);color:var(--tx2);border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;padding:8px;}
+.cal-h{text-align:center;font-size:10px;color:var(--tx3);font-weight:600;padding:2px 0 4px;}
+.cal-h.sun,.cal-n.sun{color:#DC2626;}.cal-h.sat,.cal-n.sat{color:#2563EB;}
+.cal-c{min-height:58px;border-radius:6px;padding:3px 2px;background:var(--surface);border:1px solid transparent;cursor:pointer;text-align:center;overflow:hidden;}
+.cal-empty{cursor:default;}
+.cal-n{font-size:11px;font-weight:600;color:var(--tx2);}
+.cal-t{font-family:"DM Mono",monospace;font-size:9.5px;line-height:1.25;margin-top:2px;font-weight:600;}
+.cal-lv{font-size:9px;margin-top:2px;color:var(--lv);font-weight:600;}
+.cal-c.has,.cal-c.c-plan{background:#EFF6FF;}.cal-c.has .cal-t{color:#1D4ED8;}
+.cal-c.c-done{background:#DCFCE7;}.cal-c.c-done .cal-t{color:#166534;}
+.cal-c.c-miss{background:#FEE2E2;}.cal-c.c-miss .cal-t{color:#DC2626;}
+.cal-c.c-open{background:#FEF9C3;}.cal-c.c-open .cal-t{color:#92400E;}
+.cal-c.c-leave{background:#F5F3FF;}.cal-c.c-leave .cal-t{color:#A78BFA;text-decoration:line-through;}
+.st-leave{background:#F5F3FF;color:#7C3AED;}
+.cal-c.c-today{border-color:#2563EB;}
+.cal-c.c-sel{box-shadow:0 0 0 2px #0F172A inset;}
+.cal-legend{font-size:10px;color:var(--tx3);padding:2px 10px 10px;display:flex;gap:4px;align-items:center;flex-wrap:wrap;}
+.lg{display:inline-block;width:10px;height:10px;border-radius:3px;margin-left:6px;}
+.lg-plan{background:#EFF6FF;border:1px solid #BFDBFE;}.lg-done{background:#DCFCE7;}.lg-miss{background:#FEE2E2;}.lg-leave{background:#F5F3FF;border:1px solid #DDD6FE;}
+.cal-detail{border-top:1px solid var(--bdr);padding:12px 14px;font-size:13px;line-height:1.7;}
+.cal-dh{font-weight:700;font-size:14px;margin-bottom:4px;}
+.cal-dr{display:flex;gap:10px;align-items:baseline;}
+.cal-dk{min-width:56px;font-size:11px;color:var(--tx3);}
+.cal-hint{font-size:12px;color:var(--tx3);text-align:center;}
 .shift-row{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-bottom:1px solid var(--bdr);}
 .shift-row:last-child{border-bottom:none;}
 .shift-date{min-width:64px;font-weight:600;font-size:14px;}
@@ -656,22 +680,51 @@ async function renderShiftTab(sync=true){
   const el=document.getElementById("shiftList");
   if(PLANS_ERR){el.innerHTML="<div class=\"no-data\">シフトを読み込めませんでした（Googleカレンダーとの連携準備中）</div>";
     document.getElementById("shiftDays").textContent="-";document.getElementById("shiftHours").textContent="-";return;}
-  const dates=Object.keys(plans).sort();const today=getWD();let total=0,h="";
-  for(const date of dates){
-    const pl=plans[date];total+=planMs(pl);
-    const sh=recs[date]&&recs[date].shifts&&recs[date].shifts[0];
-    const st=sh&&sh.in&&sh.out?"<span class=\"shift-st st-done\">出勤 "+ts2hm(sh.in)+"〜"+ts2hm(sh.out)+"</span>"
-      :sh&&sh.in?"<span class=\"shift-st st-open\">"+(date<today?"退勤未打刻":"勤務中")+"</span>"
-      :date<today?"<span class=\"shift-st st-miss\">未打刻</span>"
-      :date===today?"<span class=\"shift-st st-today\">今日</span>":"<span class=\"shift-st st-plan\">予定</span>";
-    const dow=DOW[new Date(date.replace(/-/g,"/")).getDay()];
-    h+="<div class=\"shift-row\"><div class=\"shift-date\">"+date.slice(5).replace("-","/")+"("+dow+")</div><div class=\"shift-body\">"
-      +pl.items.map(i=>"<div><span class=\"shift-time\">"+esc(i.start)+"〜"+esc(i.end)+"</span>"+(i.title?" <span class=\"shift-title\">"+esc(i.title)+"</span>":"")+"</div>").join("")
-      +"</div>"+st+"</div>";
+  const lvs=await gMyLeaves();
+  const today=getWD(),days=new Date(y,m+1,0).getDate(),first=new Date(y,m,1).getDay();
+  let total=0,cnt=0;SHIFT_CAL={};
+  let h="<div class=\"cal\">"+DOW.map((w,i)=>"<div class=\"cal-h"+(i===0?" sun":i===6?" sat":"")+"\">"+w+"</div>").join("");
+  for(let i=0;i<first;i++)h+="<div class=\"cal-c cal-empty\"></div>";
+  for(let d=1;d<=days;d++){
+    const date=y+"-"+p2(m+1)+"-"+p2(d),dow=(first+d-1)%7;
+    const pl=plans[date],rec=recs[date],sh=rec&&rec.shifts&&rec.shifts[0];
+    const lv=lvs.find(l=>l.date===date&&l.status!=="rejected");
+    if(pl){total+=planMs(pl);cnt++;}
+    // 状態：打刻済み／退勤未打刻／休み（承認済みの有給・振替）／未打刻（シフトのある過去日）／予定
+    const st=sh&&sh.in&&sh.out?"done":sh&&sh.in?"open":lv&&lv.status==="approved"?"leave":pl&&date<today?"miss":pl?"plan":"";
+    SHIFT_CAL[date]={pl,sh,lv,st};
+    const cls="cal-c"+(pl?" has":"")+(st?" c-"+st:"")+(date===today?" c-today":"")+(date===shiftSel?" c-sel":"");
+    const num="<div class=\"cal-n"+(dow===0||HOLIDAYS.has(date)?" sun":dow===6?" sat":"")+"\">"+d+"</div>";
+    const body=pl?pl.items.map(it=>"<div class=\"cal-t\">"+esc(it.start)+"<br>"+esc(it.end)+"</div>").join("")
+      :sh&&sh.in?"<div class=\"cal-t\">"+ts2hm(sh.in)+"<br>"+(sh.out?ts2hm(sh.out):"")+"</div>":"";
+    const tag=lv?"<div class=\"cal-lv\">"+(lv.type==="振替休日"?"振替":"有給")+"</div>":"";
+    h+="<div class=\""+cls+"\" data-d=\""+date+"\">"+num+body+tag+"</div>";
   }
-  el.innerHTML=h||"<div class=\"no-data\">この月のシフトはまだありません</div>";
-  document.getElementById("shiftDays").textContent=dates.length+" 日";
+  h+="</div><div class=\"cal-legend\"><span class=\"lg lg-plan\"></span>予定 <span class=\"lg lg-done\"></span>出勤済み <span class=\"lg lg-miss\"></span>未打刻 <span class=\"lg lg-leave\"></span>休み</div>"
+    +"<div id=\"shiftDetail\" class=\"cal-detail\"></div>";
+  el.innerHTML=h;
+  el.querySelectorAll(".cal-c[data-d]").forEach(c=>c.addEventListener("click",()=>{
+    shiftSel=c.dataset.d;el.querySelectorAll(".c-sel").forEach(x=>x.classList.remove("c-sel"));c.classList.add("c-sel");showShiftDetail(shiftSel);}));
+  if(!SHIFT_CAL[shiftSel])shiftSel=today.slice(0,7)===y+"-"+p2(m+1)?today:null;
+  if(shiftSel){const c=el.querySelector("[data-d=\""+shiftSel+"\"]");if(c)c.classList.add("c-sel");}
+  showShiftDetail(shiftSel);
+  document.getElementById("shiftDays").textContent=cnt+" 日";
   document.getElementById("shiftHours").textContent=hm(total);
+}
+let SHIFT_CAL={},shiftSel=null;
+function showShiftDetail(date){
+  const el=document.getElementById("shiftDetail");if(!el)return;
+  if(!date||!SHIFT_CAL[date]){el.innerHTML="<div class=\"cal-hint\">日付をタップすると詳細が出ます</div>";return;}
+  const {pl,sh,lv,st}=SHIFT_CAL[date];const d=new Date(date.replace(/-/g,"/"));
+  const ST={leave:["st-leave","休み"],done:["st-done","出勤済み"],open:["st-open",date<getWD()?"退勤未打刻":"勤務中"],miss:["st-miss","未打刻"],plan:["st-plan","予定"]};
+  let h="<div class=\"cal-dh\">"+(d.getMonth()+1)+"月"+d.getDate()+"日（"+DOW[d.getDay()]+"）"
+    +(st?" <span class=\"shift-st "+ST[st][0]+"\">"+ST[st][1]+"</span>":"")+"</div>";
+  h+=pl?pl.items.map(i=>"<div class=\"cal-dr\"><span class=\"cal-dk\">シフト</span><span class=\"shift-time\">"+esc(i.start)+"〜"+esc(i.end)+"</span>"+(i.title?" <span class=\"shift-title\" style=\"display:inline;\">"+esc(i.title)+"</span>":"")+"</div>").join("")
+    :"<div class=\"cal-dr\"><span class=\"cal-dk\">シフト</span>なし</div>";
+  if(sh&&sh.in)h+="<div class=\"cal-dr\"><span class=\"cal-dk\">打刻</span><span class=\"shift-time\">"+ts2hm(sh.in)+"〜"+(sh.out?ts2hm(sh.out):"")+"</span></div>";
+  if(sh&&sh.workNote)h+="<div class=\"cal-dr\"><span class=\"cal-dk\">業務内容</span>"+esc(sh.workNote)+"</div>";
+  if(lv)h+="<div class=\"cal-dr\"><span class=\"cal-dk\">申請</span>"+esc(leaveLabel(lv))+(lv.status==="pending"?"（承認待ち）":"")+"</div>";
+  el.innerHTML=h;
 }
 function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 
