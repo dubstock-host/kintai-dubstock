@@ -482,7 +482,7 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
 <script type="module">
 import {initializeApp,deleteApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged,createUserWithEmailAndPassword,updatePassword} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import {getFirestore,doc,collection,getDocs,getDoc,setDoc,updateDoc,query,where} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {getFirestore,doc,collection,getDocs,getDoc,setDoc,updateDoc,query,where,documentId} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const FB={apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",authDomain:"kintai-dubstock.firebaseapp.com",projectId:"kintai-dubstock",storageBucket:"kintai-dubstock.firebasestorage.app",messagingSenderId:"1030065146975",appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"};
 // 名前付きアプリにして、社員画面（index / keihitsu）とログイン状態を分ける。
@@ -574,9 +574,13 @@ async function getAllLeaves(){
   }
   return all.sort((a,b)=>new Date(b.appliedAt)-new Date(a.appliedAt));
 }
-async function getRecsByUid(uid){
+// 読み込み件数を抑えるため、月（pfx="YYYY-MM"）を渡したらその月の分だけ読む。
+// ドキュメントIDが "<uid>_<YYYY-MM-DD>" なので ID の範囲で絞れる（追加の索引は不要）
+async function getRecsByUid(uid,pfx){
   if(!uid)return {};
-  const sn=await getDocs(query(collection(db,"kintai"),where("userId","==",uid)));
+  const q=pfx?query(collection(db,"kintai"),where(documentId(),">=",uid+"_"+pfx+"-01"),where(documentId(),"<=",uid+"_"+pfx+"-31"))
+             :query(collection(db,"kintai"),where("userId","==",uid));
+  const sn=await getDocs(q);
   const r={};
   sn.forEach(d=>{const data=d.data();if(data.date)r[data.date]=data;});
   return r;
@@ -660,7 +664,7 @@ async function renderEmpDash(){
   const y=dashMonth.getFullYear(),m=dashMonth.getMonth(),pfx=y+"-"+p2(m+1),days=new Date(y,m+1,0).getDate();
   const isPart=emp.employmentType==="part";
   const [recs,lvs,allExp,allTrv,plans]=await Promise.all([
-    getRecsByUid(emp.uid),getLeavesByUid(emp.uid),getAllDocs("expenses"),getAllDocs("travels"),
+    getRecsByUid(emp.uid,pfx),getLeavesByUid(emp.uid),getAllDocs("expenses"),getAllDocs("travels"),
     isPart?getDocs(query(collection(db,"shifts"),where("userId","==",emp.uid))).then(sn=>{const r={};sn.forEach(d=>{const v=d.data();if(Array.isArray(v.items)&&v.items.length)r[v.date]=v;});return r;}).catch(()=>({})):Promise.resolve({})
   ]);
   const today=(()=>{const d=new Date();if(d.getHours()<5)d.setDate(d.getDate()-1);return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate());})();
@@ -767,8 +771,8 @@ async function renderEmpCards(){
   if(!EMPLOYEES.length){el.innerHTML="<div class=\"no-data\">社員が登録されていません（users コレクションに role=\"employee\" のドキュメントを作成してください）</div>";return;}
   const y=new Date().getFullYear(),m=new Date().getMonth()+1,r=y-2018;
   for(const emp of EMPLOYEES){
-    const allRecs=await getRecsByUid(emp.uid);
-    const pfx=y+"-"+p2(m);const recs={};Object.keys(allRecs).forEach(k=>{if(k.startsWith(pfx))recs[k]=allRecs[k];});
+    const pfx=y+"-"+p2(m);
+    const allRecs=await getRecsByUid(emp.uid,pfx);const recs={};Object.keys(allRecs).forEach(k=>{if(k.startsWith(pfx))recs[k]=allRecs[k];});
     const lvs=await getLeavesByUid(emp.uid);
     const pending=lvs.filter(lv=>lv.status==="pending").length;
     const days=new Date(y,m,0).getDate();let tw=0,wd=0;
@@ -848,8 +852,8 @@ async function renderKintai(){
   const y=kintaiMonth.getFullYear(),m=kintaiMonth.getMonth(),r=y-2018;
   document.getElementById("kintaiMonthLabel").textContent="R"+r+"年"+(m+1)+"月";
   if(!selectedKintaiUid){document.getElementById("kintaiLog").innerHTML="<tr><td colspan=\"6\" class=\"no-data\">社員が登録されていません</td></tr>";return;}
-  const allRecs=await getRecsByUid(selectedKintaiUid);
-  const pfx=y+"-"+p2(m+1);const recs={};Object.keys(allRecs).forEach(k=>{if(k.startsWith(pfx))recs[k]=allRecs[k];});
+  const pfx=y+"-"+p2(m+1);
+  const allRecs=await getRecsByUid(selectedKintaiUid,pfx);const recs={};Object.keys(allRecs).forEach(k=>{if(k.startsWith(pfx))recs[k]=allRecs[k];});
   const lvs=await getLeavesByUid(selectedKintaiUid);
   const days=new Date(y,m+1,0).getDate();let tw=0,to=0,tn=0,wd=0,tb="";
   const aLvs=lvs.filter(lv=>{const d=new Date(lv.date.replace(/-/g,"/"));return d.getFullYear()===y&&d.getMonth()===m&&lv.status==="approved";});
@@ -911,8 +915,8 @@ async function renderStamp(){
   const y=stampMonth.getFullYear(),m=stampMonth.getMonth(),r=y-2018;
   document.getElementById("stampMonthLabel").textContent="R"+r+"年"+(m+1)+"月";
   if(!selectedStampUid){document.getElementById("stampLog").innerHTML="<tr><td colspan=\"6\" class=\"no-data\">社員が登録されていません</td></tr>";return;}
-  const allRecs=await getRecsByUid(selectedStampUid);
-  const pfx=y+"-"+p2(m+1);const recs={};Object.keys(allRecs).forEach(k=>{if(k.startsWith(pfx))recs[k]=allRecs[k];});
+  const pfx=y+"-"+p2(m+1);
+  const allRecs=await getRecsByUid(selectedStampUid,pfx);const recs={};Object.keys(allRecs).forEach(k=>{if(k.startsWith(pfx))recs[k]=allRecs[k];});
   const days=new Date(y,m+1,0).getDate();let tb="";
   for(let d=1;d<=days;d++){
     const date=y+"-"+p2(m+1)+"-"+p2(d);const rec=recs[date];
@@ -968,7 +972,7 @@ async function renderExportTab(){
 
 // 社員1名・1か月分の文書を組み立てる
 async function buildEmpDoc(emp,y,m,pfx,opts,allExp,allTrv){
-  const recs=await getRecsByUid(emp.uid);
+  const recs=await getRecsByUid(emp.uid,pfx);
   const lvs=await getLeavesByUid(emp.uid);
   const days=new Date(y,m+1,0).getDate();
   let wd=0,tw=0,to=0,tn=0,rows="";
@@ -1474,8 +1478,8 @@ onAuthStateChanged(auth,async function(user){
     const y=kintaiMonth.getFullYear(),m=kintaiMonth.getMonth();
     if(!selectedKintaiUid){showToast("対象の社員が選択されていません");return;}
     const emp=EMPLOYEES.find(e=>e.uid===selectedKintaiUid)||{name:selectedKintaiUid};
-    const allRecs=await getRecsByUid(selectedKintaiUid);
-    const pfx=y+"-"+p2(m+1);const recs={};Object.keys(allRecs).forEach(k=>{if(k.startsWith(pfx))recs[k]=allRecs[k];});
+    const pfx=y+"-"+p2(m+1);
+    const allRecs=await getRecsByUid(selectedKintaiUid,pfx);const recs={};Object.keys(allRecs).forEach(k=>{if(k.startsWith(pfx))recs[k]=allRecs[k];});
     const days=new Date(y,m+1,0).getDate();
     const rows=[["日付","曜日","出勤","退勤","休憩(min)","実労働(h)","残業(h)"]];
     for(let d=1;d<=days;d++){const date=y+"-"+p2(m+1)+"-"+p2(d);const rec=recs[date];const shifts=rec&&rec.shifts?rec.shifts.filter(s=>s&&s.in&&s.out):[];if(!shifts.length)continue;const s=shifts[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);rows.push([date.slice(5),DOW[new Date(date).getDay()],ts2hm(s.in),ts2hm(s.out),Math.round(bms/60000),(Math.round(wms/36000)/100).toFixed(2),(Math.round(oms/36000)/100).toFixed(2)]);}
@@ -1511,7 +1515,12 @@ onAuthStateChanged(auth,async function(user){
   // 初期表示
   await renderEmpCards();
   await renderPending();
-  setInterval(()=>{renderPending();renderEmpCards();},30000);
+  // 自動更新は画面を見ているときだけ・5分おき。別のタブやアプリから戻ってきたときは、1分以上たっていれば更新する。
+  // （以前は30秒ごとに全員の全記録を読み直していて、Firestore の1日の無料枠を使い切った）
+  let lastRefresh=Date.now();
+  const refresh=()=>{lastRefresh=Date.now();renderPending();renderEmpCards();};
+  setInterval(()=>{if(document.visibilityState==="visible")refresh();},300000);
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&Date.now()-lastRefresh>60000)refresh();});
 });
 
 // ログインボタン（DOMContentLoaded後に確実に登録）

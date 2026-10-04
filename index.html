@@ -455,7 +455,7 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import {getFirestore,doc,setDoc,getDoc,collection,query,where,getDocs,deleteDoc,updateDoc} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {getFirestore,doc,setDoc,getDoc,collection,query,where,getDocs,deleteDoc,updateDoc,documentId} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const FB={apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",authDomain:"kintai-dubstock.firebaseapp.com",projectId:"kintai-dubstock",storageBucket:"kintai-dubstock.firebasestorage.app",messagingSenderId:"1030065146975",appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"};
 const app=initializeApp(FB);
@@ -557,7 +557,19 @@ async function gAllRecs(){
   sn.forEach(d=>{const data=d.data();if(data.date)r[data.date]=data;});
   return r;
 }
-async function gMonthRecs(y,m){const all=await gAllRecs();const pfx=y+"-"+p2(m);const r={};Object.keys(all).forEach(k=>{if(k.startsWith(pfx))r[k]=all[k];});return r;}
+// その月の分だけ読む（読み込み件数を抑える）。ルールのため userId の条件も付ける。
+// 万一この条件の組み合わせが使えなかったときは、全件を読んで絞る従来の方法に戻す
+async function gMonthRecs(y,m){
+  const pfx=y+"-"+p2(m);const r={};
+  try{
+    const sn=await getDocs(query(collection(db,"kintai"),where("userId","==",UID),
+      where(documentId(),">=",UID+"_"+pfx+"-01"),where(documentId(),"<=",UID+"_"+pfx+"-31")));
+    sn.forEach(d=>{const data=d.data();if(data.date)r[data.date]=data;});
+    return r;
+  }catch(e){
+    const all=await gAllRecs();Object.keys(all).forEach(k=>{if(k.startsWith(pfx))r[k]=all[k];});return r;
+  }
+}
 async function sLeave(lv){await setDoc(doc(db,"leaves",lv.id),{...lv});}
 async function gMyLeaves(){const q=query(collection(db,"leaves"),where("userId","==",UID));const sn=await getDocs(q);const r=[];sn.forEach(d=>r.push(d.data()));return r.sort((a,b)=>new Date(b.appliedAt)-new Date(a.appliedAt));}
 
@@ -1192,7 +1204,9 @@ onAuthStateChanged(auth,async user=>{
   // 初期表示（ログイン後）
   const rec=await gRec(getWD());refreshUI(rec);
   renderLeaveNotif();
-  setInterval(renderLeaveNotif,30000);
+  // 承認・却下のお知らせは、画面を見ているときだけ5分おきに確認する（読み込み件数を抑える）
+  setInterval(()=>{if(document.visibilityState==="visible")renderLeaveNotif();},300000);
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")renderLeaveNotif();});
 });
 
 // ログイン
