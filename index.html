@@ -680,6 +680,14 @@ let shiftMonth=new Date(),PLANS_ERR=null;
 // シフトタブを開いたときだけ、GAS（tools/gas-shift-sync.gs）にその月の同期を頼む。定期同期はしない
 const SHIFT_SYNC_URL="https://script.google.com/macros/s/AKfycbytlfJQeqet41SlgX30xkIpObMmF4YRYTxnnxbZsSdLY6psdh0dlZEp_RiZ3TZXC_PiQg/exec";
 let shiftSyncSeq=0;
+const HR_GAS_URL=SHIFT_SYNC_URL;
+// 申請・提出をチャットワークに知らせる（GAS がデータベースの中身を確かめてから投稿する）。
+// 失敗しても申請自体には影響させない
+function notifyHR(params){
+  const q=Object.keys(params).map(k=>k+"="+encodeURIComponent(params[k])).join("&");
+  try{fetch(HR_GAS_URL+"?"+q,{keepalive:true}).catch(()=>{});}catch(e){}
+}
+
 // shifts/{uid}_{date} = {userId,date,items:[{start:"HH:MM",end:"HH:MM",title}]}
 async function gMonthPlans(y,m){
   PLANS_ERR=null;const r={};const pfx=y+"-"+p2(m);
@@ -1160,6 +1168,7 @@ onAuthStateChanged(auth,async user=>{
     const lv={id,userId:UID,userName:UNAME,date,type,time:"",reason,status:"pending",appliedAt:new Date().toISOString(),notifSeen:false};
     if(type==="振替休日")lv.workDate=workDate;
     await sLeave(lv);
+    notifyHR({n:"leave",id});
     closeLeaveModal();showToast("申請を送信しました ✓");
     renderMyLeaveList();renderLeaveBalance();
   });

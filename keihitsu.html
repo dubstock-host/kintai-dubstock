@@ -566,6 +566,7 @@ function renderExpSubmit(items){
       const all=await getAllByUser("expenses");
       const targets=all.filter(e=>e.date&&e.date.startsWith(pfx));
       for(const t of targets){await updateDoc(doc(db,"expenses",t.id),{submitted:true,submittedAt:new Date().toISOString()});}
+      notifyHR({n:"expense",uid:UID,ym:pfx});
       showToast("提出しました ✓");renderExpenses();
     });
   }
@@ -714,6 +715,15 @@ function openTravelModal(t=null){
 }
 function closeTravelModal(){document.getElementById("travelModal").classList.remove("open");editingTravelId=null;}
 
+// index.html のシフト同期と同じ GAS
+const HR_GAS_URL="https://script.google.com/macros/s/AKfycbytlfJQeqet41SlgX30xkIpObMmF4YRYTxnnxbZsSdLY6psdh0dlZEp_RiZ3TZXC_PiQg/exec";
+// 申請・提出をチャットワークに知らせる（GAS がデータベースの中身を確かめてから投稿する）。
+// 失敗しても申請自体には影響させない
+function notifyHR(params){
+  const q=Object.keys(params).map(k=>k+"="+encodeURIComponent(params[k])).join("&");
+  try{fetch(HR_GAS_URL+"?"+q,{keepalive:true}).catch(()=>{});}catch(e){}
+}
+
 async function saveTravel(submit=false){
   const dest=document.getElementById("tvDest").value.trim();
   const er=document.getElementById("travelModalErr");er.textContent="";
@@ -727,6 +737,7 @@ async function saveTravel(submit=false){
     if(editingTravelId){await updateDoc(doc(db,"travels",id),data);}
     else{data.createdAt=new Date().toISOString();await setDoc(doc(db,"travels",id),data);}
   }catch(e){er.textContent="保存に失敗しました: "+(e.code||e.message);return;}
+  if(submit)notifyHR({n:"travel",id});
   closeTravelModal();showToast(submit?"提出しました ✓":"保存しました ✓");renderTravelList();
 }
 
