@@ -781,7 +781,8 @@ onAuthStateChanged(auth,async user=>{
   window._expInitialized=true;
 
   document.querySelectorAll(".tab-btn").forEach(btn=>{btn.addEventListener("click",()=>showTab(btn.dataset.tab));});
-  document.getElementById("logoutBtn").addEventListener("click",()=>signOut(auth));
+  // ログアウト後は読み込み直して、前の人の表示を次の人に持ち越さない
+  document.getElementById("logoutBtn").addEventListener("click",async()=>{await signOut(auth);location.reload();});
   document.getElementById("expPrevBtn").addEventListener("click",()=>{expMonth.setMonth(expMonth.getMonth()-1);renderExpenses();});
   document.getElementById("expNextBtn").addEventListener("click",()=>{expMonth.setMonth(expMonth.getMonth()+1);renderExpenses();});
   // 印刷ボタン：クリックでブラウザ印刷ダイアログを開く

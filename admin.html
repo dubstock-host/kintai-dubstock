@@ -1455,7 +1455,8 @@ onAuthStateChanged(auth,async function(user){
   });
 
   // ログアウト
-  document.getElementById("adminLogoutBtn").addEventListener("click",()=>signOut(auth));
+  // ログアウト後は読み込み直して、前の人の表示を次の人に持ち越さない
+  document.getElementById("adminLogoutBtn").addEventListener("click",async()=>{await signOut(auth);location.reload();});
 
   // 差し戻しモーダル
   document.getElementById("rejectCancelBtn").addEventListener("click",closeRejectModal);

@@ -1028,15 +1028,18 @@ onAuthStateChanged(auth,async user=>{
       :"このアカウントでは勤怠画面を利用できません。";
     return;
   }
+  // 同じ画面のまま別の人に切り替わったら、前の人の表示や状態を残さないよう読み込み直す
+  if(window._appInitialized&&UID&&UID!==user.uid){location.reload();return;}
   UID=user.uid;UNAME=prof.name||user.email||"";PROF=prof;
-  if(prof.employmentType==="part"){
-    document.getElementById("scheduleNote").textContent="パート"
-      +(prof.weeklyDays?"　週"+prof.weeklyDays+"日":"")+(prof.weeklyHours?"・"+prof.weeklyHours+"時間":"")
-      +"　休憩 6時間を超える勤務は 12:00〜13:00";
-    // パートは「休日申請」タブを「シフト」に差し替える（申請はシフトタブのボタンから）
-    document.getElementById("shiftTabBtn").style.display="";
-    document.getElementById("leaveTabBtn").style.display="none";
-  }
+  // 雇用形態で画面を決める。正社員はこれまでの画面のまま（休日申請タブ・定時表示）、
+  // パートだけ「休日申請」タブを「シフト」タブに差し替える。両方向とも毎回設定し直す
+  const part=prof.employmentType==="part";
+  document.getElementById("scheduleNote").textContent=part
+    ?"パート"+(prof.weeklyDays?"　週"+prof.weeklyDays+"日":"")+(prof.weeklyHours?"・"+prof.weeklyHours+"時間":"")+"　休憩 6時間を超える勤務は 12:00〜13:00"
+    :"定時 10:00〜19:00　休憩 12:00〜13:00";
+  document.getElementById("shiftTabBtn").style.display=part?"":"none";
+  document.getElementById("leaveTabBtn").style.display=part?"none":"";
+  HIRE=new Date(2025,8,1);
   if(prof.hireDate){const hp=prof.hireDate.split("-");HIRE=new Date(+hp[0],+hp[1]-1,+hp[2]);}
   document.getElementById("uname").textContent=UNAME;
   document.getElementById("uavatar").textContent=UNAME.slice(0,1)||"－";
@@ -1067,7 +1070,8 @@ onAuthStateChanged(auth,async user=>{
   }
 
   // ログアウト
-  document.getElementById("logoutBtn").addEventListener("click",()=>signOut(auth));
+  // ログアウトしたら画面を読み込み直し、次にログインする人へ前の人の表示を持ち越さない
+  document.getElementById("logoutBtn").addEventListener("click",async()=>{await signOut(auth);location.reload();});
 
   // 打刻
   document.getElementById("bi1").addEventListener("click",async()=>{
