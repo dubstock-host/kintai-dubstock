@@ -304,6 +304,7 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
 
   <!-- 経費精算タブ -->
   <div class="tab-content active" id="tab-expense">
+    <div id="closingArea"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <div>
         <div style="font-size:18px;font-weight:700;">経費精算書</div>
@@ -439,6 +440,8 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {getFirestore,doc,setDoc,getDoc,collection,getDocs,deleteDoc,updateDoc,query,where} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {prevYm,monthEnded,closingApplies,closingBannerHTML,closingDeadline,fmtDeadline,ymLabel,CLOSING_CSS} from "./hr-common.js";
+{const st=document.createElement("style");st.textContent=CLOSING_CSS;document.head.appendChild(st);}
 
 const FB={apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",authDomain:"kintai-dubstock.firebaseapp.com",projectId:"kintai-dubstock",storageBucket:"kintai-dubstock.firebasestorage.app",messagingSenderId:"1030065146975",appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"};
 const app=initializeApp(FB);
@@ -466,6 +469,41 @@ async function getAllByUser(col){
 }
 
 // ══ 経費精算 ══
+// ── 月次の締め（経費確定）──
+// closings/{uid}_{YYYY-MM} の expenseAt があれば、その月の経費は確定済み（追加・編集・削除できない）
+let CLOSINGS={},HIRE_YM="";
+async function loadClosings(){
+  CLOSINGS={};
+  try{const sn=await getDocs(query(collection(db,"closings"),where("userId","==",UID)));sn.forEach(d=>{const v=d.data();CLOSINGS[v.ym]=v;});}catch(e){}
+}
+const expLocked=ym=>!!(CLOSINGS[ym]&&CLOSINGS[ym].expenseAt);
+const curExpYm=()=>expMonth.getFullYear()+"-"+p2(expMonth.getMonth()+1);
+function renderClosingBanner(){
+  const el=document.getElementById("closingArea");
+  const ym=prevYm(new Date());
+  if(!closingApplies(ym)||(HIRE_YM&&ym<HIRE_YM)){el.innerHTML="";return;}
+  el.innerHTML=closingBannerHTML(ym,CLOSINGS[ym]);
+  el.querySelectorAll("[data-cl]").forEach(b=>b.addEventListener("click",()=>{
+    if(b.dataset.cl==="kintai")location.href="index.html";
+    else{const [y,m]=ym.split("-").map(Number);expMonth=new Date(y,m-1,1);showTab("expense");window.scrollTo(0,0);}
+  }));
+}
+async function closeExpenses(ym,items){
+  const none=!items.length;
+  const msg=none
+    ?ymLabel(ym)+"は立て替えた経費が「なし」として確定します。\n確定後は、この月の経費を追加できなくなります。よろしいですか？"
+    :ymLabel(ym)+"の経費 "+items.length+" 件（合計 "+fmtYen(items.reduce((a,e)=>a+(Number(e.amount)||0),0))+"）を確定して提出します。\n確定後は追加・編集・削除ができなくなります。よろしいですか？";
+  if(!confirm(msg))return;
+  try{
+    const now=new Date().toISOString();
+    for(const t of items){if(!t.submitted)await updateDoc(doc(db,"expenses",t.id),{submitted:true,submittedAt:now});}
+    const c={userId:UID,userName:UNAME,ym,expenseAt:now};if(none)c.expenseNone=true;
+    await setDoc(doc(db,"closings",UID+"_"+ym),c,{merge:true});
+    if(!none)notifyHR({n:"expense",uid:UID,ym});
+    await loadClosings();showToast(ymLabel(ym)+"の経費を確定しました ✓");renderClosingBanner();renderExpenses();
+  }catch(e){alert("確定できませんでした（"+(e.code||e.message)+"）");}
+}
+
 async function renderExpenses(){
   const y=expMonth.getFullYear(),m=expMonth.getMonth();
   const r=y-2018;
@@ -477,7 +515,9 @@ async function renderExpenses(){
   document.getElementById("expTotal").textContent=fmtYen(total);
 
   const el=document.getElementById("expList");
-  if(!items.length){el.innerHTML="<div class='no-data'>明細がありません</div>";renderExpSubmit([]);return;}
+  // 確定済みの月は「＋ 明細を追加」を隠す
+  document.getElementById("addExpBtn").style.display=expLocked(pfx)?"none":"";
+  if(!items.length){el.innerHTML="<div class='no-data'>明細がありません</div>";renderExpSubmit([],pfx);return;}
 
   // 印刷ヘッダーの日付を更新
   const y2=expMonth.getFullYear(),m2=expMonth.getMonth();
@@ -519,6 +559,8 @@ async function renderExpenses(){
       "<td style='font-size:12px;color:#64748B;'>"+( item.note||"")+"</td>"+
       "<td class='td-action'><button class='del-btn' style='background:transparent;border:none;color:#94A3B8;cursor:pointer;font-size:16px;'>&times;</button></td>";
 
+    // 確定済みの月は編集・削除できない
+    if(expLocked(pfx)){tr.querySelector(".del-btn").remove();tbody.appendChild(tr);return;}
     // 行クリックで編集モーダルを開く
     tr.addEventListener("click",e=>{
       if(e.target.classList.contains("del-btn"))return;
@@ -548,11 +590,29 @@ async function renderExpenses(){
   wrap.appendChild(table);
   el.innerHTML="";
   el.appendChild(wrap);
-  renderExpSubmit(items);
+  renderExpSubmit(items,pfx);
 }
 
-function renderExpSubmit(items){
+function renderExpSubmit(items,pfx){
   const el=document.getElementById("expSubmitArea");
+  // 締めの対象月：確定済み／確定ボタン（経費がない月は「経費なしで確定」）
+  if(closingApplies(pfx)&&!(HIRE_YM&&pfx<HIRE_YM)){
+    const c=CLOSINGS[pfx];
+    if(c&&c.expenseAt){
+      const at=new Date(c.expenseAt);
+      el.innerHTML="<div class='cl-lock'>🔒 "+ymLabel(pfx)+"の経費は"+(c.expenseNone?"「なし」で":"")+"確定済みです（"+(at.getMonth()+1)+"/"+at.getDate()+"）。直すときは管理者に差し戻しを頼んでください。</div>";
+      return;
+    }
+    if(!monthEnded(pfx)){
+      el.innerHTML="<div style='font-size:12px;color:var(--tx3);text-align:center;padding:10px;'>月が終わったら、この月の経費を確定できます（期限 "+fmtDeadline(closingDeadline(pfx))+"）</div>";
+      return;
+    }
+    el.innerHTML="<div class='cl-confirm'><b>"+ymLabel(pfx)+"の経費を確定してください</b>"
+      +"<div style='font-size:12px;color:var(--tx3);margin-top:2px;'>期限 "+fmtDeadline(closingDeadline(pfx))+"。"+(items.length?"明細に漏れがないか確かめてから押してください。":"立て替えた経費がない月も「経費なしで確定」を押してください。")+"</div>"
+      +"<button class='cl-btn' id='closeExpBtn'>"+(items.length?ymLabel(pfx)+"の経費を確定する":ymLabel(pfx)+"は経費なしで確定する")+"</button></div>";
+    document.getElementById("closeExpBtn").addEventListener("click",()=>closeExpenses(pfx,items));
+    return;
+  }
   if(!items.length){el.innerHTML="";return;}
   const submitted=items.some(i=>i.submitted);
   if(submitted){
@@ -594,6 +654,7 @@ async function saveExp(){
   const amount=document.getElementById("expAmount").value;
   const er=document.getElementById("expModalErr");er.textContent="";
   if(!date||!desc||!amount){er.textContent="日付・内容・金額は必須です";return;}
+  if(expLocked(date.slice(0,7))){er.textContent=ymLabel(date.slice(0,7))+"の経費は確定済みのため追加・編集できません。管理者に差し戻しを頼んでください。";return;}
   const fields={date,desc,payee,amount:Number(amount),method:document.getElementById("expMethod").value,receipt:document.getElementById("expReceipt").checked,note:document.getElementById("expNote").value.trim()};
   const id=editingExpId||(UID+"_exp_"+Date.now());
   try{
@@ -770,7 +831,10 @@ onAuthStateChanged(auth,async user=>{
       :"このアカウントでは経費・出張画面を利用できません。";
     return;
   }
-  UID=user.uid;UNAME=prof.name||user.email||"";
+  UID=user.uid;UNAME=prof.name||user.email||"";HIRE_YM=prof.hireDate?String(prof.hireDate).slice(0,7):"";
+  // 勤怠画面の案内から来たとき（keihitsu.html#ym=YYYY-MM）はその月を開く
+  {const mm=location.hash.match(/ym=(\d{4})-(\d{2})/);if(mm)expMonth=new Date(+mm[1],+mm[2]-1,1);}
+  await loadClosings();renderClosingBanner();
   document.getElementById("uname").textContent=UNAME;
   document.getElementById("uavatar").textContent=UNAME.slice(0,1)||"－";
   document.getElementById("printName").textContent=UNAME;

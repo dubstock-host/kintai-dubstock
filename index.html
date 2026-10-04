@@ -248,6 +248,7 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
 
   <!-- 打刻タブ -->
   <div class="tab-content active" id="tab-打刻">
+    <div id="closingArea"></div>
     <div id="leaveNotifArea"></div>
     <div class="scard" id="card1">
       <div class="stop">
@@ -309,6 +310,7 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
       <div class="mlabel" id="monthLabel"></div>
       <button class="mbtn" id="nextMonthBtn">&#8250;</button>
     </div>
+    <div id="closeBox"></div>
     <div class="sgrid">
       <div class="sc"><div class="slabel">出勤日数</div><div class="sval" id="totalDays">0 日</div></div>
       <div class="sc"><div class="slabel">総実労働時間</div><div class="sval" id="totalHours">0:00</div></div>
@@ -456,6 +458,8 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {getFirestore,doc,setDoc,getDoc,collection,query,where,getDocs,deleteDoc,updateDoc,documentId} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {HOLIDAYS,prevYm,monthEnded,closingApplies,closingTodo,closingBannerHTML,closingDeadline,fmtDeadline,isOverdue,ymLabel,CLOSING_CSS} from "./hr-common.js";
+{const st=document.createElement("style");st.textContent=CLOSING_CSS;document.head.appendChild(st);}
 
 const FB={apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",authDomain:"kintai-dubstock.firebaseapp.com",projectId:"kintai-dubstock",storageBucket:"kintai-dubstock.firebasestorage.app",messagingSenderId:"1030065146975",appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"};
 const app=initializeApp(FB);
@@ -466,25 +470,7 @@ let UID=null,UNAME="",PROF=null;   // ログイン時に users/{uid} から設�
 const DOW=["日","月","火","水","木","金","土"];
 const EIGHT=8*3600000;
 let HIRE=new Date(2025,8,1);     // users/{uid}.hireDate があれば上書きされる
-// 国民の祝日・休日（振替休日・国民の休日を含む）
-// 出典: 内閣府「国民の祝日について」の公開CSV
-//       https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv
-// 取得日: 2026-09-22 ／ 収録範囲: 1955〜2027年
-//
-// ※ 内閣府CSVは毎年更新される。2028年分が公表されたら追記すること。
-//    未登録の年は祝日が平日扱いになり、月次タブに誤った「⚠️ 未打刻」が出る。
-const HOLIDAYS=new Set([
-  // 2025年（入社後）
-  "2025-09-15","2025-09-23","2025-10-13","2025-11-03","2025-11-23","2025-11-24",
-  // 2026年
-  "2026-01-01","2026-01-12","2026-02-11","2026-02-23","2026-03-20","2026-04-29",
-  "2026-05-03","2026-05-04","2026-05-05","2026-05-06","2026-07-20","2026-08-11",
-  "2026-09-21","2026-09-22","2026-09-23","2026-10-12","2026-11-03","2026-11-23",
-  // 2027年
-  "2027-01-01","2027-01-11","2027-02-11","2027-02-23","2027-03-21","2027-03-22",
-  "2027-04-29","2027-05-03","2027-05-04","2027-05-05","2027-07-19","2027-08-11",
-  "2027-09-20","2027-09-23","2027-10-11","2027-11-03","2027-11-23",
-]);
+// 祝日は hr-common.js（1か所で管理）から読む
 // 年次有給休暇の付与日数（労働基準法第39条）。m は入社からの月数
 // 通常：週30時間以上 または 週5日以上
 const GRANTS=[{m:6,d:10},{m:18,d:11},{m:30,d:12},{m:42,d:14},{m:54,d:16},{m:66,d:18},{m:78,d:20}];
@@ -792,6 +778,7 @@ async function openWorkNote(date){
   setTimeout(()=>document.getElementById("workNoteDone").focus(),50);
 }
 async function saveWorkNote(){
+  if(kintaiLocked(workNoteDate)){alert(lockedMsg(workNoteDate));return;}
   const v=id=>document.getElementById(id).value.trim();
   const wr={done:v("workNoteDone"),good:v("workNoteGood"),next:v("workNoteNext")};
   const er=document.getElementById("workNoteErr");
@@ -807,6 +794,38 @@ async function saveWorkNote(){
   catch(e){er.textContent="保存に失敗しました";}
 }
 
+// ── 月次の締め（勤怠確定）──
+// closings/{uid}_{YYYY-MM} = {userId,userName,ym,kintaiAt?,expenseAt?,expenseNone?}
+// 勤怠を確定した月は、本人は打刻・申請・業務内容を直せない（直すときは管理者が差し戻す）
+let CLOSINGS={};
+async function loadClosings(){
+  CLOSINGS={};
+  try{const sn=await getDocs(query(collection(db,"closings"),where("userId","==",UID)));sn.forEach(d=>{const v=d.data();CLOSINGS[v.ym]=v;});}catch(e){}
+}
+const kintaiLocked=date=>!!(CLOSINGS[String(date).slice(0,7)]&&CLOSINGS[String(date).slice(0,7)].kintaiAt);
+const lockedMsg=date=>ymLabel(String(date).slice(0,7))+"の勤怠は確定済みのため直せません。直す必要があるときは管理者に「差し戻し」を頼んでください。";
+// 前月の提出がまだなら、打刻タブの一番上に「やること」を出す（入社前の月は出さない）
+function renderClosingBanner(){
+  const el=document.getElementById("closingArea");if(!el)return;
+  const ym=prevYm(new Date());
+  const hireYm=HIRE.getFullYear()+"-"+p2(HIRE.getMonth()+1);
+  if(ym<hireYm||!closingApplies(ym)){el.innerHTML="";return;}
+  el.innerHTML=closingBannerHTML(ym,CLOSINGS[ym]);
+  el.querySelectorAll("[data-cl]").forEach(b=>b.addEventListener("click",()=>{
+    if(b.dataset.cl==="kintai"){const [y,m]=ym.split("-").map(Number);curMonth=new Date(y,m-1,1);showTab("月次");window.scrollTo(0,0);}
+    else location.href="keihitsu.html#ym="+ym;
+  }));
+}
+async function confirmKintai(ym,issues){
+  const msg=ymLabel(ym)+"の勤怠を確定します。\n確定すると、この月の打刻・申請・業務内容は直せなくなります。"
+    +(issues.length?"\n\n⚠ まだ次のものがあります：\n・"+issues.join("\n・")+"\n\nこのまま確定してよいですか？":"\n\nよろしいですか？");
+  if(!confirm(msg))return;
+  try{
+    await setDoc(doc(db,"closings",UID+"_"+ym),{userId:UID,userName:UNAME,ym,kintaiAt:new Date().toISOString()},{merge:true});
+    await loadClosings();showToast(ymLabel(ym)+"の勤怠を確定しました ✓");renderClosingBanner();renderMonthly();
+  }catch(e){alert("確定できませんでした（"+(e.code||e.message)+"）");}
+}
+
 // 月次
 async function renderMonthly(){
   const y=curMonth.getFullYear(),m=curMonth.getMonth();const r=y-2018;
@@ -814,6 +833,7 @@ async function renderMonthly(){
   const recs=await gMonthRecs(y,m+1);const lvs=await gMyLeaves();
   const plans=isPart()?await gMonthPlans(y,m+1):{};
   const days=new Date(y,m+1,0).getDate();let tw=0,to=0,tn=0,wd=0,tb="";const pfx=y+"-"+p2(m+1);
+  let nMiss=0,nOpen=0,nNoNote=0;const locked=kintaiLocked(pfx+"-01");
   const aLvs=lvs.filter(lv=>{const d=new Date(lv.date.replace(/-/g,"/"));return d.getFullYear()===y&&d.getMonth()===m&&lv.status==="approved";});
   for(let d=1;d<=days;d++){
     const date=y+"-"+p2(m+1)+"-"+p2(d);const rec=recs[date];
@@ -833,7 +853,7 @@ async function renderMonthly(){
       // 正社員は平日（祝日を除く）、パートはシフトのある日だけが勤務予定日
       const isPlanned=isPart()?!!plans[date]:(isWeekday&&!HOLIDAYS.has(date));
       if(isPlanned&&date<getWD()&&dateObj>=HIRE){
-        const dow2=DOW[dateObj.getDay()];
+        const dow2=DOW[dateObj.getDay()];nMiss++;
         tb+="<tr style=\"background:#FFF1F2;\">"+
           "<td>"+date.slice(5)+"("+dow2+") <span style=\"color:#DC2626;font-weight:600;font-size:11px;background:#FEE2E2;border:1px solid #FECACA;border-radius:4px;padding:1px 5px;\">⚠️ 未打刻</span></td>"+
           "<td style=\"color:#DC2626;\">―</td><td style=\"color:#DC2626;\">―</td>"+
@@ -845,7 +865,7 @@ async function renderMonthly(){
     }
     // 退勤打刻忘れの行：⚠️マークを表示して修正を促す
     if(shiftsMissing.length&&!shiftsComplete.length&&!isLv){
-      const dow2=DOW[new Date(date).getDay()];
+      const dow2=DOW[new Date(date).getDay()];nOpen++;
       const sm=shiftsMissing[0];
       tb+="<tr style=\"background:#FFFBEB;\">"+
         // 日付欄に⚠️マークを表示（退勤欄ではなく日付の横に表示）
@@ -880,12 +900,16 @@ async function renderMonthly(){
         ?" <span style=\"background:#ECFEFF;color:#0E7490;border:1px solid #A5F3FC;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;\">休日出勤・振替済</span>"
         :" <span style=\"background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;\">休日出勤</span>";
     tb+="<tr><td>"+date.slice(5)+"("+dow+")"+offBadge+"</td><td>"+ts2hm(s.in)+"</td><td>"+ts2hm(s.out)+"</td><td>"+(bms>0?hm(bms):"―")+"</td><td>"+hm(wms)+"</td><td class=\""+(oms>0?"ot":"")+"\">"+(oms>0?hm(oms):"―")+"</td><td data-date=\""+date+"\"></td></tr>";
+    if(isPart()&&!s.workNote)nNoNote++;
     if(isPart())tb+="<tr class=\"wn-row\"><td colspan=\"6\">"+(s.workNote?esc(s.workNote):"<span style=\"color:#D97706;\">業務内容が未記入です</span>")+"</td>"
       +"<td class=\"wn-btn\"><button class=\"ebtn\" data-note=\""+date+"\" title=\"業務内容を"+(s.workNote?"直す":"書く")+"\">📝</button></td></tr>";
   }
   const tbody=document.getElementById("monthlyLog");tbody.innerHTML=tb||"<tr><td colspan=\"7\" class=\"no-data\">記録なし</td></tr>";
+  // 確定済みの月は ✏️ 🔄 📝 を出さない
+  if(locked)tbody.querySelectorAll("button[data-note]").forEach(b=>b.remove());
   tbody.querySelectorAll("button[data-note]").forEach(b=>b.addEventListener("click",()=>openWorkNote(b.dataset.note)));
   tbody.querySelectorAll("td[data-date]").forEach(td=>{
+    if(locked)return;
     const btn=document.createElement("button");btn.className="ebtn";btn.textContent="✏️";
     btn.addEventListener("click",()=>jumpToEdit(td.dataset.date));td.appendChild(btn);
     // 未打刻の日は、事後に振替休日として登録できるようにする
@@ -896,6 +920,23 @@ async function renderMonthly(){
       td.appendChild(sb);
     }
   });
+  // 締めの表示：確定済み／確定ボタン（月が終わってから）
+  const cb=document.getElementById("closeBox");
+  const cl=CLOSINGS[pfx];
+  if(locked){
+    const at=new Date(cl.kintaiAt);
+    cb.innerHTML="<div class=\"cl-lock\">🔒 "+ymLabel(pfx)+"の勤怠は確定済みです（"+(at.getMonth()+1)+"/"+at.getDate()+"）。直すときは管理者に差し戻しを頼んでください。</div>";
+  }else if(closingApplies(pfx)&&monthEnded(pfx)&&pfx>=HIRE.getFullYear()+"-"+p2(HIRE.getMonth()+1)){
+    const issues=[];
+    if(nMiss)issues.push("未打刻 "+nMiss+" 日");
+    if(nOpen)issues.push("退勤の押し忘れ "+nOpen+" 日");
+    if(nNoNote)issues.push("業務内容の未記入 "+nNoNote+" 日");
+    cb.innerHTML="<div class=\"cl-confirm\"><b>"+ymLabel(pfx)+"の勤怠を確定してください</b>"
+      +"<div style=\"font-size:12px;color:var(--tx3);margin-top:2px;\">期限 "+fmtDeadline(closingDeadline(pfx))+"。内容に間違いがないか確かめてから押してください。</div>"
+      +(issues.length?"<div class=\"cl-warn\">⚠ "+issues.join("／")+"。直せるものは先に直してください。</div>":"")
+      +"<button class=\"cl-btn\" id=\"kintaiConfirmBtn\">"+ymLabel(pfx)+"の勤怠を確定する</button></div>";
+    document.getElementById("kintaiConfirmBtn").addEventListener("click",()=>confirmKintai(pfx,issues));
+  }else cb.innerHTML="";
   document.getElementById("totalDays").textContent=wd+" 日";
   document.getElementById("totalHours").textContent=hm(tw);
   document.getElementById("totalOT").textContent=hm(to);
@@ -963,6 +1004,7 @@ async function loadEditDay(){
 }
 
 function openEditModal(date,idx,isNew){
+  if(kintaiLocked(date)){alert(lockedMsg(date));return;}
   editState={date,idx,isNew};
   const wo=new Date(date.replace(/-/g,"/"));
   document.getElementById("editModalSubtitle").textContent=date.slice(5)+"（"+DOW[wo.getDay()]+"）";
@@ -1175,6 +1217,7 @@ onAuthStateChanged(auth,async user=>{
     const reason=document.getElementById("leaveReason").value.trim();
     const er=document.getElementById("leaveErr");er.textContent="";
     if(!date){er.textContent="取得日を選択してください";return;}
+    if(kintaiLocked(date)){er.textContent=lockedMsg(date);return;}
     const workDate=document.getElementById("leaveWorkDate").value;
     if(type==="振替休日"){
       if(!workDate){er.textContent="振替元（出勤する休日）を選択してください";return;}
@@ -1204,9 +1247,10 @@ onAuthStateChanged(auth,async user=>{
   // 初期表示（ログイン後）
   const rec=await gRec(getWD());refreshUI(rec);
   renderLeaveNotif();
+  await loadClosings();renderClosingBanner();
   // 承認・却下のお知らせは、画面を見ているときだけ5分おきに確認する（読み込み件数を抑える）
   setInterval(()=>{if(document.visibilityState==="visible")renderLeaveNotif();},300000);
-  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")renderLeaveNotif();});
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){renderLeaveNotif();loadClosings().then(renderClosingBanner);}});
 });
 
 // ログイン

@@ -103,6 +103,28 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ── closings : 月次の締め（勤怠確定・経費確定）─────────────────
+    //  ドキュメントIDは "<authUid>_<YYYY-MM>"。本人は確定を「付ける」ことだけできる
+    //  （一度付けた kintaiAt / expenseAt は消せない・書き換えられない）。取り消し（差し戻し）は管理者だけ。
+    match /closings/{docId} {
+      allow get:    if isAdmin()
+                    || (signedIn() && (resource == null
+                                       || resource.data.userId == request.auth.uid));
+      allow list:   if isAdmin() || isMine();
+      allow create: if isAdmin()
+                    || (isActive() && becomesMine()
+                        && 'ym' in request.resource.data
+                        && docId == request.auth.uid + '_' + request.resource.data.ym);
+      allow update: if isAdmin()
+                    || (isActive() && isMine() && becomesMine()
+                        && request.resource.data.ym == resource.data.ym
+                        && (!('kintaiAt' in resource.data)
+                            || ('kintaiAt' in request.resource.data && request.resource.data.kintaiAt == resource.data.kintaiAt))
+                        && (!('expenseAt' in resource.data)
+                            || ('expenseAt' in request.resource.data && request.resource.data.expenseAt == resource.data.expenseAt)));
+      allow delete: if isAdmin();
+    }
+
     // ── leaves : 有給申請 ─────────────────────────────────────
     //  従業員は pending でのみ申請でき、承認状態は変更できない
     //  （notifSeen の更新は status 不変なので許可される）

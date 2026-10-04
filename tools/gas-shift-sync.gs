@@ -31,6 +31,12 @@
  *  - 本文は Firestore の中身から作る（呼び出し側の文言は使わない）。承認待ち・提出済みのものだけ通知する
  *  - 同じ申請は1回だけ通知する（leaves/travels は notifiedAt、経費は notifyLog に記録）
  *  - スクリプト プロパティに CHATWORK_TOKEN と CHATWORK_ROOM_ID が必要
+ *
+ * 月次の提出リマインド（勤怠確定・経費確定）
+ *  - dailyRemind：毎朝10時台に自動実行（installDailyTrigger で一度だけ設定）。営業日だけ動く
+ *    前月分が未提出の人に、通知部屋で本人宛て（[To]）に送る。第4営業日以降は「至急」
+ *  - GET <URL>?n=remind&uid=<UID>&ym=YYYY-MM：管理者画面の「催促する」。期限後・未提出・1時間に1回まで
+ *  - 祝日・開始月・締めの営業日数は、公開中の hr-common.js から読む（祝日の管理を1か所にするため）
  */
 
 const CONFIG = {
@@ -171,6 +177,7 @@ function notify_(p) {
       fsPatch_(col + '/' + id, { notifiedAt: new Date().toISOString(), notifiedFor: key });
       return { ok: true };
     }
+    if (n === 'remind') return remindOne_(String(p.uid || ''), String(p.ym || ''));
     if (n === 'expense') {
       const uid = String(p.uid || ''), ym = String(p.ym || '');
       if (!/^[A-Za-z0-9]{10,64}$/.test(uid) || !/^\d{4}-\d{2}$/.test(ym)) return { ok: false, error: 'bad request' };
@@ -277,4 +284,113 @@ function fsQuery_(col, field, value) {
     where: { fieldFilter: { field: { fieldPath: field }, op: 'EQUAL', value: { stringValue: value } } },
   } });
   return res.filter(r => r.document).map(r => docToObj_(r.document));
+}
+
+// ══ 月次の提出リマインド ══
+const APP_URL = 'https://dubstock-host.github.io/kintai-dubstock/';
+const DOW_ = ['日', '月', '火', '水', '木', '金', '土'];
+const ymd_ = d => Utilities.formatDate(d, 'Asia/Tokyo', 'yyyy-MM-dd');
+
+// hr-common.js から祝日・開始月・締めの営業日数を読む
+function loadCommon_() {
+  const src = UrlFetchApp.fetch(APP_URL + 'hr-common.js?v=' + Date.now()).getContentText();
+  const block = src.slice(src.indexOf('HOLIDAYS'), src.indexOf(']);'));
+  const holidays = new Set(block.match(/\d{4}-\d{2}-\d{2}/g) || []);
+  const start = (src.match(/CLOSING_START_YM\s*=\s*"(\d{4}-\d{2})"/) || [])[1] || '9999-12';
+  const days = Number((src.match(/CLOSE_BIZ_DAYS\s*=\s*(\d+)/) || [])[1] || 3);
+  if (!holidays.size) throw new Error('hr-common.js から祝日を読めませんでした');
+  return { holidays, start, days };
+}
+function isBiz_(d, C) { const w = d.getDay(); return w >= 1 && w <= 5 && !C.holidays.has(ymd_(d)); }
+function prevYm_(today) { return Utilities.formatDate(new Date(today.getFullYear(), today.getMonth() - 1, 1), 'Asia/Tokyo', 'yyyy-MM'); }
+function deadline_(ym, C) {
+  const d = new Date(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)), 1); let n = 0;
+  for (;;) { if (isBiz_(d, C) && ++n === C.days) return d; d.setDate(d.getDate() + 1); }
+}
+function fmtD_(d) { return (d.getMonth() + 1) + '/' + d.getDate() + '（' + DOW_[d.getDay()] + '）'; }
+// 今月の何営業日目か（今日が営業日でなければ 0）
+function bizIndex_(today, C) {
+  if (!isBiz_(today, C)) return 0;
+  const d = new Date(today.getFullYear(), today.getMonth(), 1); let n = 0;
+  while (ymd_(d) <= ymd_(today)) { if (isBiz_(d, C)) n++; d.setDate(d.getDate() + 1); }
+  return n;
+}
+
+function employees_() {
+  const res = fsFetch_(':runQuery', { structuredQuery: {
+    from: [{ collectionId: 'users' }],
+    where: { fieldFilter: { field: { fieldPath: 'role' }, op: 'EQUAL', value: { stringValue: 'employee' } } },
+  } });
+  return res.filter(r => r.document).map(r => Object.assign(docToObj_(r.document), { uid: r.document.name.split('/').pop() }));
+}
+function todo_(c) { const t = []; if (!c || !c.kintaiAt) t.push('kintai'); if (!c || !c.expenseAt) t.push('expense'); return t; }
+
+function remindMsg_(e, todo, ym, dl, urgent, byAdmin) {
+  const mm = Number(ym.slice(5, 7)) + '月';
+  const lines = ['[To:' + e.chatworkId + ']' + cw_(e.name) + 'さん'];
+  lines.push(urgent
+    ? '🔴【至急】' + mm + '分の提出期限（' + fmtD_(dl) + '）を過ぎています。今日中に提出してください。'
+    : '📋 ' + mm + '分の提出をお願いします。期限は ' + fmtD_(dl) + ' です。');
+  if (byAdmin) lines.push('（管理者からの催促です）');
+  lines.push('');
+  if (todo.indexOf('kintai') >= 0) lines.push('■ 勤怠の確定：きん太 →「月次」→ ' + mm + ' → 内容を確かめて「' + mm + 'の勤怠を確定する」');
+  if (todo.indexOf('expense') >= 0) lines.push('■ 経費の確定：KEIHI →「経費精算」→ ' + mm + ' → 明細を確かめて「確定する」（立て替えがない月は「経費なしで確定」）');
+  lines.push('', APP_URL);
+  return lines.join('\n');
+}
+
+// 毎朝の自動実行
+function dailyRemind() {
+  const C = loadCommon_(), today = new Date();
+  const idx = bizIndex_(today, C);
+  if (!idx) { Logger.log('営業日ではないので送りません'); return; }
+  const ym = prevYm_(today);
+  if (ym < C.start) { Logger.log(ym + ' はリマインドの対象外（開始月 ' + C.start + '）'); return; }
+  const dl = deadline_(ym, C), urgent = idx > C.days;
+  const missing = [];
+  employees_().filter(e => e.active === true && (!e.hireDate || String(e.hireDate).slice(0, 7) <= ym)).forEach(e => {
+    const todo = todo_(fsGet_('closings/' + e.uid + '_' + ym));
+    if (!todo.length) return;
+    if (!e.chatworkId) { missing.push(e.name); return; }
+    postChatwork_(remindMsg_(e, todo, ym, dl, urgent, false));
+    Logger.log('送信：' + e.name + '（' + todo.join('・') + '）');
+  });
+  if (missing.length) Logger.log('チャットワークID未登録のため送れなかった人：' + missing.join('、'));
+}
+
+// 管理者画面の「催促する」
+function remindOne_(uid, ym) {
+  if (!/^[A-Za-z0-9]{10,64}$/.test(uid) || !/^\d{4}-\d{2}$/.test(ym)) return { ok: false, error: 'bad request' };
+  const C = loadCommon_(), today = new Date();
+  if (ym !== prevYm_(today) || ym < C.start) return { ok: true, skipped: '対象の月ではありません' };
+  const dl = deadline_(ym, C);
+  if (ymd_(today) <= ymd_(dl)) return { ok: true, skipped: 'まだ期限内です' };
+  const e = employees_().filter(x => x.uid === uid)[0];
+  if (!e || e.active !== true) return { ok: false, error: '社員が見つかりません' };
+  if (!e.chatworkId) return { ok: true, skipped: 'チャットワークID未登録' };
+  const todo = todo_(fsGet_('closings/' + uid + '_' + ym));
+  if (!todo.length) return { ok: true, skipped: '提出済みです' };
+  const log = fsGet_('remindLog/' + uid + '_' + ym);
+  if (log && log.lastAt && Date.now() - new Date(log.lastAt).getTime() < 3600000) return { ok: true, skipped: 'recent' };
+  postChatwork_(remindMsg_(e, todo, ym, dl, true, true));
+  fsPatch_('remindLog/' + uid + '_' + ym, { lastAt: new Date().toISOString() });
+  return { ok: true };
+}
+
+// 一度だけ実行：毎朝10時台に dailyRemind を動かす
+function installDailyTrigger() {
+  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'dailyRemind').forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('dailyRemind').timeBased().atHour(10).everyDays(1).inTimezone('Asia/Tokyo').create();
+  Logger.log('毎朝10時台に dailyRemind を実行する設定にしました');
+}
+
+// 確認用：送らずに、今日送られる内容をログに出す
+function previewRemind() {
+  const C = loadCommon_(), today = new Date(), ym = prevYm_(today);
+  Logger.log('祝日 ' + C.holidays.size + ' 件／開始月 ' + C.start + '／締め 第' + C.days + '営業日');
+  Logger.log('今日は今月の第' + bizIndex_(today, C) + '営業日（0は休日）。対象 ' + ym + '、期限 ' + fmtD_(deadline_(ym, C)));
+  employees_().filter(e => e.active === true).forEach(e => {
+    const todo = todo_(fsGet_('closings/' + e.uid + '_' + ym));
+    Logger.log(e.name + '：' + (todo.length ? '未提出（' + todo.join('・') + '）' : '提出済み') + (e.chatworkId ? '' : '／チャットワークID未登録'));
+  });
 }

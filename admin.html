@@ -75,6 +75,15 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .emp-card{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:20px;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
 .emp-card:hover{border-color:var(--acc);box-shadow:0 2px 10px rgba(59,130,246,.12);}
 .emp-card-go{font-size:11px;color:var(--acc);margin-top:12px;text-align:right;}
+.cp{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:16px;margin-bottom:16px;}
+.cp.cp-over{border-color:#FCA5A5;background:#FFFBFB;}
+.cp-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+.cp-t{font-weight:700;font-size:15px;}
+.cp-sub{font-size:12px;color:var(--tx3);}
+.cp-st{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:2px 8px;}
+.cp-ok{background:#DCFCE7;color:#166534;}.cp-ng{background:#FEE2E2;color:#B91C1C;}
+.cp-btn{background:var(--s2);border:1px solid var(--bdr);color:var(--tx2);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;margin:2px 4px 2px 0;}
+.cp-btn.cp-urge{background:#DC2626;border-color:#DC2626;color:#fff;font-weight:700;}
 .dash-back{background:none;border:none;color:var(--acc);font-size:13px;cursor:pointer;padding:0;margin-bottom:12px;}
 .dash-head{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:20px;margin-bottom:16px;}
 .dash-top{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
@@ -307,6 +316,7 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
   </div>
 
   <div class="tab-content active" id="tab-概要">
+    <div id="closingPanel"></div>
     <div class="emp-cards" id="empCards"><div class="no-data">読み込み中...</div></div>
   </div>
 
@@ -482,7 +492,8 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
 <script type="module">
 import {initializeApp,deleteApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged,createUserWithEmailAndPassword,updatePassword} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import {getFirestore,doc,collection,getDocs,getDoc,setDoc,updateDoc,query,where,documentId} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {getFirestore,doc,collection,getDocs,getDoc,setDoc,updateDoc,query,where,documentId,deleteField} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {HOLIDAYS,prevYm,monthEnded,closingApplies,closingTodo,closingDeadline,fmtDeadline,isOverdue,ymLabel} from "./hr-common.js";
 
 const FB={apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",authDomain:"kintai-dubstock.firebaseapp.com",projectId:"kintai-dubstock",storageBucket:"kintai-dubstock.firebasestorage.app",messagingSenderId:"1030065146975",appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"};
 // 名前付きアプリにして、社員画面（index / keihitsu）とログイン状態を分ける。
@@ -501,7 +512,7 @@ async function loadEmployees(){
     const u=d.data();
     list.push({uid:d.id,name:u.name||d.id,avatar:u.avatar||(u.name||"?").slice(0,1),active:u.active!==false,
       employmentType:u.employmentType||"full",hireDate:u.hireDate||"",weeklyDays:u.weeklyDays||null,
-      weeklyHours:u.weeklyHours||null,email:u.email||"",hourlyWages:Array.isArray(u.hourlyWages)?u.hourlyWages:[]});
+      weeklyHours:u.weeklyHours||null,email:u.email||"",chatworkId:u.chatworkId||"",hourlyWages:Array.isArray(u.hourlyWages)?u.hourlyWages:[]});
   });
   list.sort((a,b)=>String(a.name).localeCompare(String(b.name),"ja"));
   EMPLOYEES=list;
@@ -615,19 +626,7 @@ async function doReject(){
 
 // 全社員概要
 // ══ 個人ダッシュボード ══
-// 祝日と有給付与の表は index.html と同じものを置く（祝日は毎年追記が必要）
-const HOLIDAYS=new Set([
-  // 2025年（入社後）
-  "2025-09-15","2025-09-23","2025-10-13","2025-11-03","2025-11-23","2025-11-24",
-  // 2026年
-  "2026-01-01","2026-01-12","2026-02-11","2026-02-23","2026-03-20","2026-04-29",
-  "2026-05-03","2026-05-04","2026-05-05","2026-05-06","2026-07-20","2026-08-11",
-  "2026-09-21","2026-09-22","2026-09-23","2026-10-12","2026-11-03","2026-11-23",
-  // 2027年
-  "2027-01-01","2027-01-11","2027-02-11","2027-02-23","2027-03-21","2027-03-22",
-  "2027-04-29","2027-05-03","2027-05-04","2027-05-05","2027-07-19","2027-08-11",
-  "2027-09-20","2027-09-23","2027-10-11","2027-11-03","2027-11-23",
-]);
+// 祝日は hr-common.js から読む。有給付与の表は index.html と同じものを置く
 const GRANTS=[{m:6,d:10},{m:18,d:11},{m:30,d:12},{m:42,d:14},{m:54,d:16},{m:66,d:18},{m:78,d:20}];
 const GRANTS_PART={4:[7,8,9,10,12,13,15],3:[5,6,6,8,9,10,11],2:[3,4,4,5,6,6,7],1:[1,2,2,2,3,3,3]};
 function grantTable(prof){
@@ -763,6 +762,50 @@ async function renderEmpDash(){
   el.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>{
     if(b.dataset.go==="勤怠"){selectedKintaiUid=emp.uid;kintaiMonth=new Date(y,m,1);}
     showTab(b.dataset.go);window.scrollTo(0,0);
+  }));
+}
+
+// ══ 提出状況（勤怠確定・経費確定）══
+const HR_GAS_URL="https://script.google.com/macros/s/AKfycbytlfJQeqet41SlgX30xkIpObMmF4YRYTxnnxbZsSdLY6psdh0dlZEp_RiZ3TZXC_PiQg/exec";
+async function renderClosingPanel(){
+  const el=document.getElementById("closingPanel");if(!el)return;
+  const ym=prevYm(new Date());
+  if(!closingApplies(ym)){el.innerHTML="";return;}
+  const targets=EMPLOYEES.filter(e=>e.active&&(!e.hireDate||e.hireDate.slice(0,7)<=ym));
+  if(!targets.length){el.innerHTML="";return;}
+  let cls={};
+  try{const sn=await getDocs(query(collection(db,"closings"),where("ym","==",ym)));sn.forEach(d=>{const v=d.data();cls[v.userId]=v;});}catch(e){}
+  const over=isOverdue(ym),dl=fmtDeadline(closingDeadline(ym));
+  const done=targets.filter(e=>!closingTodo(cls[e.uid]).length).length;
+  const st=(ok,label)=>"<span class=\"cp-st "+(ok?"cp-ok\">✓ ":"cp-ng\">未 ")+label+"</span>";
+  el.innerHTML="<div class=\"cp"+(over&&done<targets.length?" cp-over":"")+"\"><div class=\"cp-h\"><span class=\"cp-t\">📋 "+ymLabel(ym)+"分の提出状況（"+done+" / "+targets.length+" 人 完了）</span>"
+    +"<span class=\"cp-sub\">期限 "+dl+(over?"・<b style=\"color:var(--out);\">期限を過ぎています</b>":"")+"</span></div>"
+    +"<div class=\"twrap\"><table class=\"ltable\"><thead><tr><th>氏名</th><th>勤怠</th><th>経費</th><th></th></tr></thead><tbody>"
+    +targets.map(e=>{
+      const c=cls[e.uid]||{},todo=closingTodo(c);
+      const btns=[];
+      if(todo.length&&over)btns.push(e.chatworkId?"<button class=\"cp-btn cp-urge\" data-urge=\""+esc(e.uid)+"\">催促する</button>"
+        :"<span class=\"cp-sub\">チャットワークID未登録</span>");
+      if(c.kintaiAt)btns.push("<button class=\"cp-btn\" data-undo=\"kintai\" data-uid=\""+esc(e.uid)+"\">勤怠を差し戻す</button>");
+      if(c.expenseAt)btns.push("<button class=\"cp-btn\" data-undo=\"expense\" data-uid=\""+esc(e.uid)+"\">経費を差し戻す</button>");
+      return "<tr><td>"+esc(e.name)+"</td><td>"+st(!!c.kintaiAt,"勤怠")+"</td><td>"+st(!!c.expenseAt,c.expenseNone?"経費（なし）":"経費")+"</td><td>"+btns.join("")+"</td></tr>";
+    }).join("")+"</tbody></table></div></div>";
+  el.querySelectorAll("[data-urge]").forEach(b=>b.addEventListener("click",async()=>{
+    const e=EMPLOYEES.find(x=>x.uid===b.dataset.urge);
+    if(!confirm((e?e.name:"")+" さんに、チャットワークで提出を催促します。よろしいですか？"))return;
+    b.disabled=true;b.textContent="送信中…";
+    try{
+      const j=await (await fetch(HR_GAS_URL+"?n=remind&uid="+encodeURIComponent(b.dataset.urge)+"&ym="+ym)).json();
+      showToast(j.ok&&!j.skipped?"催促を送りました ✓":j.skipped==="recent"?"1時間以内に催促済みです":j.skipped?"送りませんでした（"+j.skipped+"）":"送れませんでした："+(j.error||""));
+    }catch(x){showToast("送れませんでした（通信エラー）");}
+    b.disabled=false;b.textContent="催促する";
+  }));
+  el.querySelectorAll("[data-undo]").forEach(b=>b.addEventListener("click",async()=>{
+    const e=EMPLOYEES.find(x=>x.uid===b.dataset.uid),k=b.dataset.undo;
+    const what=k==="kintai"?"勤怠":"経費";
+    if(!confirm((e?e.name:"")+" さんの "+ymLabel(ym)+"の"+what+"の確定を取り消して、本人が直せる状態に戻します。よろしいですか？"))return;
+    await updateDoc(doc(db,"closings",b.dataset.uid+"_"+ym),k==="kintai"?{kintaiAt:deleteField()}:{expenseAt:deleteField(),expenseNone:deleteField()});
+    showToast(what+"を差し戻しました");renderClosingPanel();
   }));
 }
 
@@ -1097,7 +1140,7 @@ function resetExport(){
 function renderMembers(){
   const el=document.getElementById("memberList");
   if(!EMPLOYEES.length){el.innerHTML="<div class=\"no-data\">まだ社員が登録されていません</div>";return;}
-  el.innerHTML="<div class=\"twrap\"><table class=\"ltable\"><thead><tr><th>氏名</th><th>雇用形態</th><th>入社日</th><th>週の勤務</th><th>時給</th><th>状態</th><th></th></tr></thead><tbody>"
+  el.innerHTML="<div class=\"twrap\"><table class=\"ltable\"><thead><tr><th>氏名</th><th>雇用形態</th><th>入社日</th><th>週の勤務</th><th>時給</th><th>チャットワーク</th><th>状態</th><th></th></tr></thead><tbody>"
     +EMPLOYEES.map(e=>{
       const type=e.employmentType==="part"
         ?"<span class=\"mem-tag\" style=\"background:#FEF9C3;color:#92400E;\">パート</span>"
@@ -1107,6 +1150,7 @@ function renderMembers(){
         +"<td>"+type+"</td><td>"+esc(e.hireDate||"―")+"</td><td>"+week+"</td>"
         +"<td>"+(e.employmentType==="part"?(()=>{const w=wageFor(e,CUR_YM());return (w?w.toLocaleString()+"円":"<span style=\"color:var(--out);\">未設定</span>")
           +" <button class=\"expbtn mem-wage\" data-uid=\""+esc(e.uid)+"\" style=\"padding:2px 8px;font-size:11px;\">変更</button>";})():"―")+"</td>"
+        +"<td>"+(e.chatworkId?esc(e.chatworkId):"<span style=\"color:var(--tx3);\">未登録</span>")+" <button class=\"expbtn mem-cw\" data-uid=\""+esc(e.uid)+"\" style=\"padding:2px 8px;font-size:11px;\">"+(e.chatworkId?"変更":"登録")+"</button></td>"
         +"<td>"+(e.active?"在職":"退職")+"</td>"
         +"<td><button class=\"expbtn mem-toggle\" data-uid=\""+esc(e.uid)+"\" data-active=\""+(e.active?"1":"0")+"\" style=\"padding:4px 10px;font-size:11px;\">"+(e.active?"退職にする":"在職に戻す")+"</button></td></tr>";
     }).join("")+"</tbody></table></div>";
@@ -1114,6 +1158,15 @@ function renderMembers(){
   sel.innerHTML="<option value=\"\">選んでください</option>"+EMPLOYEES.map(e=>"<option value=\""+esc(e.uid)+"\">"+esc(e.name)+"</option>").join("");
   sel.value=cur;
   el.querySelectorAll(".mem-wage").forEach(b=>b.addEventListener("click",()=>setWage(b.dataset.uid)));
+  // リマインドで本人宛て（[To]）にするためのチャットワークのアカウントID（数字）
+  el.querySelectorAll(".mem-cw").forEach(b=>b.addEventListener("click",async()=>{
+    const e=EMPLOYEES.find(x=>x.uid===b.dataset.uid);if(!e)return;
+    const v=prompt(e.name+" さんのチャットワークのアカウントID（数字）\n※ 空欄にすると登録を消します",e.chatworkId||"");if(v===null)return;
+    const id=String(v).replace(/\s/g,"");
+    if(id&&!/^\d{3,12}$/.test(id)){alert("アカウントIDは数字だけで入力してください");return;}
+    await updateDoc(doc(db,"users",e.uid),{chatworkId:id,updatedAt:new Date().toISOString()});
+    await loadEmployees();renderMembers();showToast(id?"チャットワークIDを登録しました":"チャットワークIDを消しました");
+  }));
   el.querySelectorAll(".mem-toggle").forEach(b=>b.addEventListener("click",async()=>{
     const toActive=b.dataset.active!=="1";
     const e=EMPLOYEES.find(x=>x.uid===b.dataset.uid);
@@ -1414,6 +1467,8 @@ function openDetailModal(mode,group,travel){
       const comment=document.getElementById("detailComment").value.trim();
       if(_detailMode==="exp_reject"){
         for(const item of _detailGroup.items){await updateDoc(doc(db,"expenses",item.id),{rejected:true,rejectedAt:new Date().toISOString(),comment});}
+        // 確定（closings.expenseAt）も外して、本人が直して確定し直せるようにする
+        try{await updateDoc(doc(db,"closings",_detailGroup.userId+"_"+_detailGroup.month),{expenseAt:deleteField(),expenseNone:deleteField()});}catch(x){}
         showToast("差し戻しました");closeDetailModal();renderExpAdmin();
       } else if(_detailMode==="travel_reject"){
         await updateDoc(doc(db,"travels",_detailTravel.id),{status:"rejected",rejectedAt:new Date().toISOString(),comment});
@@ -1514,11 +1569,12 @@ onAuthStateChanged(auth,async function(user){
 
   // 初期表示
   await renderEmpCards();
+  renderClosingPanel();
   await renderPending();
   // 自動更新は画面を見ているときだけ・5分おき。別のタブやアプリから戻ってきたときは、1分以上たっていれば更新する。
   // （以前は30秒ごとに全員の全記録を読み直していて、Firestore の1日の無料枠を使い切った）
   let lastRefresh=Date.now();
-  const refresh=()=>{lastRefresh=Date.now();renderPending();renderEmpCards();};
+  const refresh=()=>{lastRefresh=Date.now();renderPending();renderEmpCards();renderClosingPanel();};
   setInterval(()=>{if(document.visibilityState==="visible")refresh();},300000);
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&Date.now()-lastRefresh>60000)refresh();});
 });
