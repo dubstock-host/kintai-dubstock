@@ -84,6 +84,38 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .cp-ok{background:#DCFCE7;color:#166534;}.cp-ng{background:#FEE2E2;color:#B91C1C;}
 .cp-btn{background:var(--s2);border:1px solid var(--bdr);color:var(--tx2);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;margin:2px 4px 2px 0;}
 .cp-btn.cp-urge{background:#DC2626;border-color:#DC2626;color:#fff;font-weight:700;}
+/* シフト表（社員画面のシフトタブと同じ見た目） */
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;padding:8px;}
+.cal-h{text-align:center;font-size:10px;color:var(--tx3);font-weight:600;padding:2px 0 4px;}
+.cal-h.sun,.cal-n.sun{color:#DC2626;}.cal-h.sat,.cal-n.sat{color:#2563EB;}
+.cal-c{min-height:58px;border-radius:6px;padding:3px 2px;background:var(--surface);border:1px solid transparent;cursor:pointer;text-align:center;overflow:hidden;}
+.cal-empty{cursor:default;}
+.cal-n{font-size:11px;font-weight:600;color:var(--tx2);}
+.cal-t{font-family:"DM Mono",monospace;font-size:9.5px;line-height:1.25;margin-top:2px;font-weight:600;}
+.cal-lv{font-size:9px;margin-top:2px;color:var(--lv);font-weight:600;}
+.cal-c.has,.cal-c.c-plan{background:#EFF6FF;}.cal-c.has .cal-t{color:#1D4ED8;}
+.cal-c.c-done{background:#DCFCE7;}.cal-c.c-done .cal-t{color:#166534;}
+.cal-c.c-miss{background:#FEE2E2;}.cal-c.c-miss .cal-t{color:#DC2626;}
+.cal-c.c-open{background:#FEF9C3;}.cal-c.c-open .cal-t{color:#92400E;}
+.cal-c.c-leave{background:#F5F3FF;}.cal-c.c-leave .cal-t{color:#A78BFA;text-decoration:line-through;}
+.st-leave{background:#F5F3FF;color:#7C3AED;}
+.cal-c.c-today{border-color:#2563EB;}
+.cal-c.c-sel{box-shadow:0 0 0 2px #0F172A inset;}
+.cal-legend{font-size:10px;color:var(--tx3);padding:2px 10px 10px;display:flex;gap:4px;align-items:center;flex-wrap:wrap;}
+.lg{display:inline-block;width:10px;height:10px;border-radius:3px;margin-left:6px;}
+.lg-plan{background:#EFF6FF;border:1px solid #BFDBFE;}.lg-done{background:#DCFCE7;}.lg-miss{background:#FEE2E2;}.lg-leave{background:#F5F3FF;border:1px solid #DDD6FE;}
+.cal-detail{border-top:1px solid var(--bdr);padding:12px 14px;font-size:13px;line-height:1.7;}
+.cal-dh{font-weight:700;font-size:14px;margin-bottom:4px;}
+.cal-dr{display:flex;gap:10px;align-items:baseline;}
+.cal-dk{min-width:56px;font-size:11px;color:var(--tx3);}
+.cal-hint{font-size:12px;color:var(--tx3);text-align:center;}
+.shift-time{font-family:"DM Mono",monospace;font-weight:600;white-space:nowrap;}
+.shift-title{display:block;font-size:11px;color:var(--tx3);}
+.shift-st{font-size:11px;font-weight:600;border-radius:4px;padding:2px 7px;white-space:nowrap;}
+.st-done{background:#DCFCE7;color:#166534;}.st-miss{background:#FEE2E2;color:#DC2626;}.st-open{background:#FEF9C3;color:#92400E;}
+.st-today{background:#DBEAFE;color:#1D4ED8;}.st-plan{background:var(--s2);color:var(--tx3);}
+.dash-cal{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;margin-bottom:16px;overflow:hidden;}
+.dash-cal .dash-sec-h{padding:14px 16px 0;}
 .dash-back{background:none;border:none;color:var(--acc);font-size:13px;cursor:pointer;padding:0;margin-bottom:12px;}
 .dash-head{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:20px;margin-bottom:16px;}
 .dash-top{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
@@ -655,7 +687,52 @@ function tenure(hire){
 }
 let dashUid=null,dashMonth=new Date();
 function openEmpDash(uid){dashUid=uid;dashMonth=new Date();showTab("個人");window.scrollTo(0,0);}
-async function renderEmpDash(){
+// パートのシフト表（社員画面のシフトタブと同じ形のカレンダー）
+function shiftCalHTML(y,m,plans,recs,lvs,today){
+  const days=new Date(y,m+1,0).getDate(),first=new Date(y,m,1).getDay(),cal={};
+  let h="<div class=\"cal\">"+DOW.map((w,i)=>"<div class=\"cal-h"+(i===0?" sun":i===6?" sat":"")+"\">"+w+"</div>").join("");
+  for(let i=0;i<first;i++)h+="<div class=\"cal-c cal-empty\"></div>";
+  for(let d=1;d<=days;d++){
+    const date=y+"-"+p2(m+1)+"-"+p2(d),dow=(first+d-1)%7;
+    const pl=plans[date],rec=recs[date],sh=rec&&rec.shifts&&rec.shifts[0];
+    const lv=lvs.find(l=>l.date===date&&l.status!=="rejected");
+    const st=sh&&sh.in&&sh.out?"done":sh&&sh.in?"open":lv&&lv.status==="approved"?"leave":pl&&date<today?"miss":pl?"plan":"";
+    cal[date]={pl,sh,lv,st};
+    const cls="cal-c"+(pl?" has":"")+(st?" c-"+st:"")+(date===today?" c-today":"");
+    const num="<div class=\"cal-n"+(dow===0||HOLIDAYS.has(date)?" sun":dow===6?" sat":"")+"\">"+d+"</div>";
+    const body=pl?pl.items.map(it=>"<div class=\"cal-t\">"+esc(it.start)+"<br>"+esc(it.end)+"</div>").join("")
+      :sh&&sh.in?"<div class=\"cal-t\">"+ts2hm(sh.in)+"<br>"+(sh.out?ts2hm(sh.out):"")+"</div>":"";
+    const tag=lv?"<div class=\"cal-lv\">"+(lv.type==="振替休日"?"振替":"有給")+"</div>":"";
+    h+="<div class=\""+cls+"\" data-d=\""+date+"\">"+num+body+tag+"</div>";
+  }
+  h+="</div><div class=\"cal-legend\"><span class=\"lg lg-plan\"></span>予定 <span class=\"lg lg-done\"></span>出勤済み <span class=\"lg lg-miss\"></span>未打刻 <span class=\"lg lg-leave\"></span>休み</div>"
+    +"<div class=\"cal-detail\" id=\"dashCalDetail\"><div class=\"cal-hint\">日付を押すと詳細が出ます</div></div>";
+  return {html:h,cal};
+}
+function shiftDetailHTML(date,c){
+  const d=new Date(date.replace(/-/g,"/"));
+  const ST={leave:["st-leave","休み"],done:["st-done","出勤済み"],open:["st-open","退勤未打刻"],miss:["st-miss","未打刻"],plan:["st-plan","予定"]};
+  let h="<div class=\"cal-dh\">"+(d.getMonth()+1)+"月"+d.getDate()+"日（"+DOW[d.getDay()]+"）"+(c.st?" <span class=\"shift-st "+ST[c.st][0]+"\">"+ST[c.st][1]+"</span>":"")+"</div>";
+  h+=c.pl?c.pl.items.map(i=>"<div class=\"cal-dr\"><span class=\"cal-dk\">シフト</span><span class=\"shift-time\">"+esc(i.start)+"〜"+esc(i.end)+"</span>"+(i.title?" <span style=\"font-size:11px;color:var(--tx3);\">"+esc(i.title)+"</span>":"")+"</div>").join("")
+    :"<div class=\"cal-dr\"><span class=\"cal-dk\">シフト</span>なし</div>";
+  if(c.sh&&c.sh.in)h+="<div class=\"cal-dr\"><span class=\"cal-dk\">打刻</span><span class=\"shift-time\">"+ts2hm(c.sh.in)+"〜"+(c.sh.out?ts2hm(c.sh.out):"")+"</span></div>";
+  if(c.sh&&c.sh.workNote)h+="<div class=\"cal-dr\"><span class=\"cal-dk\">業務内容</span><span style=\"white-space:pre-line;\">"+esc(c.sh.workNote)+"</span></div>";
+  if(c.lv)h+="<div class=\"cal-dr\"><span class=\"cal-dk\">申請</span>"+esc(leaveLabel(c.lv))+(c.lv.status==="pending"?"（承認待ち）":"")+"</div>";
+  return h;
+}
+// ダッシュボードを開いた（月を切り替えた）ときだけ、GAS にその月のシフトの同期を頼む
+let dashSyncSeq=0;
+function syncDashShifts(uid,y,m){
+  const seq=++dashSyncSeq,st=document.getElementById("dashSyncSt");
+  if(st)st.textContent="🔄 Googleカレンダーと同期しています…";
+  fetch(HR_GAS_URL+"?uid="+encodeURIComponent(uid)+"&ym="+y+"-"+p2(m+1)).then(r=>r.json()).then(j=>{
+    if(seq!==dashSyncSeq||dashUid!==uid||dashMonth.getFullYear()!==y||dashMonth.getMonth()!==m)return;
+    if(j.ok)renderEmpDash(false);
+    else{const s2=document.getElementById("dashSyncSt");if(s2)s2.textContent="⚠ 同期できませんでした（"+(j.error||"不明なエラー")+"）。前回取り込んだシフトを表示しています。";}
+  }).catch(()=>{const s2=document.getElementById("dashSyncSt");if(s2&&seq===dashSyncSeq)s2.textContent="⚠ 同期できませんでした（通信エラー）。前回取り込んだシフトを表示しています。";});
+}
+
+async function renderEmpDash(sync=true){
   const el=document.getElementById("empDash");
   const emp=EMPLOYEES.find(e=>e.uid===dashUid);
   if(!emp){el.innerHTML="<div class=\"no-data\">社員が見つかりません</div>";return;}
@@ -664,7 +741,7 @@ async function renderEmpDash(){
   const isPart=emp.employmentType==="part";
   const [recs,lvs,allExp,allTrv,plans]=await Promise.all([
     getRecsByUid(emp.uid,pfx),getLeavesByUid(emp.uid),getAllDocs("expenses"),getAllDocs("travels"),
-    isPart?getDocs(query(collection(db,"shifts"),where("userId","==",emp.uid))).then(sn=>{const r={};sn.forEach(d=>{const v=d.data();if(Array.isArray(v.items)&&v.items.length)r[v.date]=v;});return r;}).catch(()=>({})):Promise.resolve({})
+    isPart?getDocs(query(collection(db,"shifts"),where(documentId(),">=",emp.uid+"_"+pfx+"-01"),where(documentId(),"<=",emp.uid+"_"+pfx+"-31"))).then(sn=>{const r={};sn.forEach(d=>{const v=d.data();if(Array.isArray(v.items)&&v.items.length)r[v.date]=v;});return r;}).catch(()=>({})):Promise.resolve({})
   ]);
   const today=(()=>{const d=new Date();if(d.getHours()<5)d.setDate(d.getDate()-1);return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate());})();
 
@@ -697,6 +774,7 @@ async function renderEmpDash(){
   const bal=leaveBalance(emp,lvs);
   const wage=isPart?wageFor(emp,pfx):0;
   const shiftDays=isPart?Object.keys(plans).filter(k=>k.startsWith(pfx)).length:0;
+  const SC=isPart?shiftCalHTML(y,m,plans,recs,lvs,today):{html:"",cal:{}};
 
   // ── 申請 ──
   const pend=lvs.filter(l=>l.status==="pending").sort((a,b)=>String(a.date).localeCompare(String(b.date)));
@@ -746,6 +824,8 @@ async function renderEmpDash(){
    +kpi("経費",fmtYen(expTotal),exps.length+" 件")
    +kpi("出張",trvs.length+" 回",trvCost?fmtYen(trvCost):"")
    +"</div>"
+   +(isPart?"<div class=\"dash-cal\"><div class=\"dash-sec-h\"><span class=\"dash-sec-t\">🗓 シフト表</span><span class=\"cp-sub\">シフト "+shiftDays+" 日</span></div>"
+      +SC.html+"<div id=\"dashSyncSt\" style=\"font-size:11px;color:var(--tx3);padding:0 16px 12px;\">"+(sync?"":"✓ Googleカレンダーと同期しました（"+new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})+"）")+"</div></div>":"")
    +"<div class=\"dash-grid\">"
    +sec("📋 勤怠","<button class=\"dash-link\" data-go=\"勤怠\">勤怠確認で開く</button>",
         isPart&&noNote?"<div class=\"dash-sum\" style=\"color:#D97706;\">業務内容の未記入 "+noNote+" 日</div>":"",rows,"この月の記録はありません")
@@ -757,6 +837,12 @@ async function renderEmpDash(){
         "<div class=\"dash-sum\"><span><b>"+trvs.length+"</b> 回</span><span>費用 <b>"+fmtYen(trvCost)+"</b></span></div>",trvRows,"この月の出張はありません")
    +"</div>";
   document.getElementById("dashBack").addEventListener("click",()=>showTab("概要"));
+  // シフト表：日付を押すと下に詳細
+  el.querySelectorAll(".dash-cal .cal-c[data-d]").forEach(c=>c.addEventListener("click",()=>{
+    el.querySelectorAll(".dash-cal .c-sel").forEach(x=>x.classList.remove("c-sel"));c.classList.add("c-sel");
+    document.getElementById("dashCalDetail").innerHTML=shiftDetailHTML(c.dataset.d,SC.cal[c.dataset.d]);
+  }));
+  if(isPart&&sync)syncDashShifts(emp.uid,y,m);
   document.getElementById("dashPrev").addEventListener("click",()=>{dashMonth.setMonth(dashMonth.getMonth()-1);renderEmpDash();});
   document.getElementById("dashNext").addEventListener("click",()=>{dashMonth.setMonth(dashMonth.getMonth()+1);renderEmpDash();});
   el.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>{
