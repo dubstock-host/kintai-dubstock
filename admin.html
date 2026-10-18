@@ -126,6 +126,34 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .tax-text{width:100%;min-height:220px;margin-top:12px;font-size:13px;line-height:1.7;font-family:"Noto Sans JP",sans-serif;}
 .tax-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12px;}
 .tax-copy{background:#ECFDF5;color:var(--in);border:1.5px solid #A7F3D0;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;}
+/* 税理士用PDF（html2pdf）：用紙の幅に収める。列幅は印刷用と同じ */
+.pdfmode .exp-doc table{table-layout:fixed;font-size:10.5px;}
+.pdfmode .exp-doc th,.pdfmode .exp-doc td{white-space:normal;word-break:break-word;overflow-wrap:anywhere;padding:4px 5px;}
+.pdfmode .exp-doc .sum{grid-template-columns:repeat(5,1fr);}
+.pdfmode .exp-doc .t-kin th:nth-child(1),.pdfmode .exp-doc .t-kin td:nth-child(1){width:16%;}
+.pdfmode .exp-doc .t-kin th:nth-child(n+2),.pdfmode .exp-doc .t-kin td:nth-child(n+2){width:16.8%;}
+.pdfmode .exp-doc .t-exp th:nth-child(1),.pdfmode .exp-doc .t-exp td:nth-child(1){width:6%;}
+.pdfmode .exp-doc .t-exp th:nth-child(2),.pdfmode .exp-doc .t-exp td:nth-child(2){width:36%;}
+.pdfmode .exp-doc .t-exp th:nth-child(3),.pdfmode .exp-doc .t-exp td:nth-child(3){width:20%;}
+.pdfmode .exp-doc .t-exp th:nth-child(4),.pdfmode .exp-doc .t-exp td:nth-child(4){width:7%;}
+.pdfmode .exp-doc .t-exp th:nth-child(5),.pdfmode .exp-doc .t-exp td:nth-child(5){width:7%;}
+.pdfmode .exp-doc .t-exp th:nth-child(6),.pdfmode .exp-doc .t-exp td:nth-child(6){width:8%;}
+.pdfmode .exp-doc .t-exp th:nth-child(7),.pdfmode .exp-doc .t-exp td:nth-child(7){width:16%;}
+.pdfmode .exp-doc .t-trv th:nth-child(1),.pdfmode .exp-doc .t-trv td:nth-child(1){width:24%;}
+.pdfmode .exp-doc .t-trv th:nth-child(2),.pdfmode .exp-doc .t-trv td:nth-child(2){width:9%;}
+.pdfmode .exp-doc .t-trv th:nth-child(3),.pdfmode .exp-doc .t-trv td:nth-child(3){width:24%;}
+.pdfmode .exp-doc .t-trv th:nth-child(4),.pdfmode .exp-doc .t-trv td:nth-child(4){width:11%;}
+.pdfmode .exp-doc .t-trv th:nth-child(5),.pdfmode .exp-doc .t-trv td:nth-child(5){width:10%;}
+.pdfmode .exp-doc .t-trv th:nth-child(6),.pdfmode .exp-doc .t-trv td:nth-child(6){width:12%;}
+.pdfmode .exp-doc .t-trv th:nth-child(7),.pdfmode .exp-doc .t-trv td:nth-child(7){width:10%;}
+/* 税理士用PDFの経費表：見出しが細く折れないよう、支払方法・領収書・金額を少し広く */
+.pdfmode .exp-doc .t-exp th:nth-child(1),.pdfmode .exp-doc .t-exp td:nth-child(1){width:7%;}
+.pdfmode .exp-doc .t-exp th:nth-child(2),.pdfmode .exp-doc .t-exp td:nth-child(2){width:32%;}
+.pdfmode .exp-doc .t-exp th:nth-child(3),.pdfmode .exp-doc .t-exp td:nth-child(3){width:19%;}
+.pdfmode .exp-doc .t-exp th:nth-child(4),.pdfmode .exp-doc .t-exp td:nth-child(4){width:9%;}
+.pdfmode .exp-doc .t-exp th:nth-child(5),.pdfmode .exp-doc .t-exp td:nth-child(5){width:9%;}
+.pdfmode .exp-doc .t-exp th:nth-child(6),.pdfmode .exp-doc .t-exp td:nth-child(6){width:10%;}
+.pdfmode .exp-doc .t-exp th:nth-child(7),.pdfmode .exp-doc .t-exp td:nth-child(7){width:14%;}
 .dash-back{background:none;border:none;color:var(--acc);font-size:13px;cursor:pointer;padding:0;margin-bottom:12px;}
 .dash-head{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:20px;margin-bottom:16px;}
 .dash-top{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
@@ -1250,7 +1278,8 @@ function loadHtml2pdf(){
 async function savePdfLocal(name,html){
   // 外枠だけ画面の外に置き、撮影するのは位置指定のない中身（中身ごと画面外に置くと白紙になる）
   const outer=document.createElement("div");outer.style.cssText="position:fixed;left:-10000px;top:0;";
-  const box=document.createElement("div");box.style.cssText="width:760px;background:#fff;";
+  // 幅は指定しない（html2pdf が用紙の印刷範囲＝約733pxの枠に入れるので、それに合わせて折り返す）
+  const box=document.createElement("div");box.className="pdfmode";box.style.cssText="background:#fff;";
   box.innerHTML=html;const d=box.querySelector(".exp-doc");if(d)d.style.cssText="border:none;border-radius:0;margin:0;padding:8px;";
   outer.appendChild(box);document.body.appendChild(outer);
   try{
