@@ -1174,7 +1174,7 @@ async function buildEmpDoc(emp,y,m,pfx,opts,allExp,allTrv,out={}){
     rows+="<tr><td>"+date.slice(5)+"("+dow+")</td><td>"+ts2hm(x.in)+"</td><td>"+ts2hm(x.out)+"</td>"
       +"<td class=\"num\">"+(bms>0?hm(bms):"―")+"</td><td class=\"num\">"+hm(wms)+"</td>"
       +"<td class=\"num\">"+(oms>0?hm(oms):"―")+"</td></tr>";
-    if(x.workNote)rows+="<tr class=\"wn\"><td colspan=\"6\">"+reflectHTML(x)+"</td></tr>";
+    // 経理・税理士向けの資料なので、パートの振り返り（業務内容）は載せない。数字だけ
   }
   const mLvs=lvs.filter(l=>l.status==="approved"&&String(l.date).startsWith(pfx));
   const paid=sumLeaveDays(mLvs);                                   // 振替休日は 0 日で計上される
