@@ -439,14 +439,33 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import {getFirestore,doc,setDoc,getDoc,collection,getDocs,deleteDoc,updateDoc,query,where} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {getFirestore,doc,setDoc as fsSetDoc,getDoc,collection,getDocs,deleteDoc as fsDeleteDoc,updateDoc as fsUpdateDoc,query,where} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import {prevYm,monthEnded,closingApplies,closingBannerHTML,closingDeadline,fmtDeadline,ymLabel,CLOSING_CSS} from "./hr-common.js";
 {const st=document.createElement("style");st.textContent=CLOSING_CSS;document.head.appendChild(st);}
 
 const FB={apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",authDomain:"kintai-dubstock.firebaseapp.com",projectId:"kintai-dubstock",storageBucket:"kintai-dubstock.firebasestorage.app",messagingSenderId:"1030065146975",appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"};
-const app=initializeApp(FB);
+const app=initializeApp(FB,new URLSearchParams(location.search).get("viewAs")?"admin":undefined);  // 閲覧モードは管理者画面のログインを使う
 const auth=getAuth(app);
 const db=getFirestore(app);
+
+// ══ 閲覧モード（?viewAs=<社員のUID>）══
+// 管理者が、社員本人と同じ画面を確認するためのモード。管理者画面のログイン（名前付きアプリ "admin"）を使い、
+// 書き込み（setDoc / updateDoc / deleteDoc）はすべてここで止める。何を押しても保存はされない
+const VIEW_AS=(new URLSearchParams(location.search).get("viewAs")||"").replace(/[^A-Za-z0-9]/g,"");
+const VQ=VIEW_AS?"?viewAs="+VIEW_AS:"";
+function viewBlock(){try{showToast("👁 閲覧モードのため保存されません");}catch(e){}return Promise.reject(new Error("閲覧モードのため保存されません"));}
+const setDoc=(...a)=>VIEW_AS?viewBlock():fsSetDoc(...a);
+const updateDoc=(...a)=>VIEW_AS?viewBlock():fsUpdateDoc(...a);
+const deleteDoc=(...a)=>VIEW_AS?viewBlock():fsDeleteDoc(...a);
+if(VIEW_AS){
+  const bar=document.createElement("div");bar.id="viewBar";
+  bar.style.cssText="position:sticky;top:0;z-index:300;background:#7C3AED;color:#fff;font-size:13px;font-weight:600;padding:9px 16px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;";
+  bar.innerHTML="<span>👁 閲覧モード：<span id=\"viewName\">社員</span>さんの画面（操作しても保存されません）</span><button id=\"viewClose\" style=\"background:#fff;color:#7C3AED;border:none;border-radius:6px;padding:4px 12px;font-weight:700;cursor:pointer;\">閉じる</button>";
+  document.body.prepend(bar);
+  document.getElementById("viewClose").addEventListener("click",()=>{window.close();setTimeout(()=>{location.href="admin.html";},200);});
+  // 勤怠⇔経費の切り替えでも閲覧モードを保つ
+  document.querySelectorAll("a.mod[href]").forEach(a=>{a.href=a.getAttribute("href").split("?")[0]+VQ;});
+}
 
 let UID=null,UNAME="";   // ログイン時に users/{uid} から設定する
 let expMonth=new Date();
@@ -484,7 +503,7 @@ function renderClosingBanner(){
   if(!closingApplies(ym)||(HIRE_YM&&ym<HIRE_YM)){el.innerHTML="";return;}
   el.innerHTML=closingBannerHTML(ym,CLOSINGS[ym]);
   el.querySelectorAll("[data-cl]").forEach(b=>b.addEventListener("click",()=>{
-    if(b.dataset.cl==="kintai")location.href="index.html";
+    if(b.dataset.cl==="kintai")location.href="index.html"+VQ;
     else{const [y,m]=ym.split("-").map(Number);expMonth=new Date(y,m-1,1);showTab("expense");window.scrollTo(0,0);}
   }));
 }
@@ -813,13 +832,26 @@ function showTab(name){
 }
 
 onAuthStateChanged(auth,async user=>{
-  if(!user){document.getElementById("loginScreen").style.display="flex";document.getElementById("appScreen").style.display="none";return;}
+  if(!user){document.getElementById("loginScreen").style.display="flex";document.getElementById("appScreen").style.display="none";if(VIEW_AS)document.getElementById("loginErr").textContent="閲覧モードです。管理者のアカウントでログインしてください。";return;}
   // 権限判定は users/{uid} で行う（メールアドレスのハードコード判定は廃止）
   let prof=null,profErr=null;
   try{
     const ps=await getDoc(doc(db,"users",user.uid));
     if(ps.exists())prof=ps.data();
   }catch(e){profErr=e;}
+  // 閲覧モード：ログインしているのは管理者。対象の社員のプロフィールに差し替える（失敗してもログアウトはしない）
+  let viewUid=user.uid;
+  if(VIEW_AS){
+    let target=null;
+    if(!profErr&&prof&&prof.role==="admin"&&prof.active===true){try{const ts=await getDoc(doc(db,"users",VIEW_AS));if(ts.exists())target=ts.data();}catch(e){}}
+    if(!target){
+      document.getElementById("loginScreen").style.display="flex";document.getElementById("appScreen").style.display="none";
+      document.getElementById("loginErr").textContent=prof&&prof.role==="admin"?"閲覧する社員が見つかりません。":"閲覧モードは管理者だけが使えます。管理者のアカウントでログインしてください。";
+      return;
+    }
+    prof=target;viewUid=VIEW_AS;
+    document.getElementById("viewName").textContent=prof.name||"社員";
+  }else
   // role を必ず確認する。active だけだと管理者アカウントでも入れてしまう
   if(profErr||!prof||prof.role!=="employee"||prof.active!==true){
     await signOut(auth);
@@ -831,7 +863,7 @@ onAuthStateChanged(auth,async user=>{
       :"このアカウントでは経費・出張画面を利用できません。";
     return;
   }
-  UID=user.uid;UNAME=prof.name||user.email||"";HIRE_YM=prof.hireDate?String(prof.hireDate).slice(0,7):"";
+  UID=viewUid;UNAME=prof.name||user.email||"";HIRE_YM=prof.hireDate?String(prof.hireDate).slice(0,7):"";
   // 勤怠画面の案内から来たとき（keihitsu.html#ym=YYYY-MM）はその月を開く
   {const mm=location.hash.match(/ym=(\d{4})-(\d{2})/);if(mm)expMonth=new Date(+mm[1],+mm[2]-1,1);}
   await loadClosings();renderClosingBanner();
@@ -846,7 +878,8 @@ onAuthStateChanged(auth,async user=>{
 
   document.querySelectorAll(".tab-btn").forEach(btn=>{btn.addEventListener("click",()=>showTab(btn.dataset.tab));});
   // ログアウト後は読み込み直して、前の人の表示を次の人に持ち越さない
-  document.getElementById("logoutBtn").addEventListener("click",async()=>{await signOut(auth);location.reload();});
+  // 閲覧モードでは管理者をログアウトさせない（「閉じる」と同じにする）
+  document.getElementById("logoutBtn").addEventListener("click",async()=>{if(VIEW_AS){document.getElementById("viewClose").click();return;}await signOut(auth);location.reload();});
   document.getElementById("expPrevBtn").addEventListener("click",()=>{expMonth.setMonth(expMonth.getMonth()-1);renderExpenses();});
   document.getElementById("expNextBtn").addEventListener("click",()=>{expMonth.setMonth(expMonth.getMonth()+1);renderExpenses();});
   // 印刷ボタン：クリックでブラウザ印刷ダイアログを開く

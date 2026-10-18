@@ -154,6 +154,8 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .pdfmode .exp-doc .t-exp th:nth-child(5),.pdfmode .exp-doc .t-exp td:nth-child(5){width:9%;}
 .pdfmode .exp-doc .t-exp th:nth-child(6),.pdfmode .exp-doc .t-exp td:nth-child(6){width:10%;}
 .pdfmode .exp-doc .t-exp th:nth-child(7),.pdfmode .exp-doc .t-exp td:nth-child(7){width:14%;}
+.dash-top{position:relative;}
+.view-btn{margin-left:auto;background:#7C3AED;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;}
 .dash-back{background:none;border:none;color:var(--acc);font-size:13px;cursor:pointer;padding:0;margin-bottom:12px;}
 .dash-head{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:20px;margin-bottom:16px;}
 .dash-top{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
@@ -850,7 +852,8 @@ async function renderEmpDash(sync=true){
    +"<div class=\"dash-name\">"+esc(emp.name)+"</div><div style=\"margin-top:4px;\">"
    +(isPart?tag("パート","#FEF9C3","#92400E"):tag("正社員","#EFF6FF","var(--acc)"))
    +(emp.active?tag("在職","#ECFDF5","var(--in)"):tag("退職","#F1F5F9","var(--tx2)"))
-   +(pend.length?tag("承認待ち "+pend.length+"件","#FEF2F2","var(--out)"):"")+"</div></div></div>"
+   +(pend.length?tag("承認待ち "+pend.length+"件","#FEF2F2","var(--out)"):"")+"</div></div>"
+   +"<button class=\"view-btn\" id=\"dashView\">👁 この人の画面を見る</button></div>"
    +"<div class=\"dash-meta\">"
    +meta("入社日",emp.hireDate?esc(emp.hireDate.replace(/-/g,"/"))+"（"+tenure(emp.hireDate)+"）":"未設定")
    +(isPart?meta("週の勤務",(emp.weeklyDays?emp.weeklyDays+"日":"―")+" / "+(emp.weeklyHours?emp.weeklyHours+"時間":"―"))+meta("時給",wage?wage.toLocaleString()+" 円":"未設定"):"")
@@ -882,6 +885,8 @@ async function renderEmpDash(sync=true){
         "<div class=\"dash-sum\"><span><b>"+trvs.length+"</b> 回</span><span>費用 <b>"+fmtYen(trvCost)+"</b></span></div>",trvRows,"この月の出張はありません")
    +"</div>";
   document.getElementById("dashBack").addEventListener("click",()=>showTab("概要"));
+  // 本人と同じ画面を閲覧モードで開く（書き込みはできない）
+  document.getElementById("dashView").addEventListener("click",()=>window.open("index.html?viewAs="+encodeURIComponent(emp.uid),"_blank"));
   // シフト表：日付を押すと下に詳細
   el.querySelectorAll(".dash-cal .cal-c[data-d]").forEach(c=>c.addEventListener("click",()=>{
     el.querySelectorAll(".dash-cal .c-sel").forEach(x=>x.classList.remove("c-sel"));c.classList.add("c-sel");
