@@ -256,6 +256,10 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
   .tab-btn{min-height:44px;}
 }
 @media (min-width:768px){.wrap{max-width:760px;}}
+.day-rule{background:#FFFBEB;border:1px solid #FDE68A;color:#92400E;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.7;margin-bottom:14px;}
+.batch-warn{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;color:#B91C1C;background:#FEE2E2;border-radius:4px;padding:1px 6px;white-space:nowrap;}
+.batch-banner{background:#FEF2F2;border:1px solid #FCA5A5;color:#B91C1C;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;margin-bottom:10px;line-height:1.6;}
+@media print{.batch-warn,.batch-banner{display:none !important;}}
 </style>
 </head>
 <body>
@@ -353,6 +357,7 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
       <span id="expModalTitle">経費明細を追加</span>
       <button style="background:transparent;border:none;font-size:22px;cursor:pointer;color:var(--tx3);" id="expModalCloseBtn">&times;</button>
     </div>
+    <div class="day-rule">📌 経費は<b>1日ごと</b>に入力してください。使った日の日付で、その日の分だけを1件ずつ追加します。<br>「2日分」「まとめて」のように、何日分かをまとめた入力はできません。</div>
     <div class="field-row">
       <div class="field"><label>日付</label><input type="date" id="expDate"></div>
       <div class="field"><label>支払方法</label>
@@ -364,7 +369,7 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
       </div>
     </div>
     <div class="field-row single">
-      <div class="field"><label>内容・目的</label><input type="text" id="expDesc" placeholder="例：交通費（行き先：東京ビッグサイト）"></div>
+      <div class="field"><label>内容・目的</label><input type="text" id="expDesc" placeholder="例：交通費 北鎌倉↔東池袋（往復）"></div>
     </div>
     <div class="field-row">
       <div class="field"><label>支払先</label><input type="text" id="expPayee" placeholder="例：JR東日本"></div>
@@ -508,6 +513,7 @@ function renderClosingBanner(){
   }));
 }
 async function closeExpenses(ym,items){
+  if(items.some(isBatch)){alert("何日分かをまとめて書いた明細があります。\n"+BATCH_MSG+"\n\n直してから確定してください。");return;}
   const none=!items.length;
   const msg=none
     ?ymLabel(ym)+"は立て替えた経費が「なし」として確定します。\n確定後は、この月の経費を追加できなくなります。よろしいですか？"
@@ -522,6 +528,16 @@ async function closeExpenses(ym,items){
     await loadClosings();showToast(ymLabel(ym)+"の経費を確定しました ✓");renderClosingBanner();renderExpenses();
   }catch(e){alert("確定できませんでした（"+(e.code||e.message)+"）");}
 }
+
+// ── 経費は1日ごとに入力する（何日分かをまとめた入力を防ぐ）──
+// 「2日分」「3回分」「5日間」「まとめて」や、日付を複数並べたもの（10/8・10/9分 など）を、まとめ書きとみなす。「1日分」はよい
+const BATCH_RE=new RegExp([
+  "([2-9２-９]|[1-9１-９][0-9０-９]+|[二三四五六七八九十])\\s*(日分|回分|日間)",
+  "まとめ",
+  "[0-9０-９]{1,2}[/／月][0-9０-９]{1,2}日?\\s*[,，、・&＆〜～~\\-ー]\\s*[0-9０-９]{1,2}([/／月][0-9０-９]{1,2})?日?\\s*分",
+].join("|"));
+const isBatch=e=>BATCH_RE.test(String(e.desc||"")+" "+String(e.note||""));
+const BATCH_MSG="1日分ずつ分けて入力してください。使った日ごとに、その日の日付で1件ずつ追加します（「2日分」「まとめて」などは使えません）。";
 
 async function renderExpenses(){
   const y=expMonth.getFullYear(),m=expMonth.getMonth();
@@ -570,7 +586,7 @@ async function renderExpenses(){
     const tr=document.createElement("tr");
     tr.innerHTML=
       "<td class='td-date'>"+item.date.slice(5)+"</td>"+
-      "<td>"+item.desc+"</td>"+
+      "<td>"+item.desc+(isBatch(item)?"<span class='batch-warn'>⚠ 1日ずつに分けてください</span>":"")+"</td>"+
       "<td style='font-size:12px;color:#64748B;'>"+( item.payee||"")+"</td>"+
       "<td class='td-method'>"+item.method+"</td>"+
       "<td class='td-receipt'>"+(item.receipt?"&#x2713;":"")+"</td>"+
@@ -608,6 +624,8 @@ async function renderExpenses(){
 
   wrap.appendChild(table);
   el.innerHTML="";
+  const nb=items.filter(isBatch).length;
+  if(nb)el.insertAdjacentHTML("beforeend","<div class='batch-banner'>⚠ 何日分かをまとめて書いた明細が "+nb+" 件あります。使った日ごとに分けて入力し直してください（1件＝1日分）。</div>");
   el.appendChild(wrap);
   renderExpSubmit(items,pfx);
 }
@@ -673,6 +691,8 @@ async function saveExp(){
   const amount=document.getElementById("expAmount").value;
   const er=document.getElementById("expModalErr");er.textContent="";
   if(!date||!desc||!amount){er.textContent="日付・内容・金額は必須です";return;}
+  if(isBatch({desc,note:document.getElementById("expNote").value})){er.textContent=BATCH_MSG;return;}
+  {const t=new Date();if(date>t.getFullYear()+"-"+p2(t.getMonth()+1)+"-"+p2(t.getDate())){er.textContent="まだ来ていない日付です。経費は使った日の日付で入力してください。";return;}}
   if(expLocked(date.slice(0,7))){er.textContent=ymLabel(date.slice(0,7))+"の経費は確定済みのため追加・編集できません。管理者に差し戻しを頼んでください。";return;}
   const fields={date,desc,payee,amount:Number(amount),method:document.getElementById("expMethod").value,receipt:document.getElementById("expReceipt").checked,note:document.getElementById("expNote").value.trim()};
   const id=editingExpId||(UID+"_exp_"+Date.now());
