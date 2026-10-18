@@ -116,6 +116,16 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .st-today{background:#DBEAFE;color:#1D4ED8;}.st-plan{background:var(--s2);color:var(--tx3);}
 .dash-cal{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;margin-bottom:16px;overflow:hidden;}
 .dash-cal .dash-sec-h{padding:14px 16px 0;}
+.tax-card{background:var(--surface);border:1.5px solid #BFDBFE;border-radius:12px;padding:16px;margin-bottom:12px;}
+.tax-h{font-weight:700;font-size:15px;margin-bottom:4px;}
+.tax-sub{font-size:12px;color:var(--tx2);line-height:1.6;margin-bottom:10px;}
+.tax-in{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:10px;}
+.tax-in input{width:72px;padding:7px 8px;border:1px solid var(--bdr2);border-radius:8px;font-size:14px;}
+.tax-btn{width:100%;padding:12px;border:none;border-radius:8px;background:var(--acc);color:#fff;font-size:14px;font-weight:700;cursor:pointer;}
+.tax-btn:disabled{background:var(--tx3);}
+.tax-text{width:100%;min-height:220px;margin-top:12px;font-size:13px;line-height:1.7;font-family:"Noto Sans JP",sans-serif;}
+.tax-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12px;}
+.tax-copy{background:#ECFDF5;color:var(--in);border:1.5px solid #A7F3D0;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;}
 .dash-back{background:none;border:none;color:var(--acc);font-size:13px;cursor:pointer;padding:0;margin-bottom:12px;}
 .dash-head{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:20px;margin-bottom:16px;}
 .dash-top{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
@@ -420,6 +430,13 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
         <button class="mbtn" id="exportPrevBtn">&#8249;</button>
         <div class="mlabel" id="exportMonthLabel"></div>
         <button class="mbtn" id="exportNextBtn">&#8250;</button>
+      </div>
+      <div class="tax-card">
+        <div class="tax-h">🧾 税理士用 一発書き出し</div>
+        <div class="tax-sub">下の「対象社員」にチェックが入っている人について、<b>コピー用の文章</b>を作り、<b>勤怠・経費資料のPDF</b>をGoogleドライブのフォルダに保存します。</div>
+        <label class="tax-in"><span id="taxAdminLabel">谷口さん</span>の出張回数<input type="number" id="taxAdminTrips" min="0" value="0">回</label>
+        <button id="taxBtn" class="tax-btn">この月を税理士用に書き出す</button>
+        <div id="taxResult"></div>
       </div>
       <div style="background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:16px;margin-bottom:12px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
@@ -1100,7 +1117,7 @@ async function renderExportTab(){
 }
 
 // 社員1名・1か月分の文書を組み立てる
-async function buildEmpDoc(emp,y,m,pfx,opts,allExp,allTrv){
+async function buildEmpDoc(emp,y,m,pfx,opts,allExp,allTrv,out={}){
   const recs=await getRecsByUid(emp.uid,pfx);
   const lvs=await getLeavesByUid(emp.uid);
   const days=new Date(y,m+1,0).getDate();
@@ -1128,6 +1145,7 @@ async function buildEmpDoc(emp,y,m,pfx,opts,allExp,allTrv){
   const mLvs=lvs.filter(l=>l.status==="approved"&&String(l.date).startsWith(pfx));
   const paid=sumLeaveDays(mLvs);                                   // 振替休日は 0 日で計上される
   const swaps=mLvs.filter(l=>l.type==="振替休日").length;
+  Object.assign(out,{wd,tw,to,tn,paid,swaps});
 
   let h="<div class=\"exp-doc\">"
     +"<h2>"+wareki(y,m)+"　勤怠・経費資料</h2>"
@@ -1157,6 +1175,7 @@ async function buildEmpDoc(emp,y,m,pfx,opts,allExp,allTrv){
     const exps=allExp.filter(e=>e.userId===emp.uid&&e.date&&String(e.date).startsWith(pfx))
                      .sort((a,b)=>String(a.date).localeCompare(String(b.date)));
     const total=exps.reduce((a,e)=>a+(Number(e.amount)||0),0);
+    Object.assign(out,{expCount:exps.length,expTotal:total});
     h+="<div class=\"doc-sec\">立替精算書</div>";
     if(!exps.length)h+="<div class=\"none\">この月の経費明細はありません。</div>";
     else h+="<table class=\"t-exp\"><thead><tr><th>日付</th><th>内容・目的</th><th>支払先</th><th>支払方法</th><th>領収書・<br>レシート</th><th>金額</th><th>備考</th></tr></thead><tbody>"
@@ -1172,6 +1191,7 @@ async function buildEmpDoc(emp,y,m,pfx,opts,allExp,allTrv){
     const trvs=allTrv.filter(t=>t.userId===emp.uid&&t.status!=="draft"&&String(td(t)).startsWith(pfx))
                      .sort((a,b)=>String(td(a)).localeCompare(String(td(b))));
     const cost=trvs.reduce((a,t)=>a+(t.costs||[]).reduce((b,c)=>b+(Number(c.amount)||0),0),0);
+    Object.assign(out,{trvCount:trvs.length,trvCost:cost});
     h+="<div class=\"doc-sec\">出張</div>"
       +"<div class=\"sum\"><div><div class=\"k\">出張回数</div><div class=\"v\">"+trvs.length+" 回</div></div>"
       +"<div><div class=\"k\">交通費・宿泊費合計</div><div class=\"v\">"+fmtYen(cost)+"</div></div></div>";
@@ -1216,9 +1236,74 @@ async function buildExport(){
   }finally{btn.disabled=false;btn.textContent="資料を作成";}
 }
 
+// ══ 税理士用 一発書き出し ══
+// コピー用の文章を作り、社員ごとの資料を PDF にして GAS 経由で Googleドライブに保存する
+let ADMIN_NAME="";
+const CIRCLED="①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳";
+// GAS の PDF 変換は CSS の grid に対応していないため、表と inline-block だけで組む
+const PDF_CSS=`body{font-family:"Hiragino Sans","Noto Sans JP",sans-serif;color:#1E293B;font-size:11px;margin:0;}
+.exp-doc{padding:4px 2px;}
+.exp-doc h2{font-size:16px;margin:0 0 4px;}
+.doc-meta span{margin-right:16px;font-size:10px;color:#475569;}
+.doc-sec{font-size:12px;font-weight:bold;border-left:4px solid #3B82F6;padding-left:6px;margin:14px 0 6px;}
+.sum>div{display:inline-block;border:1px solid #CBD5E1;border-radius:4px;padding:4px 8px;margin:0 6px 6px 0;}
+.sum .k{font-size:9px;color:#64748B;}.sum .v{font-size:13px;font-weight:bold;}
+table{width:100%;border-collapse:collapse;font-size:10px;}
+th{background:#F1F5F9;border:1px solid #CBD5E1;padding:3px 4px;text-align:left;}
+td{border:1px solid #CBD5E1;padding:3px 4px;}
+.num{text-align:right;}
+tr.wn td{font-size:9px;color:#475569;}
+.tot{text-align:right;font-weight:bold;margin-top:4px;}
+.none{font-size:10px;color:#64748B;}`;
+async function taxExport(){
+  const res=document.getElementById("taxResult");
+  const uids=[...document.querySelectorAll(".exp-emp:checked")].map(i=>i.value);
+  if(!uids.length){res.innerHTML="<div class=\"merr\" style=\"color:var(--out);margin-top:8px;\">下の「対象社員」を1人以上選んでください</div>";return;}
+  const trips=Math.max(0,Number(document.getElementById("taxAdminTrips").value)||0);
+  const btn=document.getElementById("taxBtn");btn.disabled=true;btn.textContent="作成中…";
+  try{
+    const y=exportMonth.getFullYear(),m=exportMonth.getMonth(),pfx=y+"-"+p2(m+1);
+    const opts={kintai:true,expense:true,travel:true};
+    const [allExp,allTrv]=await Promise.all([getAllDocs("expenses"),getAllDocs("travels")]);
+    const lines=["■"+(m+1)+"月分給与"],files=[];let no=0;
+    if(ADMIN_NAME){lines.push(CIRCLED[no++]+ADMIN_NAME+"さん","出張回数："+trips+"回","");}
+    for(const uid of uids){
+      const emp=EMPLOYEES.find(e=>e.uid===uid)||{uid,name:uid,active:true};
+      const o={};const html=await buildEmpDoc(emp,y,m,pfx,opts,allExp,allTrv,o);
+      lines.push((CIRCLED[no++]||"・")+emp.name+"さん");
+      lines.push("出勤日数："+o.wd+"日（実労働 "+hm(o.tw)+"／残業 "+hm(o.to)+"／有給 "+fmtDays(o.paid).replace(" ","")+"）");
+      if(emp.employmentType==="part"){const w=wageFor(emp,pfx);lines.push("時給："+(w?w.toLocaleString()+"円／支給見込み "+payOf(o.tw,o.to,o.tn,w).toLocaleString()+"円":"未設定"));}
+      lines.push("立替精算書："+o.expCount+"件　合計 "+o.expTotal.toLocaleString()+"円");
+      lines.push("出張回数："+o.trvCount+"回","");
+      files.push({name:y+"年"+p2(m+1)+"月_"+emp.name+"_勤怠・経費資料",html:"<html><head><meta charset=\"utf-8\"><style>"+PDF_CSS+"</style></head><body>"+html+"</body></html>"});
+    }
+    lines.push("※ 勤怠・経費の資料（PDF）はGoogleドライブのフォルダに保存しています。");
+    const text=lines.join("\n").replace(/\n\n※/,"\n※");
+    res.innerHTML="<textarea class=\"tax-text\" id=\"taxText\"></textarea>"
+      +"<div class=\"tax-row\"><button class=\"tax-copy\" id=\"taxCopy\">📋 文章をコピー</button><span id=\"taxDrive\">📁 Googleドライブに保存中…</span></div>";
+    document.getElementById("taxText").value=text;
+    document.getElementById("taxCopy").addEventListener("click",async()=>{
+      const t=document.getElementById("taxText").value;
+      try{await navigator.clipboard.writeText(t);showToast("コピーしました ✓");}
+      catch(x){const ta=document.getElementById("taxText");ta.select();document.execCommand("copy");showToast("コピーしました ✓");}
+    });
+    // PDF を Googleドライブへ（本文は text/plain にして、ブラウザの事前確認なしで送る）
+    const idToken=await auth.currentUser.getIdToken();
+    const dr=document.getElementById("taxDrive");
+    try{
+      const j=await (await fetch(HR_GAS_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"savePdf",idToken,ym:pfx,files})})).json();
+      dr.innerHTML=j.ok?"✓ Googleドライブに "+j.saved.length+" 件保存しました　<a href=\""+esc(j.folderUrl)+"\" target=\"_blank\" rel=\"noopener\">フォルダを開く ›</a>"
+        :"<span style=\"color:var(--out);\">⚠ ドライブに保存できませんでした："+esc(j.error||"不明なエラー")+"</span>";
+    }catch(x){dr.innerHTML="<span style=\"color:var(--out);\">⚠ ドライブに保存できませんでした（通信エラー）</span>";}
+  }catch(e){
+    res.innerHTML="<div style=\"color:var(--out);margin-top:8px;font-size:13px;\">作成に失敗しました："+esc(e.code||e.message)+"</div>";
+  }finally{btn.disabled=false;btn.textContent="この月を税理士用に書き出す";}
+}
+
 // 月やチェックを変えたら作り直しが必要なので、作成済みの文書は破棄する
 function resetExport(){
   document.getElementById("exportDoc").innerHTML="";
+  document.getElementById("taxResult").innerHTML="";
   document.getElementById("exportPrintBtn").style.display="none";
 }
 
@@ -1588,6 +1673,7 @@ onAuthStateChanged(auth,async function(user){
     return;
   }
   document.querySelector("header .htitle").textContent="管理者ダッシュボード（"+(prof.name||user.email)+"）";
+  ADMIN_NAME=prof.name||"";document.getElementById("taxAdminLabel").textContent=(ADMIN_NAME||"管理者")+"さん";
   document.getElementById("loginScreen").style.display="none";
   document.getElementById("appScreen").style.display="block";
 
@@ -1642,6 +1728,7 @@ onAuthStateChanged(auth,async function(user){
   document.getElementById("exportSelAll").addEventListener("click",()=>{document.querySelectorAll(".exp-emp").forEach(i=>i.checked=true);resetExport();});
   document.getElementById("exportSelNone").addEventListener("click",()=>{document.querySelectorAll(".exp-emp").forEach(i=>i.checked=false);resetExport();});
   document.getElementById("exportBuildBtn").addEventListener("click",buildExport);
+  document.getElementById("taxBtn").addEventListener("click",taxExport);
   document.getElementById("exportPrintBtn").addEventListener("click",()=>window.print());
   ["optKintai","optExpense","optTravel"].forEach(id=>document.getElementById(id).addEventListener("change",resetExport));
   document.getElementById("exportEmpList").addEventListener("change",e=>{if(e.target.classList.contains("exp-emp"))resetExport();});
