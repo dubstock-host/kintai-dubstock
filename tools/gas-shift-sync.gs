@@ -37,12 +37,6 @@
  *    前月分が未提出の人に、通知部屋で本人宛て（[To]）に送る。第4営業日以降は「至急」
  *  - GET <URL>?n=remind&uid=<UID>&ym=YYYY-MM：管理者画面の「催促する」。期限後・未提出・1時間に1回まで
  *  - 祝日・開始月・締めの営業日数は、公開中の hr-common.js から読む（祝日の管理を1か所にするため）
- *
- * 税理士用の資料をGoogleドライブに保存（管理者画面の「税理士用 一発書き出し」）
- *  - POST（本文は JSON 文字列）{ idToken, ym, files:[{ name, html }] }
- *  - Firebase のログイントークンを Google に照会し、users/{uid}.role が admin のときだけ保存する
- *  - スクリプト プロパティ DRIVE_FOLDER_ID のフォルダの中に「YYYY年MM月」フォルダを作り、HTML を PDF にして保存。
- *    同じ名前のファイルはゴミ箱に移してから作り直す（何度押しても重複しない）
  */
 
 const CONFIG = {
@@ -401,59 +395,3 @@ function previewRemind() {
   });
 }
 
-// ══ 税理士用の資料をGoogleドライブに保存 ══
-const FIREBASE_WEB_API_KEY = 'AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k'; // 公開用のキー（画面にも書かれているもの）
-
-function doPost(e) {
-  try {
-    const body = JSON.parse(e && e.postData && e.postData.contents || '{}');
-    if (body.action !== 'savePdf') return json_({ ok: false, error: 'bad request' });
-    const uid = verifyAdmin_(String(body.idToken || ''));
-    if (!uid) return json_({ ok: false, error: '管理者として確認できませんでした。管理者画面でログインし直してください' });
-    return json_(savePdfs_(String(body.ym || ''), body.files || []));
-  } catch (err) {
-    return json_({ ok: false, error: String(err && err.message || err) });
-  }
-}
-
-// Firebase のログイントークンを Google に照会して、管理者なら UID を返す
-function verifyAdmin_(idToken) {
-  if (!idToken) return null;
-  const res = UrlFetchApp.fetch('https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + FIREBASE_WEB_API_KEY, {
-    method: 'post', contentType: 'application/json', payload: JSON.stringify({ idToken: idToken }), muteHttpExceptions: true,
-  });
-  if (res.getResponseCode() !== 200) return null;
-  const u = (JSON.parse(res.getContentText()).users || [])[0];
-  if (!u || !u.localId) return null;
-  const prof = fsGet_('users/' + u.localId);
-  return prof && prof.role === 'admin' && prof.active === true ? u.localId : null;
-}
-
-function savePdfs_(ym, files) {
-  if (!/^\d{4}-\d{2}$/.test(ym)) return { ok: false, error: 'bad request' };
-  if (!Array.isArray(files) || !files.length || files.length > 30) return { ok: false, error: 'ファイルがありません' };
-  const rootId = PropertiesService.getScriptProperties().getProperty('DRIVE_FOLDER_ID');
-  if (!rootId) return { ok: false, error: 'スクリプト プロパティに DRIVE_FOLDER_ID を設定してください' };
-  const root = DriveApp.getFolderById(rootId);
-  const sub = ym.slice(0, 4) + '年' + ym.slice(5, 7) + '月';
-  const it = root.getFoldersByName(sub);
-  const folder = it.hasNext() ? it.next() : root.createFolder(sub);
-  const saved = [];
-  files.forEach(f => {
-    // ファイル名に使えない文字を除く
-    const name = String(f.name || '資料').replace(/[\\/:*?"<>|]/g, '_').slice(0, 120) + '.pdf';
-    const old = folder.getFilesByName(name);
-    while (old.hasNext()) old.next().setTrashed(true);
-    const pdf = Utilities.newBlob(String(f.html || ''), 'text/html', name.replace(/\.pdf$/, '.html')).getAs('application/pdf').setName(name);
-    saved.push(folder.createFile(pdf).getName());
-  });
-  return { ok: true, folderUrl: folder.getUrl(), saved: saved };
-}
-
-// 確認用：日本語が文字化けせずに PDF になるか、テスト用ファイルを1つ作る
-function testPdf() {
-  const r = savePdfs_(Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM'), [{ name: 'テスト_日本語の確認',
-    html: '<html><body style="font-family:sans-serif"><h2>きん太 PDF テスト</h2><p>日本語が読めれば成功です。出勤日数・立替精算書・出張回数</p>'
-      + '<table border="1" style="border-collapse:collapse"><tr><th>日付</th><th>金額</th></tr><tr><td>10/01</td><td>1,234 円</td></tr></table></body></html>' }]);
-  Logger.log(JSON.stringify(r));
-}

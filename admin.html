@@ -433,7 +433,7 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
       </div>
       <div class="tax-card">
         <div class="tax-h">🧾 税理士用 一発書き出し</div>
-        <div class="tax-sub">下の「対象社員」にチェックが入っている人について、<b>コピー用の文章</b>を作り、<b>勤怠・経費資料のPDF</b>をGoogleドライブのフォルダに保存します。</div>
+        <div class="tax-sub">下の「対象社員」にチェックが入っている人について、<b>コピー用の文章</b>を作り、<b>勤怠・経費資料のPDF</b>をこのパソコンの「ダウンロード」フォルダに保存します（1人1ファイル）。</div>
         <label class="tax-in"><span id="taxAdminLabel">谷口さん</span>の出張回数<input type="number" id="taxAdminTrips" min="0" value="0">回</label>
         <button id="taxBtn" class="tax-btn">この月を税理士用に書き出す</button>
         <div id="taxResult"></div>
@@ -1240,21 +1240,25 @@ async function buildExport(){
 // コピー用の文章を作り、社員ごとの資料を PDF にして GAS 経由で Googleドライブに保存する
 let ADMIN_NAME="";
 const CIRCLED="①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳";
-// GAS の PDF 変換は CSS の grid に対応していないため、表と inline-block だけで組む
-const PDF_CSS=`body{font-family:"Hiragino Sans","Noto Sans JP",sans-serif;color:#1E293B;font-size:11px;margin:0;}
-.exp-doc{padding:4px 2px;}
-.exp-doc h2{font-size:16px;margin:0 0 4px;}
-.doc-meta span{margin-right:16px;font-size:10px;color:#475569;}
-.doc-sec{font-size:12px;font-weight:bold;border-left:4px solid #3B82F6;padding-left:6px;margin:14px 0 6px;}
-.sum>div{display:inline-block;border:1px solid #CBD5E1;border-radius:4px;padding:4px 8px;margin:0 6px 6px 0;}
-.sum .k{font-size:9px;color:#64748B;}.sum .v{font-size:13px;font-weight:bold;}
-table{width:100%;border-collapse:collapse;font-size:10px;}
-th{background:#F1F5F9;border:1px solid #CBD5E1;padding:3px 4px;text-align:left;}
-td{border:1px solid #CBD5E1;padding:3px 4px;}
-.num{text-align:right;}
-tr.wn td{font-size:9px;color:#475569;}
-.tot{text-align:right;font-weight:bold;margin-top:4px;}
-.none{font-size:10px;color:#64748B;}`;
+// PDF はブラウザの中で作る（html2pdf.js：画面の見た目を画像にして PDF にするので、日本語も崩れない）
+let _h2p=null;
+function loadHtml2pdf(){
+  if(window.html2pdf)return Promise.resolve();
+  return _h2p||(_h2p=new Promise((ok,ng)=>{const sc=document.createElement("script");
+    sc.src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";sc.onload=ok;sc.onerror=()=>{_h2p=null;ng(new Error("PDF作成の部品を読み込めませんでした"));};document.head.appendChild(sc);}));
+}
+async function savePdfLocal(name,html){
+  // 外枠だけ画面の外に置き、撮影するのは位置指定のない中身（中身ごと画面外に置くと白紙になる）
+  const outer=document.createElement("div");outer.style.cssText="position:fixed;left:-10000px;top:0;";
+  const box=document.createElement("div");box.style.cssText="width:760px;background:#fff;";
+  box.innerHTML=html;const d=box.querySelector(".exp-doc");if(d)d.style.cssText="border:none;border-radius:0;margin:0;padding:8px;";
+  outer.appendChild(box);document.body.appendChild(outer);
+  try{
+    await window.html2pdf().set({margin:8,filename:name+".pdf",image:{type:"jpeg",quality:0.95},
+      html2canvas:{scale:2,backgroundColor:"#ffffff"},jsPDF:{unit:"mm",format:"a4",orientation:"portrait"},
+      pagebreak:{mode:["css","legacy"],avoid:["tr",".sum"]}}).from(box).save();
+  }finally{outer.remove();}
+}
 async function taxExport(){
   const res=document.getElementById("taxResult");
   const uids=[...document.querySelectorAll(".exp-emp:checked")].map(i=>i.value);
@@ -1275,26 +1279,25 @@ async function taxExport(){
       if(emp.employmentType==="part"){const w=wageFor(emp,pfx);lines.push("時給："+(w?w.toLocaleString()+"円／支給見込み "+payOf(o.tw,o.to,o.tn,w).toLocaleString()+"円":"未設定"));}
       lines.push("立替精算書："+o.expCount+"件　合計 "+o.expTotal.toLocaleString()+"円");
       lines.push("出張回数："+o.trvCount+"回","");
-      files.push({name:y+"年"+p2(m+1)+"月_"+emp.name+"_勤怠・経費資料",html:"<html><head><meta charset=\"utf-8\"><style>"+PDF_CSS+"</style></head><body>"+html+"</body></html>"});
+      files.push({name:y+"年"+p2(m+1)+"月_"+emp.name+"_勤怠・経費資料",html});
     }
-    lines.push("※ 勤怠・経費の資料（PDF）はGoogleドライブのフォルダに保存しています。");
+    lines.push("※ 勤怠・経費の資料（PDF）は共有フォルダに保存しています。");
     const text=lines.join("\n").replace(/\n\n※/,"\n※");
     res.innerHTML="<textarea class=\"tax-text\" id=\"taxText\"></textarea>"
-      +"<div class=\"tax-row\"><button class=\"tax-copy\" id=\"taxCopy\">📋 文章をコピー</button><span id=\"taxDrive\">📁 Googleドライブに保存中…</span></div>";
+      +"<div class=\"tax-row\"><button class=\"tax-copy\" id=\"taxCopy\">📋 文章をコピー</button><span id=\"taxDrive\">📄 PDFを作成中…</span></div>";
     document.getElementById("taxText").value=text;
     document.getElementById("taxCopy").addEventListener("click",async()=>{
       const t=document.getElementById("taxText").value;
       try{await navigator.clipboard.writeText(t);showToast("コピーしました ✓");}
       catch(x){const ta=document.getElementById("taxText");ta.select();document.execCommand("copy");showToast("コピーしました ✓");}
     });
-    // PDF を Googleドライブへ（本文は text/plain にして、ブラウザの事前確認なしで送る）
-    const idToken=await auth.currentUser.getIdToken();
+    // PDF をこのパソコンに保存（1人1ファイル。ブラウザが「複数ファイルのダウンロード」の許可を聞くことがある）
     const dr=document.getElementById("taxDrive");
     try{
-      const j=await (await fetch(HR_GAS_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"savePdf",idToken,ym:pfx,files})})).json();
-      dr.innerHTML=j.ok?"✓ Googleドライブに "+j.saved.length+" 件保存しました　<a href=\""+esc(j.folderUrl)+"\" target=\"_blank\" rel=\"noopener\">フォルダを開く ›</a>"
-        :"<span style=\"color:var(--out);\">⚠ ドライブに保存できませんでした："+esc(j.error||"不明なエラー")+"</span>";
-    }catch(x){dr.innerHTML="<span style=\"color:var(--out);\">⚠ ドライブに保存できませんでした（通信エラー）</span>";}
+      await loadHtml2pdf();
+      for(let k=0;k<files.length;k++){dr.textContent="📄 PDFを保存中… ("+(k+1)+"/"+files.length+")";await savePdfLocal(files[k].name,files[k].html);}
+      dr.innerHTML="✓ PDFを "+files.length+" 件保存しました（「ダウンロード」フォルダ）";
+    }catch(x){dr.innerHTML="<span style=\"color:var(--out);\">⚠ PDFを保存できませんでした："+esc(x.message||"不明なエラー")+"</span>";}
   }catch(e){
     res.innerHTML="<div style=\"color:var(--out);margin-top:8px;font-size:13px;\">作成に失敗しました："+esc(e.code||e.message)+"</div>";
   }finally{btn.disabled=false;btn.textContent="この月を税理士用に書き出す";}
