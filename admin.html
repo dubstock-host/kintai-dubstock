@@ -572,7 +572,7 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
 import {initializeApp,deleteApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged,createUserWithEmailAndPassword,updatePassword} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {getFirestore,doc,collection,getDocs,getDoc,setDoc,updateDoc,query,where,documentId,deleteField} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import {reflectHTML,REFLECT_CSS,HOLIDAYS,prevYm,monthEnded,closingApplies,closingTodo,closingDeadline,fmtDeadline,isOverdue,ymLabel} from "./hr-common.js?v=2026101801";  // hr-common.js を変えたら3画面ともこの番号を上げる（古いファイルが残ると画面が動かなくなる）
+import {reflectHTML,REFLECT_CSS,HOLIDAYS,prevYm,monthEnded,closingApplies,closingTodo,closingDeadline,fmtDeadline,isOverdue,ymLabel} from "./hr-common.js?v=2026101803";  // hr-common.js を変えたら3画面ともこの番号を上げる（古いファイルが残ると画面が動かなくなる）
 
 const FB={apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",authDomain:"kintai-dubstock.firebaseapp.com",projectId:"kintai-dubstock",storageBucket:"kintai-dubstock.firebasestorage.app",messagingSenderId:"1030065146975",appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"};
 // 名前付きアプリにして、社員画面（index / keihitsu）とログイン状態を分ける。
@@ -803,7 +803,7 @@ async function renderEmpDash(sync=true){
       wd++;const b=brkMs(sh.in,sh.out),w=Math.max(0,sh.out-sh.in-b),o=Math.max(0,w-EIGHT);tw+=w;to+=o;tn+=nightMs(sh.in,sh.out);
       if(isPart&&!sh.workNote)noNote++;
       rows+="<div class=\"dash-row\"><span class=\"d\">"+label+"</span><span class=\"m\">"+ts2hm(sh.in)+"〜"+ts2hm(sh.out)
-        +(sh.workNote?"<div style=\"margin-top:4px;\">"+reflectHTML(sh)+"</div>":isPart?"<div class=\"dash-note\" style=\"color:#D97706;\">業務内容 未記入</div>":"")
+        +(sh.workNote?"<div style=\"margin-top:4px;\">"+reflectHTML(sh,true)+"</div>":isPart?"<div class=\"dash-note\" style=\"color:#D97706;\">業務内容 未記入</div>":"")
         +"</span><span class=\"r\">"+hm(w)+(o>0?" <span style=\"color:var(--out);\">+"+hm(o)+"</span>":"")+"</span></div>";
     }else if(sh&&sh.in){
       rows+="<div class=\"dash-row\" style=\"background:#FFFBEB;\"><span class=\"d\">"+label+"</span><span class=\"m\">"+ts2hm(sh.in)+"〜 <span class=\"dash-badge\" style=\"background:#FEF9C3;color:#92400E;\">退勤未打刻</span></span><span class=\"r\">―</span></div>";
@@ -1059,7 +1059,7 @@ async function renderKintai(){
     const s=shifts[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);tw+=wms;to+=oms;tn+=nightMs(s.in,s.out);
     const dow=DOW[new Date(date).getDay()];
     tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td>"+ts2hm(s.in)+"</td><td>"+ts2hm(s.out)+"</td><td>"+(bms>0?hm(bms):"―")+"</td><td>"+hm(wms)+"</td><td class=\""+(oms>0?"ot":"")+"\">"+(oms>0?hm(oms):"―")+"</td></tr>";
-    if(s.workNote)tb+="<tr><td colspan=\"6\" style=\"padding:0 10px 12px;border-top:none;text-align:left;\">"+reflectHTML(s)+"</td></tr>";
+    if(s.workNote)tb+="<tr><td colspan=\"6\" style=\"padding:0 10px 12px;border-top:none;text-align:left;\">"+reflectHTML(s,true)+"</td></tr>";
   }
   document.getElementById("kintaiLog").innerHTML=tb||"<tr><td colspan=\"6\" class=\"no-data\">記録なし</td></tr>";
   document.getElementById("totalDays").textContent=wd+" 日";

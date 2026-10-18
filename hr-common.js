@@ -107,10 +107,15 @@ export function reflectParts(sh){
   return {done:r.done.join("\n").trim(),good:r.good.join("\n").trim(),next:r.next.join("\n").trim()};
 }
 const escH=v=>String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-export function reflectHTML(sh){
+// collapsible=true のときは折りたたみ（閉じた状態で「やったこと」の1行目だけを見せる）
+export function reflectHTML(sh,collapsible){
   const p=reflectParts(sh);if(!p)return "";
   const sec=(cls,label,t)=>t?"<div class=\"rf-sec\"><span class=\"rf-lb "+cls+"\">"+label+"</span><div class=\"rf-tx\">"+escH(t)+"</div></div>":"";
-  return "<div class=\"rf\">"+sec("rf-done","やったこと",p.done)+sec("rf-good","気づき",p.good)+sec("rf-next","次回",p.next)+"</div>";
+  const body=sec("rf-done","やったこと",p.done)+sec("rf-good","気づき",p.good)+sec("rf-next","次回",p.next);
+  if(!collapsible)return "<div class=\"rf\">"+body+"</div>";
+  const first=(p.done||p.good||p.next).split("\n")[0];
+  const tags=[p.good?"<span class=\"rf-chip rf-good\">気づき</span>":"",p.next?"<span class=\"rf-chip rf-next\">次回</span>":""].join("");
+  return "<details class=\"rf rf-d\"><summary><span class=\"rf-arrow\">▸</span><span class=\"rf-sum\">"+escH(first)+"</span>"+tags+"</summary>"+body+"</details>";
 }
 export const REFLECT_CSS=`
 .rf{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px;font-family:"Noto Sans JP",sans-serif;}
@@ -119,4 +124,16 @@ export const REFLECT_CSS=`
 .rf-lb{flex-shrink:0;width:64px;text-align:center;font-size:10.5px;font-weight:700;border-radius:4px;padding:2px 0;margin-top:1px;}
 .rf-done{background:#DBEAFE;color:#1D4ED8;}.rf-good{background:#DCFCE7;color:#166534;}.rf-next{background:#FEF3C7;color:#92400E;}
 .rf-tx{flex:1;min-width:0;font-size:12px;line-height:1.65;color:#1E293B;white-space:pre-line;word-break:break-word;}
+.rf-d summary{list-style:none;display:flex;gap:6px;align-items:center;cursor:pointer;font-size:12px;color:#1E293B;}
+.rf-d summary::-webkit-details-marker{display:none;}
+.rf-arrow{color:#94A3B8;font-size:11px;transition:transform .15s;}
+.rf-d[open] .rf-arrow{transform:rotate(90deg);}
+.rf-sum{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rf-d[open] .rf-sum{white-space:normal;color:#64748B;}
+.rf-chip{flex-shrink:0;font-size:10px;font-weight:700;border-radius:4px;padding:1px 6px;}
+.rf-d[open] summary{margin-bottom:6px;}
+.rf-tools{margin:0 0 8px;}
+.rf-note{font-size:11.5px;line-height:1.7;color:#475569;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px 12px;margin-bottom:6px;}
+.rf-btns{display:flex;justify-content:flex-end;gap:6px;}
+.rf-tools button{background:#fff;border:1px solid #CBD5E1;color:#475569;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;}
 `;

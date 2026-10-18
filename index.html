@@ -319,6 +319,7 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
       <div class="sc"><div class="slabel">有休取得日数</div><div class="sval" id="totalLeave" style="color:var(--lv)">0 日</div></div>
       <div class="sc" id="payCard" style="grid-column:1/-1;display:none;"><div class="slabel">給与見込み（時給計算）</div><div class="sval" id="totalPay">-</div><div id="payNote" style="font-size:11px;color:var(--tx3);margin-top:4px;line-height:1.6;"></div></div>
     </div>
+    <div class="rf-tools" id="rfTools"></div>
     <div class="twrap">
       <table class="ltable">
         <thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実労働</th><th>残業</th><th></th></tr></thead>
@@ -459,7 +460,7 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {getFirestore,doc,setDoc as fsSetDoc,getDoc,collection,query,where,getDocs,deleteDoc as fsDeleteDoc,updateDoc as fsUpdateDoc,documentId} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import {reflectHTML,REFLECT_CSS,HOLIDAYS,prevYm,monthEnded,closingApplies,closingTodo,closingBannerHTML,closingDeadline,fmtDeadline,isOverdue,ymLabel,CLOSING_CSS} from "./hr-common.js?v=2026101801";  // hr-common.js を変えたら3画面ともこの番号を上げる（古いファイルが残ると画面が動かなくなる）
+import {reflectHTML,REFLECT_CSS,HOLIDAYS,prevYm,monthEnded,closingApplies,closingTodo,closingBannerHTML,closingDeadline,fmtDeadline,isOverdue,ymLabel,CLOSING_CSS} from "./hr-common.js?v=2026101803";  // hr-common.js を変えたら3画面ともこの番号を上げる（古いファイルが残ると画面が動かなくなる）
 {const st=document.createElement("style");st.textContent=CLOSING_CSS+REFLECT_CSS;document.head.appendChild(st);}
 
 const FB={apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",authDomain:"kintai-dubstock.firebaseapp.com",projectId:"kintai-dubstock",storageBucket:"kintai-dubstock.firebasestorage.app",messagingSenderId:"1030065146975",appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"};
@@ -846,6 +847,19 @@ async function confirmKintai(ym,issues){
   }catch(e){alert("確定できませんでした（"+(e.code||e.message)+"）");}
 }
 
+// 振り返りの「すべて開く／すべて閉じる」（折りたたみがあるときだけ出す）
+// 振り返りの補足：いつから記録しているか（2026-10-03 から入力、9月分はスプレッドシートから取り込み）と、折りたたみの使い方
+const RF_NOTE="💡 振り返りは<b>2026年10月3日</b>から記録しています（9月分はスプレッドシートの「稼働内容」を取り込み済み）。"
+  +"前の月の分は、上の ‹ で月を戻すと見られます。各日の <b>▸</b> を押すと開き、もう一度押すと閉じます（2026年10月18日から）。";
+function wireRfTools(barId,scope){
+  const bar=document.getElementById(barId);if(!bar)return;
+  if(!isPart()){bar.innerHTML="";return;}   // 正社員の画面は変えない
+  const n=scope.querySelectorAll("details.rf-d").length;
+  bar.innerHTML="<div class=\"rf-note\">"+RF_NOTE+"</div>"
+    +(n?"<div class=\"rf-btns\"><button data-rf=\"1\">振り返りをすべて開く</button><button data-rf=\"0\">すべて閉じる</button></div>":"");
+  bar.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>scope.querySelectorAll("details.rf-d").forEach(d=>d.open=b.dataset.rf==="1")));
+}
+
 // 月次
 async function renderMonthly(){
   const y=curMonth.getFullYear(),m=curMonth.getMonth();const r=y-2018;
@@ -921,10 +935,11 @@ async function renderMonthly(){
         :" <span style=\"background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;\">休日出勤</span>";
     tb+="<tr"+(isPart()?" class=\"has-note\"":"")+"><td>"+date.slice(5)+"("+dow+")"+offBadge+"</td><td>"+ts2hm(s.in)+"</td><td>"+ts2hm(s.out)+"</td><td>"+(bms>0?hm(bms):"―")+"</td><td>"+hm(wms)+"</td><td class=\""+(oms>0?"ot":"")+"\">"+(oms>0?hm(oms):"―")+"</td><td data-date=\""+date+"\"></td></tr>";
     if(isPart()&&!s.workNote)nNoNote++;
-    if(isPart())tb+="<tr class=\"wn-row\"><td colspan=\"6\">"+(s.workNote?reflectHTML(s):"<span style=\"color:#D97706;\">業務内容が未記入です</span>")+"</td>"
+    if(isPart())tb+="<tr class=\"wn-row\"><td colspan=\"6\">"+(s.workNote?reflectHTML(s,true):"<span style=\"color:#D97706;\">業務内容が未記入です</span>")+"</td>"
       +"<td class=\"wn-btn\"><button class=\"ebtn\" data-note=\""+date+"\" title=\"業務内容を"+(s.workNote?"直す":"書く")+"\">📝</button></td></tr>";
   }
   const tbody=document.getElementById("monthlyLog");tbody.innerHTML=tb||"<tr><td colspan=\"7\" class=\"no-data\">記録なし</td></tr>";
+  wireRfTools("rfTools",tbody);
   // 確定済みの月は ✏️ 🔄 📝 を出さない
   if(locked)tbody.querySelectorAll("button[data-note]").forEach(b=>b.remove());
   tbody.querySelectorAll("button[data-note]").forEach(b=>b.addEventListener("click",()=>openWorkNote(b.dataset.note)));
