@@ -572,7 +572,7 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
 import {initializeApp,deleteApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged,createUserWithEmailAndPassword,updatePassword} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {getFirestore,doc,collection,getDocs,getDoc,setDoc,updateDoc,query,where,documentId,deleteField} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import {HOLIDAYS,prevYm,monthEnded,closingApplies,closingTodo,closingDeadline,fmtDeadline,isOverdue,ymLabel} from "./hr-common.js";
+import {reflectHTML,REFLECT_CSS,HOLIDAYS,prevYm,monthEnded,closingApplies,closingTodo,closingDeadline,fmtDeadline,isOverdue,ymLabel} from "./hr-common.js?v=2026101801";  // hr-common.js を変えたら3画面ともこの番号を上げる（古いファイルが残ると画面が動かなくなる）
 
 const FB={apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",authDomain:"kintai-dubstock.firebaseapp.com",projectId:"kintai-dubstock",storageBucket:"kintai-dubstock.firebasestorage.app",messagingSenderId:"1030065146975",appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"};
 // 名前付きアプリにして、社員画面（index / keihitsu）とログイン状態を分ける。
@@ -763,7 +763,7 @@ function shiftDetailHTML(date,c){
   h+=c.pl?c.pl.items.map(i=>"<div class=\"cal-dr\"><span class=\"cal-dk\">シフト</span><span class=\"shift-time\">"+esc(i.start)+"〜"+esc(i.end)+"</span>"+(i.title?" <span style=\"font-size:11px;color:var(--tx3);\">"+esc(i.title)+"</span>":"")+"</div>").join("")
     :"<div class=\"cal-dr\"><span class=\"cal-dk\">シフト</span>なし</div>";
   if(c.sh&&c.sh.in)h+="<div class=\"cal-dr\"><span class=\"cal-dk\">打刻</span><span class=\"shift-time\">"+ts2hm(c.sh.in)+"〜"+(c.sh.out?ts2hm(c.sh.out):"")+"</span></div>";
-  if(c.sh&&c.sh.workNote)h+="<div class=\"cal-dr\"><span class=\"cal-dk\">業務内容</span><span style=\"white-space:pre-line;\">"+esc(c.sh.workNote)+"</span></div>";
+  if(c.sh&&c.sh.workNote)h+="<div style=\"margin-top:6px;\">"+reflectHTML(c.sh)+"</div>";
   if(c.lv)h+="<div class=\"cal-dr\"><span class=\"cal-dk\">申請</span>"+esc(leaveLabel(c.lv))+(c.lv.status==="pending"?"（承認待ち）":"")+"</div>";
   return h;
 }
@@ -803,7 +803,7 @@ async function renderEmpDash(sync=true){
       wd++;const b=brkMs(sh.in,sh.out),w=Math.max(0,sh.out-sh.in-b),o=Math.max(0,w-EIGHT);tw+=w;to+=o;tn+=nightMs(sh.in,sh.out);
       if(isPart&&!sh.workNote)noNote++;
       rows+="<div class=\"dash-row\"><span class=\"d\">"+label+"</span><span class=\"m\">"+ts2hm(sh.in)+"〜"+ts2hm(sh.out)
-        +(sh.workNote?"<div class=\"dash-note\">"+esc(sh.workNote)+"</div>":isPart?"<div class=\"dash-note\" style=\"color:#D97706;\">業務内容 未記入</div>":"")
+        +(sh.workNote?"<div style=\"margin-top:4px;\">"+reflectHTML(sh)+"</div>":isPart?"<div class=\"dash-note\" style=\"color:#D97706;\">業務内容 未記入</div>":"")
         +"</span><span class=\"r\">"+hm(w)+(o>0?" <span style=\"color:var(--out);\">+"+hm(o)+"</span>":"")+"</span></div>";
     }else if(sh&&sh.in){
       rows+="<div class=\"dash-row\" style=\"background:#FFFBEB;\"><span class=\"d\">"+label+"</span><span class=\"m\">"+ts2hm(sh.in)+"〜 <span class=\"dash-badge\" style=\"background:#FEF9C3;color:#92400E;\">退勤未打刻</span></span><span class=\"r\">―</span></div>";
@@ -902,6 +902,7 @@ async function renderEmpDash(sync=true){
 }
 
 // ══ 提出状況（勤怠確定・経費確定）══
+{const st=document.createElement("style");st.textContent=REFLECT_CSS;document.head.appendChild(st);}
 const HR_GAS_URL="https://script.google.com/macros/s/AKfycbytlfJQeqet41SlgX30xkIpObMmF4YRYTxnnxbZsSdLY6psdh0dlZEp_RiZ3TZXC_PiQg/exec";
 async function renderClosingPanel(){
   const el=document.getElementById("closingPanel");if(!el)return;
@@ -1058,7 +1059,7 @@ async function renderKintai(){
     const s=shifts[0];const bms=brkMs(s.in,s.out);const wms=Math.max(0,s.out-s.in-bms);const oms=Math.max(0,wms-EIGHT);tw+=wms;to+=oms;tn+=nightMs(s.in,s.out);
     const dow=DOW[new Date(date).getDay()];
     tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td>"+ts2hm(s.in)+"</td><td>"+ts2hm(s.out)+"</td><td>"+(bms>0?hm(bms):"―")+"</td><td>"+hm(wms)+"</td><td class=\""+(oms>0?"ot":"")+"\">"+(oms>0?hm(oms):"―")+"</td></tr>";
-    if(s.workNote)tb+="<tr><td colspan=\"6\" style=\"font-size:11px;color:var(--tx2);padding-top:0;border-top:none;text-align:left;white-space:pre-line;line-height:1.6;\">📝 "+esc(s.workNote)+"</td></tr>";
+    if(s.workNote)tb+="<tr><td colspan=\"6\" style=\"padding:0 10px 12px;border-top:none;text-align:left;\">"+reflectHTML(s)+"</td></tr>";
   }
   document.getElementById("kintaiLog").innerHTML=tb||"<tr><td colspan=\"6\" class=\"no-data\">記録なし</td></tr>";
   document.getElementById("totalDays").textContent=wd+" 日";
@@ -1173,7 +1174,7 @@ async function buildEmpDoc(emp,y,m,pfx,opts,allExp,allTrv,out={}){
     rows+="<tr><td>"+date.slice(5)+"("+dow+")</td><td>"+ts2hm(x.in)+"</td><td>"+ts2hm(x.out)+"</td>"
       +"<td class=\"num\">"+(bms>0?hm(bms):"―")+"</td><td class=\"num\">"+hm(wms)+"</td>"
       +"<td class=\"num\">"+(oms>0?hm(oms):"―")+"</td></tr>";
-    if(x.workNote)rows+="<tr class=\"wn\"><td colspan=\"6\">業務内容："+esc(x.workNote)+"</td></tr>";
+    if(x.workNote)rows+="<tr class=\"wn\"><td colspan=\"6\">"+reflectHTML(x)+"</td></tr>";
   }
   const mLvs=lvs.filter(l=>l.status==="approved"&&String(l.date).startsWith(pfx));
   const paid=sumLeaveDays(mLvs);                                   // 振替休日は 0 日で計上される

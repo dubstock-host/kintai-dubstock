@@ -89,3 +89,34 @@ export const CLOSING_CSS=`
 .cl-confirm .cl-btn{background:#2563EB;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;}
 .cl-warn{font-size:12px;color:#B45309;margin-top:4px;line-height:1.6;}
 `;
+
+// ── 振り返り（パートの業務内容）の表示 ──
+// 項目は shifts[0].workReflect={done,good,next}。古い記録は workNote の全文から
+// 「気づき：」「次回：」で始まる行を手がかりに分ける
+export function reflectParts(sh){
+  if(!sh)return null;
+  if(sh.workReflect&&(sh.workReflect.done||sh.workReflect.good||sh.workReflect.next))
+    return {done:sh.workReflect.done||"",good:sh.workReflect.good||"",next:sh.workReflect.next||""};
+  if(!sh.workNote)return null;
+  const r={done:[],good:[],next:[]};let cur="done";
+  String(sh.workNote).split("\n").forEach(l=>{
+    if(/^気づき：/.test(l)){cur="good";l=l.replace(/^気づき：/,"");}
+    else if(/^次回：/.test(l)){cur="next";l=l.replace(/^次回：/,"");}
+    r[cur].push(l);
+  });
+  return {done:r.done.join("\n").trim(),good:r.good.join("\n").trim(),next:r.next.join("\n").trim()};
+}
+const escH=v=>String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+export function reflectHTML(sh){
+  const p=reflectParts(sh);if(!p)return "";
+  const sec=(cls,label,t)=>t?"<div class=\"rf-sec\"><span class=\"rf-lb "+cls+"\">"+label+"</span><div class=\"rf-tx\">"+escH(t)+"</div></div>":"";
+  return "<div class=\"rf\">"+sec("rf-done","やったこと",p.done)+sec("rf-good","気づき",p.good)+sec("rf-next","次回",p.next)+"</div>";
+}
+export const REFLECT_CSS=`
+.rf{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px;font-family:"Noto Sans JP",sans-serif;}
+.rf-sec{display:flex;gap:8px;align-items:flex-start;padding:4px 0;}
+.rf-sec+.rf-sec{border-top:1px dashed #E2E8F0;}
+.rf-lb{flex-shrink:0;width:64px;text-align:center;font-size:10.5px;font-weight:700;border-radius:4px;padding:2px 0;margin-top:1px;}
+.rf-done{background:#DBEAFE;color:#1D4ED8;}.rf-good{background:#DCFCE7;color:#166534;}.rf-next{background:#FEF3C7;color:#92400E;}
+.rf-tx{flex:1;min-width:0;font-size:12px;line-height:1.65;color:#1E293B;white-space:pre-line;word-break:break-word;}
+`;

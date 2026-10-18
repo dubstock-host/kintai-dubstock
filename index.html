@@ -140,8 +140,9 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .shift-st{font-size:11px;font-weight:600;border-radius:4px;padding:2px 7px;white-space:nowrap;}
 .st-done{background:#DCFCE7;color:#166534;}.st-miss{background:#FEE2E2;color:#DC2626;}.st-open{background:#FEF9C3;color:#92400E;}
 .st-today{background:#DBEAFE;color:#1D4ED8;}.st-plan{background:var(--s2);color:var(--tx3);}
-.wn-row td{font-size:11px;color:var(--tx2);padding-top:0 !important;border-top:none !important;text-align:left !important;white-space:pre-line;line-height:1.6;}
-.wn-row td.wn-btn{vertical-align:top;white-space:nowrap;}
+.wn-row td{font-size:11px;color:var(--tx2);padding:0 10px 12px !important;border-top:none !important;text-align:left !important;line-height:1.6;}
+.wn-row td.wn-btn{vertical-align:top;white-space:nowrap;padding-top:6px !important;}
+tr.has-note td{border-bottom:none;}
 .wn-hint{font-size:11px;color:var(--tx3);background:var(--s2);border-radius:8px;padding:9px 12px;margin-bottom:12px;line-height:1.6;}
 .mfield .wn-ta{min-height:58px;}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;}
@@ -458,8 +459,8 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {getFirestore,doc,setDoc as fsSetDoc,getDoc,collection,query,where,getDocs,deleteDoc as fsDeleteDoc,updateDoc as fsUpdateDoc,documentId} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import {HOLIDAYS,prevYm,monthEnded,closingApplies,closingTodo,closingBannerHTML,closingDeadline,fmtDeadline,isOverdue,ymLabel,CLOSING_CSS} from "./hr-common.js";
-{const st=document.createElement("style");st.textContent=CLOSING_CSS;document.head.appendChild(st);}
+import {reflectHTML,REFLECT_CSS,HOLIDAYS,prevYm,monthEnded,closingApplies,closingTodo,closingBannerHTML,closingDeadline,fmtDeadline,isOverdue,ymLabel,CLOSING_CSS} from "./hr-common.js?v=2026101801";  // hr-common.js を変えたら3画面ともこの番号を上げる（古いファイルが残ると画面が動かなくなる）
+{const st=document.createElement("style");st.textContent=CLOSING_CSS+REFLECT_CSS;document.head.appendChild(st);}
 
 const FB={apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",authDomain:"kintai-dubstock.firebaseapp.com",projectId:"kintai-dubstock",storageBucket:"kintai-dubstock.firebasestorage.app",messagingSenderId:"1030065146975",appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"};
 const app=initializeApp(FB,new URLSearchParams(location.search).get("viewAs")?"admin":undefined);  // 閲覧モードは管理者画面のログインを使う
@@ -776,7 +777,7 @@ function showShiftDetail(date){
   h+=pl?pl.items.map(i=>"<div class=\"cal-dr\"><span class=\"cal-dk\">シフト</span><span class=\"shift-time\">"+esc(i.start)+"〜"+esc(i.end)+"</span>"+(i.title?" <span class=\"shift-title\" style=\"display:inline;\">"+esc(i.title)+"</span>":"")+"</div>").join("")
     :"<div class=\"cal-dr\"><span class=\"cal-dk\">シフト</span>なし</div>";
   if(sh&&sh.in)h+="<div class=\"cal-dr\"><span class=\"cal-dk\">打刻</span><span class=\"shift-time\">"+ts2hm(sh.in)+"〜"+(sh.out?ts2hm(sh.out):"")+"</span></div>";
-  if(sh&&sh.workNote)h+="<div class=\"cal-dr\"><span class=\"cal-dk\">業務内容</span><span style=\"white-space:pre-line;\">"+esc(sh.workNote)+"</span></div>";
+  if(sh&&sh.workNote)h+="<div style=\"margin-top:6px;\">"+reflectHTML(sh)+"</div>";
   if(lv)h+="<div class=\"cal-dr\"><span class=\"cal-dk\">申請</span>"+esc(leaveLabel(lv))+(lv.status==="pending"?"（承認待ち）":"")+"</div>";
   el.innerHTML=h;
 }
@@ -918,9 +919,9 @@ async function renderMonthly(){
       :swappedBy
         ?" <span style=\"background:#ECFEFF;color:#0E7490;border:1px solid #A5F3FC;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;\">休日出勤・振替済</span>"
         :" <span style=\"background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;\">休日出勤</span>";
-    tb+="<tr><td>"+date.slice(5)+"("+dow+")"+offBadge+"</td><td>"+ts2hm(s.in)+"</td><td>"+ts2hm(s.out)+"</td><td>"+(bms>0?hm(bms):"―")+"</td><td>"+hm(wms)+"</td><td class=\""+(oms>0?"ot":"")+"\">"+(oms>0?hm(oms):"―")+"</td><td data-date=\""+date+"\"></td></tr>";
+    tb+="<tr"+(isPart()?" class=\"has-note\"":"")+"><td>"+date.slice(5)+"("+dow+")"+offBadge+"</td><td>"+ts2hm(s.in)+"</td><td>"+ts2hm(s.out)+"</td><td>"+(bms>0?hm(bms):"―")+"</td><td>"+hm(wms)+"</td><td class=\""+(oms>0?"ot":"")+"\">"+(oms>0?hm(oms):"―")+"</td><td data-date=\""+date+"\"></td></tr>";
     if(isPart()&&!s.workNote)nNoNote++;
-    if(isPart())tb+="<tr class=\"wn-row\"><td colspan=\"6\">"+(s.workNote?esc(s.workNote):"<span style=\"color:#D97706;\">業務内容が未記入です</span>")+"</td>"
+    if(isPart())tb+="<tr class=\"wn-row\"><td colspan=\"6\">"+(s.workNote?reflectHTML(s):"<span style=\"color:#D97706;\">業務内容が未記入です</span>")+"</td>"
       +"<td class=\"wn-btn\"><button class=\"ebtn\" data-note=\""+date+"\" title=\"業務内容を"+(s.workNote?"直す":"書く")+"\">📝</button></td></tr>";
   }
   const tbody=document.getElementById("monthlyLog");tbody.innerHTML=tb||"<tr><td colspan=\"7\" class=\"no-data\">記録なし</td></tr>";
