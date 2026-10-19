@@ -33,8 +33,9 @@
  *  - スクリプト プロパティに CHATWORK_TOKEN と CHATWORK_ROOM_ID が必要
  *
  * 月次の提出リマインド（勤怠確定・経費確定）
- *  - dailyRemind：毎朝10時台に自動実行（installDailyTrigger で一度だけ設定）。営業日だけ動く
- *    前月分が未提出の人に、通知部屋で本人宛て（[To]）に送る。第4営業日以降は「至急」
+ *  - dailyRemind：毎朝10時台に自動実行（installDailyTrigger で一度だけ設定）。営業日だけ動き、第3営業日（期限日）から送る
+ *    前月分が未提出の人に送る。送り先は本人との1対1の部屋（users.chatworkRoomId）、
+ *    無ければ通知部屋に本人宛て（[To]）。第4営業日以降は「至急」
  *  - GET <URL>?n=remind&uid=<UID>&ym=YYYY-MM：管理者画面の「催促する」。期限後・未提出・1時間に1回まで
  *  - 祝日・開始月・締めの営業日数は、公開中の hr-common.js から読む（祝日の管理を1か所にするため）
  */
@@ -229,9 +230,10 @@ function travelMsg_(d) {
   return '[info][title]✈ 出張報告が提出されました（きん太）[/title]' + lines.join('\n') + '[/info]';
 }
 
-function postChatwork_(body) {
+// room を渡さなければ通知部屋（CHATWORK_ROOM_ID）に送る
+function postChatwork_(body, roomId) {
   const props = PropertiesService.getScriptProperties();
-  const token = props.getProperty('CHATWORK_TOKEN'), room = props.getProperty('CHATWORK_ROOM_ID');
+  const token = props.getProperty('CHATWORK_TOKEN'), room = roomId || props.getProperty('CHATWORK_ROOM_ID');
   if (!token || !room) throw new Error('スクリプト プロパティに CHATWORK_TOKEN と CHATWORK_ROOM_ID を設定してください');
   const res = UrlFetchApp.fetch('https://api.chatwork.com/v2/rooms/' + encodeURIComponent(room) + '/messages', {
     method: 'post',
@@ -290,6 +292,8 @@ function fsQuery_(col, field, value) {
 const APP_URL = 'https://dubstock-host.github.io/kintai-dubstock/';
 const DOW_ = ['日', '月', '火', '水', '木', '金', '土'];
 const ymd_ = d => Utilities.formatDate(d, 'Asia/Tokyo', 'yyyy-MM-dd');
+// 毎朝のリマインドを送り始める営業日（第3営業日＝期限日から。本人の決定 2026-10-19）。それより前は画面の案内だけ
+const REMIND_FROM_BIZ_DAY = 3;
 
 // hr-common.js から祝日・開始月・締めの営業日数を読む
 function loadCommon_() {
@@ -323,14 +327,23 @@ function employees_() {
   } });
   return res.filter(r => r.document).map(r => Object.assign(docToObj_(r.document), { uid: r.document.name.split('/').pop() }));
 }
+// リマインドの送り先：1対1の部屋（users.chatworkRoomId）があればそこ、無ければ通知部屋に [To] で
+function remindDest_(e) {
+  if (e.chatworkRoomId) return { room: String(e.chatworkRoomId), label: '個別チャット' };
+  if (e.chatworkId) return { room: null, label: '通知部屋に[To]' };
+  return null;
+}
 function todo_(c) { const t = []; if (!c || !c.kintaiAt) t.push('kintai'); if (!c || !c.expenseAt) t.push('expense'); return t; }
 
 function remindMsg_(e, todo, ym, dl, urgent, byAdmin) {
   const mm = Number(ym.slice(5, 7)) + '月';
-  const lines = ['[To:' + e.chatworkId + ']' + cw_(e.name) + 'さん'];
+  // 1対1の部屋に送るときは [To] が無くても本人に届く。アカウントIDがあれば付ける
+  const lines = [(e.chatworkId ? '[To:' + e.chatworkId + ']' : '') + cw_(e.name) + 'さん'];
   lines.push(urgent
     ? '🔴【至急】' + mm + '分の提出期限（' + fmtD_(dl) + '）を過ぎています。今日中に提出してください。'
-    : '📋 ' + mm + '分の提出をお願いします。期限は ' + fmtD_(dl) + ' です。');
+    : ymd_(new Date()) === ymd_(dl)
+      ? '📋 ' + mm + '分の提出期限は【本日 ' + fmtD_(dl) + '】です。今日中に提出してください。'
+      : '📋 ' + mm + '分の提出をお願いします。期限は ' + fmtD_(dl) + ' です。');
   if (byAdmin) lines.push('（管理者からの催促です）');
   lines.push('');
   if (todo.indexOf('kintai') >= 0) lines.push('■ 勤怠の確定：きん太 →「月次」→ ' + mm + ' → 内容を確かめて「' + mm + 'の勤怠を確定する」');
@@ -344,6 +357,7 @@ function dailyRemind() {
   const C = loadCommon_(), today = new Date();
   const idx = bizIndex_(today, C);
   if (!idx) { Logger.log('営業日ではないので送りません'); return; }
+  if (idx < REMIND_FROM_BIZ_DAY) { Logger.log('第' + idx + '営業日なので送りません（第' + REMIND_FROM_BIZ_DAY + '営業日から送ります）'); return; }
   const ym = prevYm_(today);
   if (ym < C.start) { Logger.log(ym + ' はリマインドの対象外（開始月 ' + C.start + '）'); return; }
   const dl = deadline_(ym, C), urgent = idx > C.days;
@@ -351,8 +365,9 @@ function dailyRemind() {
   employees_().filter(e => e.active === true && (!e.hireDate || String(e.hireDate).slice(0, 7) <= ym)).forEach(e => {
     const todo = todo_(fsGet_('closings/' + e.uid + '_' + ym));
     if (!todo.length) return;
-    if (!e.chatworkId) { missing.push(e.name); return; }
-    postChatwork_(remindMsg_(e, todo, ym, dl, urgent, false));
+    const dest = remindDest_(e);
+    if (!dest) { missing.push(e.name); return; }
+    postChatwork_(remindMsg_(e, todo, ym, dl, urgent, false), dest.room);
     Logger.log('送信：' + e.name + '（' + todo.join('・') + '）');
   });
   if (missing.length) Logger.log('チャットワークID未登録のため送れなかった人：' + missing.join('、'));
@@ -367,12 +382,13 @@ function remindOne_(uid, ym) {
   if (ymd_(today) <= ymd_(dl)) return { ok: true, skipped: 'まだ期限内です' };
   const e = employees_().filter(x => x.uid === uid)[0];
   if (!e || e.active !== true) return { ok: false, error: '社員が見つかりません' };
-  if (!e.chatworkId) return { ok: true, skipped: 'チャットワークID未登録' };
+  const dest = remindDest_(e);
+  if (!dest) return { ok: true, skipped: 'チャットワーク未登録' };
   const todo = todo_(fsGet_('closings/' + uid + '_' + ym));
   if (!todo.length) return { ok: true, skipped: '提出済みです' };
   const log = fsGet_('remindLog/' + uid + '_' + ym);
   if (log && log.lastAt && Date.now() - new Date(log.lastAt).getTime() < 3600000) return { ok: true, skipped: 'recent' };
-  postChatwork_(remindMsg_(e, todo, ym, dl, true, true));
+  postChatwork_(remindMsg_(e, todo, ym, dl, true, true), dest.room);
   fsPatch_('remindLog/' + uid + '_' + ym, { lastAt: new Date().toISOString() });
   return { ok: true };
 }
@@ -391,7 +407,8 @@ function previewRemind() {
   Logger.log('今日は今月の第' + bizIndex_(today, C) + '営業日（0は休日）。対象 ' + ym + '、期限 ' + fmtD_(deadline_(ym, C)));
   employees_().filter(e => e.active === true).forEach(e => {
     const todo = todo_(fsGet_('closings/' + e.uid + '_' + ym));
-    Logger.log(e.name + '：' + (todo.length ? '未提出（' + todo.join('・') + '）' : '提出済み') + (e.chatworkId ? '' : '／チャットワークID未登録'));
+    const d = remindDest_(e);
+    Logger.log(e.name + '：' + (todo.length ? '未提出（' + todo.join('・') + '）' : '提出済み') + (d ? '／送り先：' + d.label : '／チャットワーク未登録'));
   });
 }
 
