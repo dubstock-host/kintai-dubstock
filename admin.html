@@ -596,7 +596,7 @@ async function loadEmployees(){
     const u=d.data();
     list.push({uid:d.id,name:u.name||d.id,avatar:u.avatar||(u.name||"?").slice(0,1),active:u.active!==false,
       employmentType:u.employmentType||"full",hireDate:u.hireDate||"",weeklyDays:u.weeklyDays||null,
-      weeklyHours:u.weeklyHours||null,email:u.email||"",chatworkId:u.chatworkId||"",hourlyWages:Array.isArray(u.hourlyWages)?u.hourlyWages:[]});
+      weeklyHours:u.weeklyHours||null,email:u.email||"",chatworkId:u.chatworkId||"",chatworkRoomId:u.chatworkRoomId||"",hourlyWages:Array.isArray(u.hourlyWages)?u.hourlyWages:[]});
   });
   list.sort((a,b)=>String(a.name).localeCompare(String(b.name),"ja"));
   EMPLOYEES=list;
@@ -945,7 +945,7 @@ async function renderClosingPanel(){
       const c=cls[e.uid]||{},todo=closingTodo(c);
       const btns=[];
       // 催促は前月分だけ（GAS も前月分しか受け付けない）
-      if(todo.length&&over&&ym===prevYm(new Date()))btns.push(e.chatworkId?"<button class=\"cp-btn cp-urge\" data-urge=\""+esc(e.uid)+"\">催促する</button>"
+      if(todo.length&&over&&ym===prevYm(new Date()))btns.push((e.chatworkRoomId||e.chatworkId)?"<button class=\"cp-btn cp-urge\" data-urge=\""+esc(e.uid)+"\">催促する</button>"
         :"<span class=\"cp-sub\">チャットワークID未登録</span>");
       if(c.kintaiAt)btns.push("<button class=\"cp-btn\" data-undo=\"kintai\" data-uid=\""+esc(e.uid)+"\">勤怠を差し戻す</button>");
       if(c.expenseAt)btns.push("<button class=\"cp-btn\" data-undo=\"expense\" data-uid=\""+esc(e.uid)+"\">経費を差し戻す</button>");
@@ -1390,7 +1390,7 @@ function renderMembers(){
         +"<td>"+type+"</td><td>"+esc(e.hireDate||"―")+"</td><td>"+week+"</td>"
         +"<td>"+(e.employmentType==="part"?(()=>{const w=wageFor(e,CUR_YM());return (w?w.toLocaleString()+"円":"<span style=\"color:var(--out);\">未設定</span>")
           +" <button class=\"expbtn mem-wage\" data-uid=\""+esc(e.uid)+"\" style=\"padding:2px 8px;font-size:11px;\">変更</button>";})():"―")+"</td>"
-        +"<td>"+(e.chatworkId?esc(e.chatworkId):"<span style=\"color:var(--tx3);\">未登録</span>")+" <button class=\"expbtn mem-cw\" data-uid=\""+esc(e.uid)+"\" style=\"padding:2px 8px;font-size:11px;\">"+(e.chatworkId?"変更":"登録")+"</button></td>"
+        +"<td>"+(e.chatworkRoomId?"個別チャット":e.chatworkId?"通知部屋に[To]":"<span style=\"color:var(--tx3);\">未登録</span>")+" <button class=\"expbtn mem-cw\" data-uid=\""+esc(e.uid)+"\" style=\"padding:2px 8px;font-size:11px;\">"+((e.chatworkRoomId||e.chatworkId)?"変更":"登録")+"</button></td>"
         +"<td>"+(e.active?"在職":"退職")+"</td>"
         +"<td><button class=\"expbtn mem-toggle\" data-uid=\""+esc(e.uid)+"\" data-active=\""+(e.active?"1":"0")+"\" style=\"padding:4px 10px;font-size:11px;\">"+(e.active?"退職にする":"在職に戻す")+"</button></td></tr>";
     }).join("")+"</tbody></table></div>";
@@ -1398,14 +1398,17 @@ function renderMembers(){
   sel.innerHTML="<option value=\"\">選んでください</option>"+EMPLOYEES.map(e=>"<option value=\""+esc(e.uid)+"\">"+esc(e.name)+"</option>").join("");
   sel.value=cur;
   el.querySelectorAll(".mem-wage").forEach(b=>b.addEventListener("click",()=>setWage(b.dataset.uid)));
-  // リマインドで本人宛て（[To]）にするためのチャットワークのアカウントID（数字）
+  // リマインドの送り先：本人との1対1のチャットの部屋ID（優先）。無ければ通知部屋に本人宛て（[To]＝アカウントID）
   el.querySelectorAll(".mem-cw").forEach(b=>b.addEventListener("click",async()=>{
     const e=EMPLOYEES.find(x=>x.uid===b.dataset.uid);if(!e)return;
-    const v=prompt(e.name+" さんのチャットワークのアカウントID（数字）\n※ 空欄にすると登録を消します",e.chatworkId||"");if(v===null)return;
+    const r=prompt(e.name+" さんとの1対1のチャットの部屋ID（数字）\n※ ブラウザでその人とのチャットを開いたときのURLの「rid」の後ろの数字\n※ 空欄にすると個別チャットには送りません",e.chatworkRoomId||"");if(r===null)return;
+    const room=String(r).replace(/\s|rid/g,"");
+    if(room&&!/^\d{3,15}$/.test(room)){alert("部屋IDは数字だけで入力してください");return;}
+    const v=prompt(e.name+" さんのチャットワークのアカウントID（数字・任意）\n※ 入れるとメッセージの先頭に本人宛ての印（[To]）が付きます。空欄でもかまいません",e.chatworkId||"");if(v===null)return;
     const id=String(v).replace(/\s/g,"");
     if(id&&!/^\d{3,12}$/.test(id)){alert("アカウントIDは数字だけで入力してください");return;}
-    await updateDoc(doc(db,"users",e.uid),{chatworkId:id,updatedAt:new Date().toISOString()});
-    await loadEmployees();renderMembers();showToast(id?"チャットワークIDを登録しました":"チャットワークIDを消しました");
+    await updateDoc(doc(db,"users",e.uid),{chatworkRoomId:room,chatworkId:id,updatedAt:new Date().toISOString()});
+    await loadEmployees();renderMembers();showToast(room?"個別チャットに送るよう登録しました":id?"通知部屋に[To]で送るよう登録しました":"チャットワークの登録を消しました");
   }));
   el.querySelectorAll(".mem-toggle").forEach(b=>b.addEventListener("click",async()=>{
     const toActive=b.dataset.active!=="1";
