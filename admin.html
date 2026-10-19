@@ -82,6 +82,11 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .cp-sub{font-size:12px;color:var(--tx3);}
 .cp-st{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:2px 8px;}
 .cp-ok{background:#DCFCE7;color:#166534;}.cp-ng{background:#FEE2E2;color:#B91C1C;}
+.cp-nav{background:var(--s2);border:1px solid var(--bdr);border-radius:6px;width:26px;height:26px;cursor:pointer;color:var(--tx2);margin:0 4px;}
+.cp-nav:disabled{opacity:.35;cursor:default;}
+.cp-st{margin-right:4px;white-space:nowrap;}
+.cp .ltable th,.cp .ltable td{white-space:nowrap;vertical-align:middle;}
+.cp-btn{white-space:nowrap;}
 .cp-btn{background:var(--s2);border:1px solid var(--bdr);color:var(--tx2);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;margin:2px 4px 2px 0;}
 .cp-btn.cp-urge{background:#DC2626;border-color:#DC2626;color:#fff;font-weight:700;}
 /* シフト表（社員画面のシフトタブと同じ見た目） */
@@ -572,7 +577,7 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
 import {initializeApp,deleteApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged,createUserWithEmailAndPassword,updatePassword} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {getFirestore,doc,collection,getDocs,getDoc,setDoc,updateDoc,query,where,documentId,deleteField} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import {reflectHTML,REFLECT_CSS,HOLIDAYS,prevYm,monthEnded,closingApplies,closingTodo,closingDeadline,fmtDeadline,isOverdue,ymLabel} from "./hr-common.js?v=2026101803";  // hr-common.js を変えたら3画面ともこの番号を上げる（古いファイルが残ると画面が動かなくなる）
+import {reflectHTML,REFLECT_CSS,HOLIDAYS,prevYm,ymOf,CLOSING_START_YM,monthEnded,closingApplies,closingTodo,closingDeadline,fmtDeadline,isOverdue,ymLabel} from "./hr-common.js?v=2026101803";  // hr-common.js を変えたら3画面ともこの番号を上げる（古いファイルが残ると画面が動かなくなる）
 
 const FB={apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",authDomain:"kintai-dubstock.firebaseapp.com",projectId:"kintai-dubstock",storageBucket:"kintai-dubstock.firebasestorage.app",messagingSenderId:"1030065146975",appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"};
 // 名前付きアプリにして、社員画面（index / keihitsu）とログイン状態を分ける。
@@ -786,9 +791,10 @@ async function renderEmpDash(sync=true){
   el.innerHTML="<div class=\"no-data\">読み込み中...</div>";
   const y=dashMonth.getFullYear(),m=dashMonth.getMonth(),pfx=y+"-"+p2(m+1),days=new Date(y,m+1,0).getDate();
   const isPart=emp.employmentType==="part";
-  const [recs,lvs,allExp,allTrv,plans]=await Promise.all([
+  const [recs,lvs,allExp,allTrv,plans,clo]=await Promise.all([
     getRecsByUid(emp.uid,pfx),getLeavesByUid(emp.uid),getAllDocs("expenses"),getAllDocs("travels"),
     isPart?getDocs(query(collection(db,"shifts"),where(documentId(),">=",emp.uid+"_"+pfx+"-01"),where(documentId(),"<=",emp.uid+"_"+pfx+"-31"))).then(sn=>{const r={};sn.forEach(d=>{const v=d.data();if(Array.isArray(v.items)&&v.items.length)r[v.date]=v;});return r;}).catch(()=>({})):Promise.resolve({})
+    ,getDoc(doc(db,"closings",emp.uid+"_"+pfx)).then(d=>d.exists()?d.data():null).catch(()=>null)
   ]);
   const today=(()=>{const d=new Date();if(d.getHours()<5)d.setDate(d.getDate()-1);return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate());})();
 
@@ -861,7 +867,11 @@ async function renderEmpDash(sync=true){
    +(bal&&bal.next?meta("次の有給付与",bal.next.date.getFullYear()+"/"+p2(bal.next.date.getMonth()+1)+"/"+p2(bal.next.date.getDate())+"（"+bal.next.days+"日）"):"")
    +meta("ログインID",esc(emp.email||"―"))
    +"</div></div>"
-   +"<div class=\"mnav\"><button class=\"mbtn\" id=\"dashPrev\">&#8249;</button><div class=\"mlabel\">"+y+"年"+(m+1)+"月</div><button class=\"mbtn\" id=\"dashNext\">&#8250;</button></div>"
+   +"<div class=\"mnav\"><button class=\"mbtn\" id=\"dashPrev\">&#8249;</button><div class=\"mlabel\">"+y+"年"+(m+1)+"月</div><button class=\"mbtn\" id=\"dashNext\">&#8250;</button>"
+   +(closingApplies(pfx)?"<span class=\"cp-sub\" style=\"margin-left:6px;\">この月の確定：</span>"
+      +(clo&&clo.kintaiAt?"<span class=\"cp-st cp-ok\">✓ 勤怠 確定 "+fmtMD(clo.kintaiAt)+"</span>":"<span class=\"cp-st cp-ng\">未 勤怠</span>")
+      +(clo&&clo.expenseAt?"<span class=\"cp-st cp-ok\">✓ "+(clo.expenseNone?"経費（なし）":"経費")+" 確定 "+fmtMD(clo.expenseAt)+"</span>":"<span class=\"cp-st cp-ng\">未 経費</span>"):"")
+   +"</div>"
    +"<div class=\"dash-kpis\">"
    +kpi("出勤日数",wd+" 日",isPart?"シフト "+shiftDays+" 日":"")
    +kpi("実労働",hm(tw))
@@ -904,29 +914,46 @@ async function renderEmpDash(sync=true){
 // ══ 提出状況（勤怠確定・経費確定）══
 {const st=document.createElement("style");st.textContent=REFLECT_CSS;document.head.appendChild(st);}
 const HR_GAS_URL="https://script.google.com/macros/s/AKfycbytlfJQeqet41SlgX30xkIpObMmF4YRYTxnnxbZsSdLY6psdh0dlZEp_RiZ3TZXC_PiQg/exec";
+// 確定の状態を表示用に（✓ 確定 10/5 ／ 未）
+const fmtMD=iso=>{const d=new Date(iso);return (d.getMonth()+1)+"/"+d.getDate();};
+async function loadClosingsByYm(ym){
+  const cls={};
+  try{const sn=await getDocs(query(collection(db,"closings"),where("ym","==",ym)));sn.forEach(d=>{const v=d.data();cls[v.userId]=v;});}catch(e){}
+  return cls;
+}
+// 提出状況で表示する月（既定は前月。締めの開始月より前には戻らない）
+let cpYm=null;
 async function renderClosingPanel(){
   const el=document.getElementById("closingPanel");if(!el)return;
-  const ym=prevYm(new Date());
-  if(!closingApplies(ym)){el.innerHTML="";return;}
+  const nowYm=ymOf(new Date());
+  if(!cpYm){const pv=prevYm(new Date());cpYm=closingApplies(pv)?pv:CLOSING_START_YM;}
+  if(cpYm<CLOSING_START_YM)cpYm=CLOSING_START_YM;
+  if(cpYm>nowYm)cpYm=nowYm;
+  const ym=cpYm;
   const targets=EMPLOYEES.filter(e=>e.active&&(!e.hireDate||e.hireDate.slice(0,7)<=ym));
   if(!targets.length){el.innerHTML="";return;}
-  let cls={};
-  try{const sn=await getDocs(query(collection(db,"closings"),where("ym","==",ym)));sn.forEach(d=>{const v=d.data();cls[v.userId]=v;});}catch(e){}
-  const over=isOverdue(ym),dl=fmtDeadline(closingDeadline(ym));
+  const cls=await loadClosingsByYm(ym);
+  const ended=monthEnded(ym),over=ended&&isOverdue(ym),dl=fmtDeadline(closingDeadline(ym));
   const done=targets.filter(e=>!closingTodo(cls[e.uid]).length).length;
-  const st=(ok,label)=>"<span class=\"cp-st "+(ok?"cp-ok\">✓ ":"cp-ng\">未 ")+label+"</span>";
-  el.innerHTML="<div class=\"cp"+(over&&done<targets.length?" cp-over":"")+"\"><div class=\"cp-h\"><span class=\"cp-t\">📋 "+ymLabel(ym)+"分の提出状況（"+done+" / "+targets.length+" 人 完了）</span>"
-    +"<span class=\"cp-sub\">期限 "+dl+(over?"・<b style=\"color:var(--out);\">期限を過ぎています</b>":"")+"</span></div>"
+  // 列の見出しが「勤怠」「経費」なので、中は短く
+  const st=(at,none)=>"<span class=\"cp-st "+(at?"cp-ok\">✓ "+(none?"なしで":"")+"確定 "+fmtMD(at):"cp-ng\">未確定")+"</span>";
+  el.innerHTML="<div class=\"cp"+(over&&done<targets.length?" cp-over":"")+"\"><div class=\"cp-h\">"
+    +"<span class=\"cp-t\"><button class=\"cp-nav\" id=\"cpPrev\""+(ym<=CLOSING_START_YM?" disabled":"")+">‹</button> 📋 "+ym.slice(0,4)+"年"+ymLabel(ym)+"分の確定状況（"+done+" / "+targets.length+" 人 完了）<button class=\"cp-nav\" id=\"cpNext\""+(ym>=nowYm?" disabled":"")+">›</button></span>"
+    +"<span class=\"cp-sub\">"+(ended?"期限 "+dl+(over?"・<b style=\"color:var(--out);\">期限を過ぎています</b>":""):"月が終わると本人が確定できます（期限 "+dl+"）")+"</span></div>"
     +"<div class=\"twrap\"><table class=\"ltable\"><thead><tr><th>氏名</th><th>勤怠</th><th>経費</th><th></th></tr></thead><tbody>"
     +targets.map(e=>{
       const c=cls[e.uid]||{},todo=closingTodo(c);
       const btns=[];
-      if(todo.length&&over)btns.push(e.chatworkId?"<button class=\"cp-btn cp-urge\" data-urge=\""+esc(e.uid)+"\">催促する</button>"
+      // 催促は前月分だけ（GAS も前月分しか受け付けない）
+      if(todo.length&&over&&ym===prevYm(new Date()))btns.push(e.chatworkId?"<button class=\"cp-btn cp-urge\" data-urge=\""+esc(e.uid)+"\">催促する</button>"
         :"<span class=\"cp-sub\">チャットワークID未登録</span>");
       if(c.kintaiAt)btns.push("<button class=\"cp-btn\" data-undo=\"kintai\" data-uid=\""+esc(e.uid)+"\">勤怠を差し戻す</button>");
       if(c.expenseAt)btns.push("<button class=\"cp-btn\" data-undo=\"expense\" data-uid=\""+esc(e.uid)+"\">経費を差し戻す</button>");
-      return "<tr><td>"+esc(e.name)+"</td><td>"+st(!!c.kintaiAt,"勤怠")+"</td><td>"+st(!!c.expenseAt,c.expenseNone?"経費（なし）":"経費")+"</td><td>"+btns.join("")+"</td></tr>";
+      return "<tr><td>"+esc(e.name)+"</td><td>"+st(c.kintaiAt)+"</td><td>"+st(c.expenseAt,c.expenseNone)+"</td><td>"+btns.join("")+"</td></tr>";
     }).join("")+"</tbody></table></div></div>";
+  const shift=k=>{const [y,m]=cpYm.split("-").map(Number);cpYm=ymOf(new Date(y,m-1+k,1));renderClosingPanel();};
+  document.getElementById("cpPrev").addEventListener("click",()=>shift(-1));
+  document.getElementById("cpNext").addEventListener("click",()=>shift(1));
   el.querySelectorAll("[data-urge]").forEach(b=>b.addEventListener("click",async()=>{
     const e=EMPLOYEES.find(x=>x.uid===b.dataset.urge);
     if(!confirm((e?e.name:"")+" さんに、チャットワークで提出を催促します。よろしいですか？"))return;
@@ -1145,9 +1172,13 @@ async function renderExportTab(){
   document.getElementById("exportMonthLabel").textContent="R"+(y-2018)+"年"+(m+1)+"月";
   const el=document.getElementById("exportEmpList");
   if(!EMPLOYEES.length){el.innerHTML="<div class=\"no-data\">社員が登録されていません</div>";return;}
-  el.innerHTML=EMPLOYEES.map(e=>
-    "<label class=\"emp-chk\"><input type=\"checkbox\" class=\"exp-emp\" value=\""+esc(e.uid)+"\" checked> "
-    +esc(e.name)+(e.active?"":"（退職）")+"</label>").join("");
+  // 締めの対象月なら、書き出す前に確定済みかどうかを確かめられるよう、名前の横に出す
+  const pfx=y+"-"+p2(m+1),cls=closingApplies(pfx)?await loadClosingsByYm(pfx):null;
+  const st=(at,label)=>"<span class=\"cp-st "+(at?"cp-ok\">✓ "+label+" 確定":"cp-ng\">未 "+label)+"</span>";
+  el.innerHTML=EMPLOYEES.map(e=>{const c=cls?(cls[e.uid]||{}):null;
+    return "<label class=\"emp-chk\"><input type=\"checkbox\" class=\"exp-emp\" value=\""+esc(e.uid)+"\" checked> "
+    +esc(e.name)+(e.active?"":"（退職）")+(c?" "+st(c.kintaiAt,"勤怠")+st(c.expenseAt,c.expenseNone?"経費（なし）":"経費"):"")+"</label>";}).join("")
+    +(cls&&EMPLOYEES.some(e=>closingTodo(cls[e.uid]).length)?"<div class=\"cp-sub\" style=\"margin-top:6px;color:#B45309;\">⚠ 確定していない人がいます。確定前の数字は、あとで変わることがあります。</div>":"");
 }
 
 // 社員1名・1か月分の文書を組み立てる
