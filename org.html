@@ -27,7 +27,7 @@
   --mid:#4C8783; --mid-bg:#DCE8E7;
   --new:#BB4136; --new-bg:#F4E1DE;
   --danger:#BB4136;
-  --bcol:34px; --gcol:92px; --cmin:156px;
+  --bcol:34px; --gcol:92px; --cmin:172px;
   color-scheme:light;
 }
 *,*::before,*::after{box-sizing:border-box}
@@ -103,8 +103,9 @@ button{cursor:pointer}
 .vline{position:relative;z-index:1;justify-self:center;width:0;border-left:1.5px solid var(--line);
   margin-top:14px;margin-bottom:-10px;pointer-events:none}
 .dept{grid-row:1;z-index:2;align-self:end;justify-self:center;margin-bottom:6px;
-  border:1px solid var(--ink-lt);background:var(--surface);color:var(--ink-dk);border-radius:999px;padding:2px 16px;font-size:13px;font-weight:700;letter-spacing:.04em;max-width:92%;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  border:1px solid var(--ink-lt);background:var(--surface);color:var(--ink-dk);border-radius:14px;padding:2px 14px;font-size:13px;font-weight:700;letter-spacing:.04em;max-width:96%;
+  line-height:1.35;text-align:center;word-break:keep-all;overflow-wrap:anywhere}
+@media (min-width:641px){.dept{font-size:12px;letter-spacing:.02em}}
 .dept:hover{background:var(--paper-dk)}
 .cell{z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;padding:10px 10px 8px;position:relative}
 .cell.drop{outline:2px dashed var(--accent);outline-offset:-4px;background:color-mix(in srgb,var(--accent-bg) 60%,transparent)}
@@ -338,17 +339,10 @@ const el=(t,c)=>{const e=document.createElement(t);if(c)e.className=c;return e};
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 
 function sample(){
-  const d={e:uid(),s:uid(),k:uid(),g:uid()};
-  const S=(dept,grade,unit,role,name,status)=>({id:uid(),dept,grade,unit,role,name,status,memo:''});
-  return {id:uid(),name:'3年後',title:'未来の組織図（3年後）',ceo:'社長',vision:'',grades:9,prefix:'ステージ',bands:defaultBands(9),gradeNames:{},
-    depts:[{id:d.e,name:'営業部'},{id:d.s,name:'設計部'},{id:d.k,name:'建設部'},{id:d.g,name:'総務部'}],
-    seats:[
-      S(d.e,7,'営業部','部長','','cur'),S(d.e,5,'営業1課','課長','','cur'),
-      S(d.e,3,'営業1課','','','mid'),S(d.e,1,'営業1課','','','new'),
-      S(d.s,7,'設計部','部長','','cur'),S(d.s,4,'設計課','主任','','cur'),S(d.s,2,'設計課','','','mid'),
-      S(d.k,7,'建設部','部長','','cur'),S(d.k,5,'建設1課','課長','','mid'),S(d.k,1,'建設1課','','','new'),
-      S(d.g,9,'役員','専務取締役','','cur'),S(d.g,7,'総務部','部長','','cur'),S(d.g,4,'総務部','','','mid')
-    ]};
+  // dubstock の部門（2026-11-05 本人指定）。ポストは空から始める
+  const depts=['インテリアデザイン','マーケティング・リサーチ・広報','バックオフィス','コンテンツプロダクト','カスタマーサクセス'].map(name=>({id:uid(),name}));
+  return {id:uid(),name:'3年後',title:'未来の組織図（3年後）',ceo:'経営チーム',vision:'',grades:9,prefix:'ステージ',bands:defaultBands(9),gradeNames:{},
+    depts,seats:[]};
 }
 function freshState(){const s=sample();return {current:s.id,scenarios:[s]}}
 function defaultBands(G){
@@ -362,6 +356,7 @@ function migrate(s){
   s.scenarios.forEach(p=>{
     if(!p.bands){p.bands=defaultBands(p.grades);if(p.prefix==='グレード')p.prefix='ステージ'}
     if(!p.gradeNames)p.gradeNames={};
+    if(p.ceo==='社長')p.ceo='経営チーム';   // 2026-11-05 本人指定：トップは「経営チーム」
   });
   delete s.namesCleared;
   return s;
@@ -447,7 +442,7 @@ function drawGrid(sc){
       const low=Math.min(...ds.map(s=>s.grade));
       const v=el('div','vline');v.style.gridColumn=c;v.style.gridRow=`1 / ${rowOf(low)}`;g.append(v);
     }
-    const p=el('button','dept');p.textContent=d.name;p.style.gridColumn=c;p.title='部署名を編集';p.onclick=()=>openDept(d);g.append(p);
+    const p=el('button','dept');p.innerHTML=esc(d.name).replace(/・/g,'・<wbr>');p.style.gridColumn=c;p.title='部署名を編集';p.onclick=()=>openDept(d);g.append(p);
     for(let x=G;x>=1;x--){
       const cell=el('div','cell');cell.style.gridColumn=c;cell.style.gridRow=rowOf(x);
       ds.filter(s=>s.grade===x).forEach(s=>cell.append(seatEl(s,d)));
@@ -560,7 +555,7 @@ function duplicate(){
 }
 $('pDup').onclick=duplicate;
 $('pBlank').onclick=()=>{
-  const p={id:uid(),name:'新しいプラン',title:'未来の組織図',ceo:'社長',vision:'',grades:cur().grades,prefix:cur().prefix,
+  const p={id:uid(),name:'新しいプラン',title:'未来の組織図',ceo:'経営チーム',vision:'',grades:cur().grades,prefix:cur().prefix,
     bands:JSON.parse(JSON.stringify(cur().bands||[])),gradeNames:JSON.parse(JSON.stringify(cur().gradeNames||{})),depts:[],seats:[]};
   state.scenarios.push(p);state.current=p.id;save();render();$('setDlg').close();
 };
