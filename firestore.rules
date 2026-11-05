@@ -125,6 +125,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ── orgcharts : 未来の組織図（管理者のみ。社員は読むことも書くこともできない）──
+    //  ドキュメントは orgcharts/main の1件。中身は組織図エディタの状態（JSON文字列）
+    match /orgcharts/{docId} {
+      allow read, write: if isAdmin();
+    }
+
     // ── leaves : 有給申請 ─────────────────────────────────────
     //  従業員は pending でのみ申請でき、承認状態は変更できない
     //  （notifSeen の更新は status 不変なので許可される）

@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>きん太 - 未来の組織図</title>
+<link rel="icon" href="favicon.ico?v=hr4" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=hr4">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=hr4">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* 未来の組織図（管理者のみ）。claude.ai の「未来の組織図エディタ」を元に、保存先を Firestore（orgcharts/main）にしたもの */
+:root{
+  /* dubstock ブランドガイドライン v1.9 のカラーパレット（RGB）
+     Ink #1A1918/#2A2927/#45433F, Stone #6E6C66/#99968F/#C9C6BE, Paper #E7E4DC/#F5F3EE/#FBFAF7,
+     Teal #00534E/#4C8783/#B2CBCA, 機能色 Focus #3D7FE0 / Error #BB4136
+     配分の目安：Paper 60・Ink+Stone 22・Teal 15・機能色 3 */
+  --paper:#F5F3EE; --surface:#FBFAF7; --stripe:#EFECE5; --paper-dk:#E7E4DC;
+  --ink:#2A2927; --ink-dk:#1A1918; --ink-lt:#45433F;
+  --muted:#6E6C66; --stone:#99968F; --rule:#C9C6BE;
+  --teal:#00534E; --teal-md:#4C8783; --teal-lt:#B2CBCA; --teal-bg:#E3ECEB;
+  --line:#45433F; --accent:#00534E; --accent-bg:#E3ECEB; --focus:#3D7FE0;
+  /* ポストの区分：在籍＝Ink／昇格＝Teal Dark／異動＝Stone／中途＝Teal Mid（破線）／新卒＝Error（破線・差し色） */
+  --promo:#00534E; --promo-bg:#D5E3E2;
+  --move:#6E6C66; --move-bg:#E7E4DC;
+  --mid:#4C8783; --mid-bg:#DCE8E7;
+  --new:#BB4136; --new-bg:#F4E1DE;
+  --danger:#BB4136;
+  --bcol:34px; --gcol:92px; --cmin:156px;
+  color-scheme:light;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;
+  font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+/* ---------- 上部バー（Teal Dark 地＋横組みロゴ オフホワイト） ---------- */
+.kbar{display:flex;align-items:center;gap:14px;padding:12px clamp(16px,3vw,40px);background:var(--teal);color:var(--paper);font-size:13px}
+.kbar .logo{height:20px;width:auto;display:block;flex-shrink:0}
+.kbar .sep{width:1px;height:18px;background:rgba(245,243,238,.35)}
+.kbar .who{font-weight:500;letter-spacing:.04em;white-space:nowrap}
+.kbar .who small{font-weight:400;opacity:.7;margin-left:6px;font-size:11px}
+.kbar a{color:var(--paper);text-decoration:none;font-size:12px;border:1px solid rgba(245,243,238,.45);border-radius:999px;padding:3px 12px;white-space:nowrap}
+.kbar a:hover{background:rgba(245,243,238,.12)}
+.kbar .sv{margin-left:auto;font-size:12px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.kbar .sv.err{opacity:1;color:var(--paper);background:var(--danger);border-radius:4px;padding:2px 8px;white-space:normal}
+.gate{max-width:420px;margin:15vh auto;padding:28px 24px;background:var(--surface);border:1px solid var(--rule);border-radius:8px;text-align:center;line-height:1.9;color:var(--ink)}
+.gate a{color:var(--teal);font-weight:700}
+#app{display:none}
+
+/* ---------- toolbar ---------- */
+.top{padding:20px clamp(16px,3vw,40px) 12px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between}
+.title{font-size:clamp(22px,2.6vw,30px);font-weight:700;letter-spacing:.02em;color:var(--ink-dk);border:0;background:transparent;padding:2px 0;
+  border-bottom:1.5px solid transparent;min-width:12ch;width:min(100%,24ch)}
+.title:hover,.title:focus{border-bottom-color:var(--rule);outline:none}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.tab{border:1.5px solid var(--rule);background:transparent;padding:3px 12px;font-size:13px;border-radius:999px;color:var(--muted)}
+.tab.on{border-color:var(--teal);color:var(--paper);font-weight:500;background:var(--teal)}
+.tab.ghost{border-style:dashed}
+.actions{display:flex;flex-wrap:wrap;gap:6px}
+.btn{border:1px solid var(--ink-lt);background:var(--surface);padding:6px 14px;font-size:14px;border-radius:4px;color:var(--ink)}
+.btn:hover{background:var(--paper-dk)}
+.btn.primary{background:var(--teal);border-color:var(--teal);color:var(--paper)}
+.btn.primary:hover{background:#00403C}
+.btn.quiet{border-color:var(--rule)}
+.btn.danger{border-color:var(--danger);color:var(--danger)}
+.btn.armed{background:var(--danger);color:#fff;border-color:var(--danger)}
+
+/* ---------- chart ---------- */
+.canvas{overflow-x:auto;padding:8px clamp(16px,3vw,40px) 24px}
+.chart{min-width:fit-content}
+.boss{display:flex;margin-left:calc(var(--bcol) + var(--gcol));border:1.5px solid var(--teal);background:var(--surface);min-height:48px}
+.boss .ceo{flex:0 0 auto;width:min(150px,30%);border:0;background:var(--teal);color:var(--paper);letter-spacing:.08em;
+  text-align:center;font-weight:700;padding:8px}
+.boss .vision{flex:1;border:0;background:transparent;padding:8px 16px;font-weight:500;min-width:0}
+.boss input:focus{outline:none;background:var(--accent-bg)}
+.boss .ceo:focus{background:#00403C}
+.boss .vision::placeholder{color:var(--stone)}
+
+.grid{display:grid;position:relative}
+.stripe{grid-column:1/-1;z-index:0}
+.stripe.alt{background:var(--stripe)}
+.glabel{grid-column:2;z-index:2;align-self:center;justify-self:start;border:0;background:transparent;text-align:left;padding:4px 6px;border-radius:4px;
+  font-size:13px;font-weight:700;color:var(--muted);white-space:nowrap;display:grid;line-height:1.3}
+.glabel:hover{background:var(--surface)}
+.glabel small{font-size:11px;font-weight:500;color:var(--ink);white-space:normal;max-width:84px}
+.band{grid-column:1;z-index:2;display:flex;align-items:center;justify-content:center;margin:4px 6px 4px 0;
+  border-left:4px solid var(--b);background:color-mix(in srgb,var(--b) 12%,transparent)}
+.band[data-i="0"]{--b:var(--teal-md)} .band[data-i="1"]{--b:var(--teal)} .band[data-i="2"]{--b:var(--ink-dk)} .band[data-i="3"]{--b:var(--stone)}
+.band span{writing-mode:vertical-rl;font-size:12px;font-weight:700;letter-spacing:.18em;color:var(--b);padding:6px 0}
+.bandrow{display:grid;grid-template-columns:1fr 62px auto 62px 34px;gap:6px;align-items:center;margin-bottom:6px}
+.bandrow .x{padding:5px 0}
+.glabel b{font-size:17px;color:var(--ink);margin-left:2px}
+.hline{grid-row:1;position:relative;z-index:1;pointer-events:none}
+.hline::before{content:"";position:absolute;top:14px;border-top:1.5px solid var(--line);
+  left:calc(100% / var(--n) / 2);right:calc(100% / var(--n) / 2)}
+.hline::after{content:"";position:absolute;left:50%;top:0;height:14px;border-left:1.5px solid var(--line)}
+.vline{position:relative;z-index:1;justify-self:center;width:0;border-left:1.5px solid var(--line);
+  margin-top:14px;margin-bottom:-10px;pointer-events:none}
+.dept{grid-row:1;z-index:2;align-self:end;justify-self:center;margin-bottom:6px;
+  border:1px solid var(--ink-lt);background:var(--surface);color:var(--ink-dk);border-radius:999px;padding:2px 16px;font-size:13px;font-weight:700;letter-spacing:.04em;max-width:92%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dept:hover{background:var(--paper-dk)}
+.cell{z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;padding:10px 10px 8px;position:relative}
+.cell.drop{outline:2px dashed var(--accent);outline-offset:-4px;background:color-mix(in srgb,var(--accent-bg) 60%,transparent)}
+.seat{width:100%;max-width:184px;background:var(--surface);border:1.5px solid var(--ink-lt);border-radius:3px;padding:0;text-align:center;display:block;position:relative;color:var(--ink)}
+.seat:hover{transform:translateY(-1px);box-shadow:0 3px 0 var(--rule)}
+.seat.dragging{opacity:.4}
+.seat .unit{display:block;border-bottom:1px solid var(--rule);padding:3px 8px;font-size:12px;color:var(--muted)}
+.seat .who{display:block;padding:5px 8px 6px;font-size:15px;font-weight:500;color:var(--ink-dk)}
+.seat .badge{position:absolute;top:-9px;right:-6px;font-size:11px;font-weight:700;padding:0 6px;border-radius:3px;background:var(--surface);border:1px solid currentColor;letter-spacing:.04em}
+.seat[data-status="promo"]{border-color:var(--promo)} .seat[data-status="promo"] .unit{background:var(--promo-bg)} .seat[data-status="promo"] .badge{color:var(--promo)}
+.seat[data-status="move"]{border-color:var(--move)} .seat[data-status="move"] .unit{background:var(--move-bg)} .seat[data-status="move"] .badge{color:var(--move)}
+.seat[data-status="mid"],.seat[data-status="new"]{border-style:dashed}
+.seat[data-status="mid"]{border-color:var(--mid);background:repeating-linear-gradient(135deg,var(--mid-bg) 0 5px,var(--surface) 5px 11px)}
+.seat[data-status="new"]{border-color:var(--new);background:repeating-linear-gradient(135deg,var(--new-bg) 0 5px,var(--surface) 5px 11px)}
+.seat[data-status="mid"] .badge{color:var(--mid)} .seat[data-status="new"] .badge{color:var(--new)}
+.seat[data-status="mid"] .unit,.seat[data-status="new"] .unit{border-bottom-style:dashed}
+.add{width:26px;height:26px;border-radius:50%;border:1.5px dashed var(--stone);background:var(--surface);color:var(--teal);
+  font-size:16px;line-height:1;padding:0;opacity:0;transition:opacity .12s}
+.cell:hover .add,.add:focus-visible{opacity:1}
+@media (hover:none){.add{opacity:.45}}
+
+.foot{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;padding:0 clamp(16px,3vw,40px) 32px;font-size:13px;color:var(--muted)}
+.foot .key{display:inline-flex;align-items:center;gap:6px}
+.foot .sw{width:22px;height:14px;border:1.5px solid var(--ink-lt);background:var(--surface);border-radius:2px}
+.foot .sw.promo{border-color:var(--promo);background:var(--promo-bg)}
+.foot .sw.move{border-color:var(--move);background:var(--move-bg)}
+.foot .sw.mid{border:1.5px dashed var(--mid);background:var(--mid-bg)}
+.foot .sw.new{border:1.5px dashed var(--new);background:var(--new-bg)}
+.foot strong{color:var(--ink);font-size:15px}
+.foot .total{margin-left:auto;color:var(--ink-dk);font-weight:500}
+
+/* ---------- dialogs ---------- */
+dialog{border:1px solid var(--rule);box-shadow:0 12px 40px rgba(26,25,24,.18);background:var(--surface);color:var(--ink);padding:0;width:min(440px,calc(100vw - 24px));border-radius:6px}
+dialog::backdrop{background:rgba(26,25,24,.45)}
+.dlg{padding:20px 22px 18px;display:grid;gap:12px}
+.dlg h2{margin:0 0 2px;font-size:18px;color:var(--ink-dk);padding-left:10px;border-left:3px solid var(--teal)}
+.dlg label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+.dlg input,.dlg select,.dlg textarea{border:1px solid var(--rule);background:var(--paper);padding:7px 10px;border-radius:4px;font-size:16px;color:var(--ink);width:100%}
+.dlg textarea{min-height:64px;resize:vertical}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg label{display:block}
+.seg input{position:absolute;opacity:0;width:1px;height:1px}
+.seg span{display:inline-block;border:1.5px solid var(--rule);padding:4px 10px;border-radius:999px;font-size:13px;color:var(--ink);cursor:pointer}
+.seg input:checked+span{border-color:var(--teal);background:var(--teal);color:var(--paper)}
+.seg input:focus-visible+span{outline:2px solid var(--focus);outline-offset:2px}
+.dlg .bar{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:4px}
+.dlg .bar .left{margin-right:auto}
+.note{font-size:12px;color:var(--muted);margin:0}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink-dk);color:var(--paper);
+  padding:8px 16px;border-radius:4px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+
+@media (max-width:640px){:root{--bcol:28px;--gcol:72px;--cmin:132px}.glabel{font-size:11px}.glabel b{font-size:15px}.kbar .sep,.kbar .who small{display:none}.kbar .logo{height:16px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}.seat:hover{transform:none}}
+@media print{
+  :root{--paper:#fff;--surface:#fff;--stripe:#F3F3F3}
+  .kbar,.actions,.tabs,.add,.toast{display:none!important}
+  .tab.on{color:var(--ink)}
+  .canvas{overflow:visible}
+  body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div class="kbar">
+  <svg class="logo" role="img" aria-label="dubstock" xmlns="http://www.w3.org/2000/svg" viewBox="81 81 618 125"><g><path d="M195.03,86.931c0-2.761,2.238-5,5-5s5,2.239,5,5-2.239,5-5,5S195.03,89.693,195.03,86.931ZM165.461,147l40-.5v-6l-40-.5V147ZM165.126,138.315l23.829-10.412-2.296-5.543-24.212,9.487L165.126,138.315ZM155.114,124.514l9.488-24.212-5.544-2.296-10.411,23.829L155.114,124.514ZM146.961,121.5l-.5-40h-6l-.5,40H146.961ZM138.276,121.835l-10.412-23.829-5.543,2.296,9.487,24.212L138.276,121.835ZM130.38,125.469l-28.638-27.931-4.243,4.243,27.931,28.638L130.38,125.469ZM124.475,131.847l-24.212-9.487-2.296,5.543,23.829,10.412L124.475,131.847ZM121.461,140l-40,.5v6l40,.5V140ZM121.796,148.685l-23.829,10.412,2.296,5.543,24.212-9.487L121.796,148.685ZM125.43,156.581l-27.931,28.638,4.243,4.243,28.638-27.931L125.43,156.581ZM131.808,162.486l-9.487,24.212,5.543,2.296,10.412-23.829L131.808,162.486ZM139.961,165.5l.5,40h6l.5-40H139.961ZM148.647,165.165l10.411,23.829,5.544-2.296-9.488-24.212L148.647,165.165ZM156.543,161.531l28.637,27.931,4.243-4.243-27.931-28.638L156.543,161.531ZM162.447,155.153l24.212,9.487,2.296-5.543-23.829-10.412L162.447,155.153ZM185.534,106.377l7.778-7.778-4.95-4.95-7.778,7.778L185.534,106.377Z" fill="currentColor"/><g><path d="M288.399,177q-7.216,0-13.042-3.663t-9.213-9.935-3.386-14.042q0-7.879,3.386-14.152,3.384-6.27,9.213-9.99,5.827-3.718,13.042-3.718,6.104,0,10.823,2.608,4.716,2.609,7.492,7.16,2.773,4.552,2.775,10.323v15.317q0,5.773-2.719,10.323-2.722,4.553-7.493,7.161Q294.503,176.998,288.399,177ZM290.397,165.456q4.55,0,7.937-2.054,3.384-2.052,5.272-5.716,1.886-3.664,1.887-8.436,0-4.772-1.887-8.437-1.889-3.662-5.272-5.716-3.388-2.053-7.937-2.053-4.44,0-7.825,2.053-3.387,2.056-5.329,5.716-1.943,3.664-1.942,8.437,0,4.774,1.942,8.436,1.941,3.663,5.329,5.716Q285.956,165.458,290.397,165.456ZM316.926,175.89h-12.21v-14.32l2.109-12.986-2.109-12.876v-39.738h12.21V175.89Z" fill="currentColor"/><path d="M351.224,177q-6.772,0-12.043-2.997t-8.215-8.27-2.941-12.154v-30.97h12.21v30.414q0,3.888,1.276,6.605,1.275,2.722,3.774,4.163,2.497,1.443,5.939,1.442,5.328,0,8.158-3.163,2.831-3.164,2.831-9.047v-30.414h12.21v30.97q0,6.992-2.942,12.265-2.942,5.273-8.158,8.215Q358.104,176.997,351.224,177Z" fill="currentColor"/><path d="M385.633,175.89v-79.92h12.21v39.738l-2.109,12.876,2.109,12.986v14.32H385.633ZM414.16,177q-6.105,0-10.878-2.608t-7.492-7.161-2.72-10.323v-15.317q0-5.77,2.775-10.323,2.774-4.55,7.548-7.16,4.772-2.607,10.767-2.608,7.214,0,13.042,3.718,5.828,3.72,9.214,9.99,3.384,6.272,3.385,14.152,0,7.771-3.385,14.042-3.388,6.273-9.214,9.935Q421.375,176.999,414.16,177ZM412.162,165.456q4.438,0,7.826-2.054,3.384-2.052,5.328-5.716,1.941-3.664,1.942-8.436,0-4.772-1.942-8.437-1.944-3.662-5.328-5.716-3.388-2.053-7.826-2.053-4.441,0-7.881,2.053-3.442,2.056-5.328,5.716-1.888,3.664-1.887,8.437,0,4.774,1.887,8.436,1.887,3.663,5.328,5.716Q407.721,165.458,412.162,165.456Z" fill="currentColor"/><path d="M466.329,177q-4.441,0-8.547-1.166t-7.548-3.33-5.994-5.273l7.77-7.769q2.773,3.22,6.382,4.828,3.606,1.61,8.159,1.609,4.105,0,6.216-1.22,2.107-1.221,2.109-3.552,0-2.44-1.998-3.774-1.998-1.332-5.162-2.276-3.163-.942-6.66-1.942-3.496-.999-6.66-2.72-3.163-1.72-5.161-4.718-1.998-2.997-1.998-7.769,0-5.105,2.386-8.77,2.386-3.662,6.771-5.66,4.384-1.998,10.49-1.998,6.436,0,11.377,2.275,4.938,2.277,8.27,6.827l-7.77,7.77q-2.331-2.886-5.329-4.329-2.996-1.441-6.881-1.443-3.663,0-5.662,1.11-1.998,1.11-1.997,3.219,0,2.222,1.997,3.441,1.999,1.222,5.162,2.109,3.163.89,6.66,1.942,3.497,1.056,6.66,2.887,3.164,1.831,5.162,4.883,1.998,3.055,1.998,7.937,0,7.771-5.439,12.32Q475.652,177.001,466.329,177Z" fill="currentColor"/><path d="M490.859,133.71v-11.101h37.74v11.101H490.859ZM503.624,175.89v-75.481h12.21v75.481H503.624Z" fill="currentColor"/><path d="M559.235,177q-7.771,0-14.097-3.719t-10.046-10.046-3.718-14.096,3.718-13.987,10.046-9.934,14.097-3.718q7.88,0,14.208,3.663,6.327,3.662,10.045,9.934,3.718,6.272,3.719,14.042,0,7.771-3.719,14.096-3.721,6.328-10.045,10.046Q567.115,177.002,559.235,177ZM559.235,165.233q4.55,0,8.047-2.053,3.497-2.053,5.44-5.716,1.94-3.664,1.942-8.325,0-4.663-1.998-8.214-1.998-3.551-5.44-5.606-3.441-2.052-7.991-2.053-4.441,0-7.937,2.053-3.496,2.056-5.439,5.606-1.943,3.554-1.942,8.214,0,4.662,1.942,8.325,1.941,3.662,5.439,5.716Q554.795,165.236,559.235,165.233Z" fill="currentColor"/><path d="M620.727,177q-7.882,0-14.263-3.663t-10.045-9.99-3.663-14.097q0-7.881,3.663-14.153,3.662-6.27,10.045-9.934,6.382-3.663,14.263-3.663,6.216,0,11.6,2.386,5.383,2.389,9.157,6.827l-7.991,8.102q-2.332-2.773-5.605-4.162-3.276-1.387-7.161-1.387-4.552,0-8.046,2.053-3.497,2.056-5.44,5.606-1.944,3.554-1.942,8.325,0,4.661,1.942,8.27,1.941,3.607,5.44,5.66,3.496,2.056,8.046,2.053,3.885,0,7.161-1.387,3.272-1.386,5.605-4.162l7.991,8.103q-3.775,4.44-9.157,6.826Q626.942,176.998,620.727,177Z" fill="currentColor"/><path d="M649.144,175.89v-79.92h12.21v79.92H649.144ZM682.999,175.89l-22.533-27.196,22.422-26.085h14.541l-25.752,29.305.555-6.993,26.307,30.969H682.999Z" fill="currentColor"/></g></g></svg>
+  <span class="sep" aria-hidden="true"></span>
+  <span class="who">未来の組織図<small>管理者のみ</small></span>
+  <span class="sv" id="sv"></span>
+  <a href="admin.html">管理者画面へ戻る</a>
+</div>
+
+<div class="gate" id="gate">読み込み中…</div>
+
+<div id="app">
+<header class="top">
+  <div>
+    <input class="title" id="title" aria-label="組織図のタイトル">
+    <div class="tabs" id="tabs" role="group" aria-label="プラン"></div>
+  </div>
+  <div class="actions">
+    <button class="btn primary" id="addDept">部署を追加</button>
+    <button class="btn" id="openSettings">設定</button>
+    <button class="btn quiet" id="openData">控えと読み込み</button>
+    <button class="btn quiet" id="print">印刷</button>
+  </div>
+</header>
+
+<main class="canvas">
+  <div class="chart">
+    <div class="boss">
+      <input class="ceo" id="ceo" aria-label="トップの役職">
+      <input class="vision" id="vision" placeholder="ビジョンを書く" aria-label="ビジョン">
+    </div>
+    <div class="grid" id="grid"></div>
+  </div>
+</main>
+<footer class="foot" id="foot"></footer>
+</div>
+
+<datalist id="memberList"></datalist>
+
+<!-- seat dialog -->
+<dialog id="seatDlg" aria-labelledby="seatH">
+  <div class="dlg">
+    <h2 id="seatH">ポストを編集</h2>
+    <div class="row2">
+      <label>部署<select id="sDept"></select></label>
+      <label>グレード<select id="sGrade"></select></label>
+    </div>
+    <label>部署内の名称<input id="sUnit" placeholder="例：営業1課"></label>
+    <div class="row2">
+      <label>役職<input id="sRole" placeholder="例：課長"></label>
+      <label>氏名<input id="sName" list="memberList" placeholder="空欄なら区分を表示"></label>
+    </div>
+    <div>
+      <div class="note" style="margin-bottom:6px">どう埋めるか</div>
+      <div class="seg" id="sStatus"></div>
+    </div>
+    <label>メモ<textarea id="sMemo" placeholder="求める役割や採用時期など"></textarea></label>
+    <div class="bar">
+      <button class="btn danger left" id="sDel">削除</button>
+      <button class="btn quiet" data-close>キャンセル</button>
+      <button class="btn primary" id="sSave">保存</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- dept dialog -->
+<dialog id="deptDlg" aria-labelledby="deptH">
+  <div class="dlg">
+    <h2 id="deptH">部署を編集</h2>
+    <label>部署名<input id="dName"></label>
+    <div class="bar" style="justify-content:flex-start">
+      <button class="btn quiet" id="dLeft">左へ移動</button>
+      <button class="btn quiet" id="dRight">右へ移動</button>
+    </div>
+    <p class="note" id="dCount"></p>
+    <div class="bar">
+      <button class="btn danger left" id="dDel">部署を削除</button>
+      <button class="btn quiet" data-close>キャンセル</button>
+      <button class="btn primary" id="dSave">保存</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- settings dialog -->
+<dialog id="setDlg" aria-labelledby="setH">
+  <div class="dlg">
+    <h2 id="setH">このプランの設定</h2>
+    <label>プラン名（タブに表示）<input id="pName"></label>
+    <div class="row2">
+      <label>段階の数<input id="pGrades" type="number" min="1" max="15"></label>
+      <label>段階の呼び方<input id="pPrefix" placeholder="例：ステージ／等級"></label>
+    </div>
+    <p class="note">段階を減らすと、はみ出したポストは最上位の段階に移ります。各段階の呼び名は、組織図の左端の番号を押すと付けられます。</p>
+    <div>
+      <div class="note" style="margin-bottom:6px">帯（段階のまとまり）</div>
+      <div id="bandList"></div>
+      <button class="btn quiet" id="bandAdd">＋ 帯を追加</button>
+    </div>
+    <div class="bar" style="justify-content:flex-start">
+      <button class="btn quiet" id="pDup">このプランを複製</button>
+      <button class="btn quiet" id="pBlank">空のプランを追加</button>
+    </div>
+    <div class="bar">
+      <button class="btn danger left" id="pClear">ポストを全部消す</button>
+      <button class="btn danger" id="pDel">プランを削除</button>
+    </div>
+    <div class="bar">
+      <button class="btn quiet" data-close>キャンセル</button>
+      <button class="btn primary" id="pSave">保存</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- data dialog -->
+<dialog id="dataDlg" aria-labelledby="dataH">
+  <div class="dlg">
+    <h2 id="dataH">控えと読み込み</h2>
+    <p class="note">編集内容は自動でデータベースに保存され、管理者ならどの端末からでも同じものが見られます。<br>
+      控えを残すときは「コピー」を押してメモ帳などに貼り付けてください。<br>
+      claude.ai で作った組織図を移すときは、そちらの「保存と読み込み」でコピーした内容をここに貼り付けて「読み込む」を押してください（今の内容は置き換わります）。</p>
+    <label>データ<textarea id="ioText" style="min-height:160px;font-size:12px"></textarea></label>
+    <div class="bar">
+      <button class="btn danger left" id="ioReset">見本に戻す</button>
+      <button class="btn quiet" id="ioCopy">コピー</button>
+      <button class="btn primary" id="ioLoad">貼り付けた内容を読み込む</button>
+    </div>
+    <div class="bar"><button class="btn quiet" data-close>閉じる</button></div>
+  </div>
+</dialog>
+
+<!-- grade dialog -->
+<dialog id="gradeDlg" aria-labelledby="gradeH">
+  <div class="dlg">
+    <h2 id="gradeH"></h2>
+    <label>呼び名<input id="gName" placeholder="例：一人で案件を回せる"></label>
+    <p class="note">空欄にすると番号だけの表示に戻ります。</p>
+    <div class="bar"><button class="btn quiet" data-close>キャンセル</button><button class="btn primary" id="gSave">保存</button></div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {getAuth,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {getFirestore,doc,getDoc,setDoc,collection,getDocs,query,where,serverTimestamp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const FB={apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",authDomain:"kintai-dubstock.firebaseapp.com",projectId:"kintai-dubstock",storageBucket:"kintai-dubstock.firebasestorage.app",messagingSenderId:"1030065146975",appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"};
+// 管理者画面（admin.html）と同じ名前付きアプリ。管理者画面でログインしていれば、そのまま入れる
+const app=initializeApp(FB,"admin");
+const auth=getAuth(app);
+const db=getFirestore(app);
+const ORG_DOC=doc(db,"orgcharts","main");
+const BACKUP_KEY="kinta-orgchart-backup";   // 保存に失敗したときの予備（この端末だけ）
+
+const STATUSES=[
+  {k:'cur',label:'在籍'},
+  {k:'promo',label:'昇格'},
+  {k:'move',label:'異動'},
+  {k:'mid',label:'中途採用'},
+  {k:'new',label:'新卒採用'}
+];
+const FILL={cur:'未定',promo:'未定',move:'未定',mid:'中途',new:'新卒'};
+const $=id=>document.getElementById(id);
+const uid=()=>Math.random().toString(36).slice(2,10);
+const el=(t,c)=>{const e=document.createElement(t);if(c)e.className=c;return e};
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+
+function sample(){
+  const d={e:uid(),s:uid(),k:uid(),g:uid()};
+  const S=(dept,grade,unit,role,name,status)=>({id:uid(),dept,grade,unit,role,name,status,memo:''});
+  return {id:uid(),name:'3年後',title:'未来の組織図（3年後）',ceo:'社長',vision:'',grades:9,prefix:'ステージ',bands:defaultBands(9),gradeNames:{},
+    depts:[{id:d.e,name:'営業部'},{id:d.s,name:'設計部'},{id:d.k,name:'建設部'},{id:d.g,name:'総務部'}],
+    seats:[
+      S(d.e,7,'営業部','部長','','cur'),S(d.e,5,'営業1課','課長','','cur'),
+      S(d.e,3,'営業1課','','','mid'),S(d.e,1,'営業1課','','','new'),
+      S(d.s,7,'設計部','部長','','cur'),S(d.s,4,'設計課','主任','','cur'),S(d.s,2,'設計課','','','mid'),
+      S(d.k,7,'建設部','部長','','cur'),S(d.k,5,'建設1課','課長','','mid'),S(d.k,1,'建設1課','','','new'),
+      S(d.g,9,'役員','専務取締役','','cur'),S(d.g,7,'総務部','部長','','cur'),S(d.g,4,'総務部','','','mid')
+    ]};
+}
+function freshState(){const s=sample();return {current:s.id,scenarios:[s]}}
+function defaultBands(G){
+  const names=['プレイヤー','リード','マネジメント'];
+  if(G<3)return[{name:names[0],from:1,to:G}];
+  const out=[];let f=1;
+  for(let i=0;i<3;i++){const t=i===2?G:f+Math.round(G/3)-1;out.push({name:names[i],from:f,to:t});f=t+1}
+  return out;
+}
+function migrate(s){
+  s.scenarios.forEach(p=>{
+    if(!p.bands){p.bands=defaultBands(p.grades);if(p.prefix==='グレード')p.prefix='ステージ'}
+    if(!p.gradeNames)p.gradeNames={};
+  });
+  delete s.namesCleared;
+  return s;
+}
+function valid(s){return s&&Array.isArray(s.scenarios)&&s.scenarios.length&&s.scenarios.every(p=>Array.isArray(p.depts)&&Array.isArray(p.seats)&&p.grades>0)}
+function bandOf(sc,x){return (sc.bands||[]).find(b=>x>=b.from&&x<=b.to)}
+
+let state=null,ME="",ME_UID="";
+
+/* ---------- 保存（入力が止まって1秒後にまとめて書き込む） ---------- */
+let saveTimer=null,dirty=false,saving=false;
+function setSv(t,err){const s=$('sv');s.textContent=t;s.classList.toggle('err',!!err)}
+function save(){
+  dirty=true;setSv('保存待ち…');
+  try{localStorage.setItem(BACKUP_KEY,JSON.stringify(state))}catch(e){}
+  clearTimeout(saveTimer);saveTimer=setTimeout(flush,1000);
+}
+async function flush(){
+  if(!dirty||saving)return;
+  saving=true;dirty=false;setSv('保存中…');
+  try{
+    await setDoc(ORG_DOC,{data:JSON.stringify(state),updatedAt:serverTimestamp(),updatedBy:ME});
+    const t=new Date();setSv('保存済み '+t.getHours()+':'+String(t.getMinutes()).padStart(2,'0'));
+  }catch(e){
+    dirty=true;
+    setSv(e.code==='permission-denied'
+      ?'⚠ 保存できません（データベースのルールに orgcharts の公開が必要です）。この端末には控えがあります'
+      :'⚠ 保存できませんでした（'+(e.code||e.message)+'）。通信を確認してください',true);
+  }finally{saving=false;if(dirty&&!$('sv').classList.contains('err'))saveTimer=setTimeout(flush,1000);}
+}
+window.addEventListener('beforeunload',e=>{if(dirty){flush();e.preventDefault();e.returnValue='';}});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush()});
+
+function cur(){return state.scenarios.find(s=>s.id===state.current)||state.scenarios[0]}
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('show'),1800)}
+function arm(btn,label,fn){
+  if(btn.dataset.armed){fn();disarm(btn);return}
+  btn.dataset.orig=btn.textContent;btn.dataset.armed='1';btn.textContent=label;btn.classList.add('armed');
+  clearTimeout(btn._t);btn._t=setTimeout(()=>disarm(btn),3000);
+}
+function disarm(btn){if(!btn.dataset.armed)return;btn.textContent=btn.dataset.orig;delete btn.dataset.armed;btn.classList.remove('armed')}
+
+/* ---------- render ---------- */
+function render(){
+  const sc=cur();state.current=sc.id;
+  const tabs=$('tabs');tabs.innerHTML='';
+  state.scenarios.forEach(s=>{
+    const b=el('button','tab'+(s.id===sc.id?' on':''));b.textContent=s.name;b.setAttribute('aria-pressed',s.id===sc.id);
+    b.onclick=()=>{state.current=s.id;save();render()};tabs.append(b);
+  });
+  const dup=el('button','tab ghost');dup.textContent='＋ プランを複製';dup.onclick=duplicate;tabs.append(dup);
+  $('title').value=sc.title;$('ceo').value=sc.ceo;$('vision').value=sc.vision;
+  drawGrid(sc);drawFoot(sc);
+}
+function drawGrid(sc){
+  const g=$('grid'),G=sc.grades,n=sc.depts.length;
+  g.style.setProperty('--n',Math.max(n,1));
+  g.style.gridTemplateColumns=`var(--bcol) var(--gcol) repeat(${Math.max(n,1)},minmax(var(--cmin),1fr))`;
+  g.style.gridTemplateRows=`58px repeat(${G},minmax(84px,auto))`;
+  g.innerHTML='';
+  const rowOf=x=>G-x+2;
+  for(let x=G;x>=1;x--){
+    const st=el('div','stripe'+(x%2===0?' alt':''));st.style.gridRow=rowOf(x);g.append(st);
+    const lb=el('button','glabel');lb.style.gridRow=rowOf(x);
+    const nm=(sc.gradeNames||{})[x];
+    lb.innerHTML=`<span>${esc(sc.prefix||'')}<b>${x}</b></span>`+(nm?`<small>${esc(nm)}</small>`:'');
+    lb.title='呼び名を編集';lb.onclick=()=>openGrade(x);g.append(lb);
+  }
+  (sc.bands||[]).forEach((b,bi)=>{
+    const to=Math.min(b.to,G),from=Math.max(b.from,1);if(from>to)return;
+    const e=el('div','band');e.dataset.i=bi%4;e.style.gridRow=`${rowOf(to)} / ${rowOf(from)+1}`;
+    e.title=`${b.name}（${sc.prefix||''}${from}〜${to}）`;
+    e.innerHTML=`<span>${esc(b.name)}</span>`;g.append(e);
+  });
+  if(!n){
+    const e=el('div','cell');e.style.gridColumn='3 / -1';e.style.gridRow='2';
+    e.innerHTML='<p class="note">まず「部署を追加」から列をつくってください。</p>';g.append(e);return;
+  }
+  const h=el('div','hline');h.style.gridColumn=`3 / span ${n}`;g.append(h);
+  sc.depts.forEach((d,i)=>{
+    const c=i+3,ds=sc.seats.filter(s=>s.dept===d.id);
+    if(ds.length){
+      const low=Math.min(...ds.map(s=>s.grade));
+      const v=el('div','vline');v.style.gridColumn=c;v.style.gridRow=`1 / ${rowOf(low)}`;g.append(v);
+    }
+    const p=el('button','dept');p.textContent=d.name;p.style.gridColumn=c;p.title='部署名を編集';p.onclick=()=>openDept(d);g.append(p);
+    for(let x=G;x>=1;x--){
+      const cell=el('div','cell');cell.style.gridColumn=c;cell.style.gridRow=rowOf(x);
+      ds.filter(s=>s.grade===x).forEach(s=>cell.append(seatEl(s,d)));
+      const a=el('button','add');a.textContent='+';a.setAttribute('aria-label',`${d.name}の${sc.prefix||''}${x}にポストを追加`);
+      a.onclick=()=>openSeat(null,{dept:d.id,grade:x});cell.append(a);
+      cell.ondragover=e=>{e.preventDefault();cell.classList.add('drop')};
+      cell.ondragleave=()=>cell.classList.remove('drop');
+      cell.ondrop=e=>{e.preventDefault();cell.classList.remove('drop');
+        const s=sc.seats.find(z=>z.id===e.dataTransfer.getData('text/plain'));
+        if(s){s.dept=d.id;s.grade=x;save();render()}};
+      g.append(cell);
+    }
+  });
+}
+function seatEl(s,d){
+  const b=el('button','seat');b.dataset.status=s.status;b.draggable=true;
+  const who=s.role&&s.name?`${s.role}・${s.name}`:(s.role&&!s.name&&(s.status==='mid'||s.status==='new'))?`${s.role}・${FILL[s.status]}`:(s.name||s.role||FILL[s.status]);
+  b.innerHTML=`<span class="unit">${esc(s.unit||d.name)}</span><span class="who">${esc(who)}</span>`+
+    (s.status!=='cur'?`<span class="badge">${STATUSES.find(t=>t.k===s.status).label}</span>`:'');
+  if(s.memo)b.title=s.memo;
+  b.onclick=()=>openSeat(s);
+  b.ondragstart=e=>{e.dataTransfer.setData('text/plain',s.id);e.dataTransfer.effectAllowed='move';b.classList.add('dragging')};
+  b.ondragend=()=>b.classList.remove('dragging');
+  return b;
+}
+function drawFoot(sc){
+  const f=$('foot'),c={};STATUSES.forEach(t=>c[t.k]=0);sc.seats.forEach(s=>c[s.status]=(c[s.status]||0)+1);
+  const hire=c.mid+c.new;
+  f.innerHTML=STATUSES.map(t=>`<span class="key"><span class="sw ${t.k}"></span>${t.label} <strong>${c[t.k]}</strong></span>`).join('')+
+    `<span class="total">ポスト ${sc.seats.length}／採用で埋める ${hire}</span>`;
+}
+
+/* ---------- inline fields ---------- */
+$('title').oninput=e=>{cur().title=e.target.value;save()};
+$('ceo').oninput=e=>{cur().ceo=e.target.value;save()};
+$('vision').oninput=e=>{cur().vision=e.target.value;save()};
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+
+/* ---------- seat editing ---------- */
+let editing=null;
+const segBox=$('sStatus');
+STATUSES.forEach(t=>{const l=el('label');l.innerHTML=`<input type="radio" name="st" value="${t.k}"><span>${t.label}</span>`;segBox.append(l)});
+function openSeat(s,preset){
+  const sc=cur();editing=s;
+  $('seatH').textContent=s?'ポストを編集':'ポストを追加';
+  $('sDept').innerHTML=sc.depts.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join('');
+  let opts='';for(let x=sc.grades;x>=1;x--){
+    const nm=(sc.gradeNames||{})[x],bd=bandOf(sc,x);
+    opts+=`<option value="${x}">${esc(sc.prefix||'')}${x}${nm?'　'+esc(nm):''}${bd?'（'+esc(bd.name)+'）':''}</option>`;
+  }
+  $('sGrade').innerHTML=opts;
+  const v=s||{dept:preset.dept,grade:preset.grade,unit:'',role:'',name:'',status:'mid',memo:''};
+  $('sDept').value=v.dept;$('sGrade').value=v.grade;$('sUnit').value=v.unit;$('sRole').value=v.role;$('sName').value=v.name;$('sMemo').value=v.memo||'';
+  segBox.querySelector(`input[value="${v.status}"]`).checked=true;
+  $('sDel').style.display=s?'':'none';disarm($('sDel'));
+  $('seatDlg').showModal();
+}
+$('sSave').onclick=()=>{
+  const sc=cur();
+  const v={dept:$('sDept').value,grade:+$('sGrade').value,unit:$('sUnit').value.trim(),role:$('sRole').value.trim(),
+    name:$('sName').value.trim(),status:segBox.querySelector('input:checked').value,memo:$('sMemo').value.trim()};
+  if(editing)Object.assign(editing,v);else sc.seats.push({id:uid(),...v});
+  save();render();$('seatDlg').close();toast(editing?'保存しました':'追加しました');
+};
+$('sDel').onclick=e=>arm(e.currentTarget,'もう一度押すと削除',()=>{
+  const sc=cur();sc.seats=sc.seats.filter(s=>s!==editing);save();render();$('seatDlg').close();toast('削除しました');
+});
+
+/* ---------- dept editing ---------- */
+let editDept=null;
+function openDept(d){
+  const sc=cur();editDept=d;$('dName').value=d.name;
+  const k=sc.seats.filter(s=>s.dept===d.id).length;
+  $('dCount').textContent=k?`この部署には${k}件のポストがあります。部署を削除するとポストも消えます。`:'この部署にはまだポストがありません。';
+  disarm($('dDel'));$('deptDlg').showModal();setTimeout(()=>$('dName').select(),30);
+}
+function moveDept(dir){
+  const a=cur().depts,i=a.indexOf(editDept),j=i+dir;if(j<0||j>=a.length)return;
+  [a[i],a[j]]=[a[j],a[i]];save();render();
+}
+$('dLeft').onclick=()=>moveDept(-1);$('dRight').onclick=()=>moveDept(1);
+$('dSave').onclick=()=>{editDept.name=$('dName').value.trim()||'名称未設定';save();render();$('deptDlg').close()};
+$('dDel').onclick=e=>arm(e.currentTarget,'もう一度押すと削除',()=>{
+  const sc=cur();sc.depts=sc.depts.filter(d=>d!==editDept);sc.seats=sc.seats.filter(s=>s.dept!==editDept.id);
+  save();render();$('deptDlg').close();toast('部署を削除しました');
+});
+$('addDept').onclick=()=>{const d={id:uid(),name:'新しい部署'};cur().depts.push(d);save();render();openDept(d)};
+
+/* ---------- settings ---------- */
+let tmpBands=[];
+$('openSettings').onclick=()=>{
+  const sc=cur();$('pName').value=sc.name;$('pGrades').value=sc.grades;$('pPrefix').value=sc.prefix;
+  tmpBands=JSON.parse(JSON.stringify(sc.bands||[]));drawBands();
+  $('pDel').style.display=state.scenarios.length>1?'':'none';
+  ['pClear','pDel'].forEach(id=>disarm($(id)));$('setDlg').showModal();
+};
+$('pSave').onclick=()=>{
+  const sc=cur();sc.name=$('pName').value.trim()||'プラン';sc.prefix=$('pPrefix').value;
+  sc.bands=tmpBands.filter(b=>b.name.trim()).map(b=>({name:b.name.trim(),from:Math.min(b.from,b.to),to:Math.max(b.from,b.to)})).sort((a,b)=>a.from-b.from);
+  const G=Math.min(15,Math.max(1,parseInt($('pGrades').value)||sc.grades));sc.grades=G;
+  sc.seats.forEach(s=>{if(s.grade>G)s.grade=G});
+  save();render();$('setDlg').close();
+};
+function duplicate(){
+  const src=cur(),copy=JSON.parse(JSON.stringify(src));copy.id=uid();copy.name=src.name+'のコピー';
+  const map={};copy.depts.forEach(d=>{const n=uid();map[d.id]=n;d.id=n});
+  copy.seats.forEach(s=>{s.id=uid();s.dept=map[s.dept]});
+  state.scenarios.push(copy);state.current=copy.id;save();render();
+  if($('setDlg').open)$('setDlg').close();toast('複製しました。設定からプラン名を変えられます');
+}
+$('pDup').onclick=duplicate;
+$('pBlank').onclick=()=>{
+  const p={id:uid(),name:'新しいプラン',title:'未来の組織図',ceo:'社長',vision:'',grades:cur().grades,prefix:cur().prefix,
+    bands:JSON.parse(JSON.stringify(cur().bands||[])),gradeNames:JSON.parse(JSON.stringify(cur().gradeNames||{})),depts:[],seats:[]};
+  state.scenarios.push(p);state.current=p.id;save();render();$('setDlg').close();
+};
+$('pClear').onclick=e=>arm(e.currentTarget,'もう一度押すと全部消す',()=>{cur().seats=[];save();render();$('setDlg').close();toast('ポストを消しました')});
+$('pDel').onclick=e=>arm(e.currentTarget,'もう一度押すと削除',()=>{
+  state.scenarios=state.scenarios.filter(s=>s!==cur());state.current=state.scenarios[0].id;save();render();$('setDlg').close();toast('プランを削除しました');
+});
+
+/* ---------- bands & grade names ---------- */
+function drawBands(){
+  const G=Math.min(15,Math.max(1,parseInt($('pGrades').value)||cur().grades));
+  const box=$('bandList');box.innerHTML='';
+  const opt=v=>{let o='';for(let x=1;x<=G;x++)o+=`<option value="${x}"${x===v?' selected':''}>${x}</option>`;return o};
+  if(!tmpBands.length){box.innerHTML='<p class="note" style="margin-bottom:6px">帯がありません。下のボタンから追加できます。</p>';return}
+  tmpBands.forEach((b,i)=>{
+    const r=el('div','bandrow');
+    r.innerHTML=`<input aria-label="帯の名前" value="${esc(b.name)}"><select aria-label="ここから">${opt(b.from)}</select><span>〜</span><select aria-label="ここまで">${opt(b.to)}</select><button class="btn quiet x" aria-label="この帯を削除">×</button>`;
+    const nm=r.children[0],f=r.children[1],t=r.children[3];
+    nm.oninput=()=>b.name=nm.value;f.onchange=()=>b.from=+f.value;t.onchange=()=>b.to=+t.value;
+    r.children[4].onclick=()=>{tmpBands.splice(i,1);drawBands()};
+    box.append(r);
+  });
+}
+$('bandAdd').onclick=()=>{
+  const G=Math.min(15,Math.max(1,parseInt($('pGrades').value)||cur().grades));
+  const last=tmpBands.reduce((m,b)=>Math.max(m,b.to),0);
+  tmpBands.push({name:'新しい帯',from:Math.min(last+1,G),to:G});drawBands();
+};
+$('pGrades').oninput=drawBands;
+let editGrade=0;
+function openGrade(x){
+  const sc=cur();editGrade=x;
+  $('gradeH').textContent=`${sc.prefix||''}${x} の呼び名`;
+  $('gName').value=(sc.gradeNames||{})[x]||'';
+  $('gradeDlg').showModal();setTimeout(()=>$('gName').focus(),30);
+}
+$('gSave').onclick=()=>{
+  const sc=cur();sc.gradeNames=sc.gradeNames||{};const v=$('gName').value.trim();
+  if(v)sc.gradeNames[editGrade]=v;else delete sc.gradeNames[editGrade];
+  save();render();$('gradeDlg').close();
+};
+
+/* ---------- 控えと読み込み ---------- */
+$('openData').onclick=()=>{$('ioText').value=JSON.stringify(state,null,1);disarm($('ioReset'));$('dataDlg').showModal()};
+$('ioCopy').onclick=async()=>{
+  const t=$('ioText');
+  try{await navigator.clipboard.writeText(t.value);toast('コピーしました')}
+  catch(e){t.select();try{document.execCommand('copy');toast('コピーしました')}catch(_){toast('選択した状態です。手動でコピーしてください')}}
+};
+$('ioLoad').onclick=()=>{
+  try{const s=JSON.parse($('ioText').value);if(!valid(s))throw 0;state=migrate(s);save();render();$('dataDlg').close();toast('読み込みました')}
+  catch(e){toast('読み込めませんでした。コピーしたデータ全体を貼り付けてください')}
+};
+$('ioReset').onclick=e=>arm(e.currentTarget,'もう一度押すと見本に戻す',()=>{state=freshState();save();render();$('dataDlg').close();toast('見本に戻しました')});
+$('print').onclick=()=>window.print();
+
+/* ---------- 管理者だけが開ける ---------- */
+function gate(html){$('gate').innerHTML=html;$('gate').style.display='block';$('app').style.display='none'}
+let started=false;
+onAuthStateChanged(auth,async user=>{
+  if(!user){gate('管理者画面でログインしてから開いてください。<br><a href="admin.html">管理者画面へ</a>');return}
+  if(started&&user.uid!==ME_UID){location.reload();return}
+  let prof=null;
+  try{const ps=await getDoc(doc(db,"users",user.uid));if(ps.exists())prof=ps.data()}catch(e){}
+  if(!prof||prof.role!=="admin"||prof.active!==true){gate('この画面は管理者だけが使えます。<br><a href="admin.html">管理者画面へ</a>');return}
+  ME_UID=user.uid;ME=prof.name||user.email||"";
+  if(started)return;started=true;
+
+  // 組織図データ
+  let loaded=null,loadErr=null;
+  try{const s=await getDoc(ORG_DOC);if(s.exists())loaded=JSON.parse(s.data().data)}catch(e){loadErr=e}
+  if(loadErr){
+    let bk=null;try{bk=JSON.parse(localStorage.getItem(BACKUP_KEY)||"null")}catch(e){}
+    state=valid(bk)?migrate(bk):freshState();
+    setSv(loadErr.code==='permission-denied'
+      ?'⚠ データベースのルールに orgcharts がまだありません。ルールを公開するまで、この端末の中だけで保存されます'
+      :'⚠ 読み込めませんでした（'+(loadErr.code||loadErr.message)+'）',true);
+  }else{
+    state=valid(loaded)?migrate(loaded):freshState();
+    setSv(loaded?'読み込みました':'見本から始めます（まだ保存されていません）');
+  }
+  $('gate').style.display='none';$('app').style.display='block';
+  render();
+
+  // 氏名の候補（社員管理に登録されている人）
+  try{
+    const sn=await getDocs(query(collection(db,"users"),where("role","==","employee")));
+    const names=[ME];sn.forEach(d=>{const u=d.data();if(u.active!==false&&u.name)names.push(u.name)});
+    $('memberList').innerHTML=[...new Set(names.filter(Boolean))].map(n=>`<option value="${esc(n)}">`).join('');
+  }catch(e){}
+});
+</script>
+</body>
+</html>
