@@ -9,11 +9,12 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=hr4">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#F7F8FA;--surface:#fff;--s2:#F0F2F5;--bdr:#E2E5EA;--bdr2:#D0D5DD;--acc:#3B82F6;--acc2:#1D4ED8;--tx:#1E293B;--tx2:#64748B;--tx3:#94A3B8;--in:#059669;--out:#DC2626;--warn:#F59E0B;--lv:#7C3AED;}
+/* dubstock ブランドガイドライン v1.9 の配色（Paper/Ink/Stone/Teal、機能色 Error）。警告・有給・振替はガイドラインに無いため、彩度を落とした色で判別性を残す */
+:root{--bg:#F5F3EE;--surface:#FBFAF7;--s2:#EFECE5;--bdr:#E7E4DC;--bdr2:#C9C6BE;--acc:#00534E;--acc2:#00403C;--tx:#2A2927;--tx2:#6E6C66;--tx3:#99968F;--in:#00534E;--out:#BB4136;--warn:#A8731A;--lv:#6A4C93;}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:"Noto Sans JP",sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;}
 #loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
-.lcard{background:var(--surface);border:1px solid var(--bdr);border-radius:20px;padding:40px 32px;width:100%;max-width:360px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.08);}
+.lcard{background:var(--surface);border:1px solid var(--bdr);border-radius:20px;padding:40px 32px;width:100%;max-width:360px;text-align:center;box-shadow:0 4px 24px rgba(26,25,24,0.08);}
 .llogo{font-size:26px;font-weight:700;color:var(--acc);letter-spacing:2px;margin-bottom:32px;}
 .ltitle{font-size:22px;font-weight:700;margin-bottom:8px;}
 .lsub{font-size:13px;color:var(--tx3);margin-bottom:32px;}
@@ -30,14 +31,14 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .brandnav{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
 .modnav{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .mod{font-family:"DM Mono",monospace;font-size:13px;letter-spacing:3px;text-transform:uppercase;font-weight:500;color:var(--tx3);background:transparent;border:1px solid var(--bdr);border-radius:8px;padding:6px 14px;text-decoration:none;white-space:nowrap;}
-.mod.active{color:var(--acc);background:#EFF6FF;border:1.5px solid var(--acc);}
+.mod.active{color:var(--acc);background:#E3ECEB;border:1.5px solid var(--acc);}
 .mod.soon{opacity:.38;pointer-events:none;}
 .uinfo{display:flex;align-items:center;gap:10px;}
 .avatar{width:36px;height:36px;border-radius:50%;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;}
 .obtn{font-size:11px;color:var(--tx3);background:transparent;border:1px solid var(--bdr);border-radius:6px;padding:4px 10px;cursor:pointer;}
 .tab-nav{display:flex;background:var(--s2);border:1px solid var(--bdr);border-radius:10px;padding:4px;gap:4px;margin-bottom:24px;}
 .tab-btn{flex:1;padding:10px;background:transparent;border:none;border-radius:7px;color:var(--tx2);font-size:13px;cursor:pointer;font-weight:500;}
-.tab-btn.active{background:var(--surface);color:var(--acc);box-shadow:0 1px 3px rgba(0,0,0,0.08);}
+.tab-btn.active{background:var(--surface);color:var(--acc);box-shadow:0 1px 3px rgba(26,25,24,0.08);}
 .tab-content{display:none;}
 .tab-content.active{display:block;}
 .section-title{font-size:11px;color:var(--tx3);letter-spacing:2px;text-transform:uppercase;font-weight:600;margin:20px 0 10px;}
@@ -50,7 +51,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .field input,.field select,.field textarea{background:var(--s2);border:1px solid var(--bdr2);border-radius:8px;padding:10px 12px;color:var(--tx);font-size:14px;outline:none;font-family:inherit;}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--acc);}
 .field textarea{resize:vertical;min-height:72px;}
-.total-bar{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.total-bar{background:#E3ECEB;border:1px solid #B2CBCA;border-radius:10px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
 .total-label{font-size:13px;color:var(--acc2);font-weight:600;}
 .total-amount{font-family:"DM Mono",monospace;font-size:28px;color:var(--acc);font-weight:700;}
 .btn-add{width:100%;padding:11px;background:var(--s2);border:1.5px dashed var(--bdr2);border-radius:9px;color:var(--tx2);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:12px;}
@@ -67,19 +68,19 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .item-desc{font-size:13px;color:var(--tx);}
 .item-amount{font-family:"DM Mono",monospace;font-size:14px;color:var(--out);font-weight:600;white-space:nowrap;}
 .status-badge{display:inline-block;border-radius:4px;padding:3px 10px;font-size:11px;font-weight:600;}
-.s-draft{background:#F1F5F9;color:var(--tx2);border:1px solid var(--bdr);}
-.s-pending{background:#FFFBEB;color:#92400E;border:1px solid #FDE68A;}
-.s-approved{background:#ECFDF5;color:var(--in);border:1px solid #A7F3D0;}
-.s-rejected{background:#FEF2F2;color:var(--out);border:1px solid #FECACA;}
+.s-draft{background:#EFECE5;color:var(--tx2);border:1px solid var(--bdr);}
+.s-pending{background:#F8EDD8;color:#7A5212;border:1px solid #E8D2A6;}
+.s-approved{background:#E3ECEB;color:var(--in);border:1px solid #B2CBCA;}
+.s-rejected{background:#F8ECEA;color:var(--out);border:1px solid #E5B5AF;}
 .report-card{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:18px;margin-bottom:12px;cursor:pointer;}
 .report-card:hover{border-color:var(--acc);}
 .report-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
 .report-title{font-size:15px;font-weight:700;}
 .report-meta{font-size:12px;color:var(--tx2);margin-top:2px;}
 .no-data{text-align:center;padding:40px;color:var(--tx3);font-size:13px;}
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px;}
+.overlay{display:none;position:fixed;inset:0;background:rgba(26,25,24,0.5);z-index:200;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px;}
 .overlay.open{display:flex;}
-.modal{background:var(--surface);border-radius:16px;padding:28px;width:100%;max-width:600px;margin:auto;box-shadow:0 8px 32px rgba(0,0,0,0.15);}
+.modal{background:var(--surface);border-radius:16px;padding:28px;width:100%;max-width:600px;margin:auto;box-shadow:0 8px 32px rgba(26,25,24,0.15);}
 .modal-title{font-size:18px;font-weight:700;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;}
 .mbtns{display:flex;gap:10px;margin-top:20px;}
 .mbtn2{flex:1;padding:13px;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;}
@@ -130,7 +131,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
   font-weight: 700;
   text-align: center;
   margin-bottom: 12px;
-  border-bottom: 2px solid #1E293B;
+  border-bottom: 2px solid #2A2927;
   padding-bottom: 8px;
 }
 .print-meta {
@@ -148,7 +149,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
   width: 100%;
   overflow-x: auto;
   margin-bottom: 12px;
-  border: 1px solid #CBD5E1;
+  border: 1px solid #C9C6BE;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -158,7 +159,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
   font-size: 13px;
 }
 .exp-table thead tr {
-  background: #1E293B;
+  background: #2A2927;
   color: white;
 }
 .exp-table thead th {
@@ -170,33 +171,33 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
   white-space: nowrap;
 }
 .exp-table tbody tr {
-  border-bottom: 1px solid #E2E5EA;
+  border-bottom: 1px solid #E7E4DC;
   cursor: pointer;
   transition: background 0.1s;
 }
-.exp-table tbody tr:hover { background: #F0F7FF; }
+.exp-table tbody tr:hover { background: #E3ECEB; }
 .exp-table tbody tr:last-child { border-bottom: none; }
 .exp-table td {
   padding: 9px 12px;
-  color: #1E293B;
+  color: #2A2927;
   vertical-align: middle;
 }
 .exp-table td.td-date {
   font-family: "DM Mono", monospace;
   font-size: 12px;
-  color: #64748B;
+  color: #6E6C66;
   white-space: nowrap;
 }
 .exp-table td.td-amount {
   font-family: "DM Mono", monospace;
   font-weight: 700;
-  color: #DC2626;
+  color: #BB4136;
   text-align: right;
   white-space: nowrap;
 }
 .exp-table td.td-method {
   font-size: 11px;
-  color: #64748B;
+  color: #6E6C66;
   white-space: nowrap;
 }
 .exp-table td.td-receipt {
@@ -208,28 +209,28 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
   width: 40px;
 }
 .exp-table tfoot tr {
-  background: #F0F4F8;
+  background: #EFECE5;
   font-weight: 700;
 }
 .exp-table tfoot td {
   padding: 10px 12px;
-  border-top: 2px solid #CBD5E1;
+  border-top: 2px solid #C9C6BE;
 }
 .exp-table tfoot .td-total-label {
   text-align: right;
   font-size: 13px;
-  color: #64748B;
+  color: #6E6C66;
 }
 .exp-table tfoot .td-total-amount {
   font-family: "DM Mono", monospace;
   font-size: 16px;
-  color: #1D4ED8;
+  color: #00403C;
   font-weight: 800;
   text-align: right;
 }
 /* 印刷ボタン */
 #printBtn {
-  background: #475569;
+  background: #45433F;
   color: white;
   border: none;
   border-radius: 8px;
@@ -241,7 +242,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
   align-items: center;
   gap: 6px;
 }
-#printBtn:hover { background: #334155; }
+#printBtn:hover { background: #2A2927; }
 
 /* ── iPad・タッチ端末向け ───────────────────────────────── */
 html{-webkit-text-size-adjust:100%;}
@@ -256,9 +257,9 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
   .tab-btn{min-height:44px;}
 }
 @media (min-width:768px){.wrap{max-width:760px;}}
-.day-rule{background:#FFFBEB;border:1px solid #FDE68A;color:#92400E;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.7;margin-bottom:14px;}
-.batch-warn{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;color:#B91C1C;background:#FEE2E2;border-radius:4px;padding:1px 6px;white-space:nowrap;}
-.batch-banner{background:#FEF2F2;border:1px solid #FCA5A5;color:#B91C1C;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;margin-bottom:10px;line-height:1.6;}
+.day-rule{background:#F8EDD8;border:1px solid #E8D2A6;color:#7A5212;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.7;margin-bottom:14px;}
+.batch-warn{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;color:#9A342B;background:#F4E1DE;border-radius:4px;padding:1px 6px;white-space:nowrap;}
+.batch-banner{background:#F8ECEA;border:1px solid #E5B5AF;color:#9A342B;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;margin-bottom:10px;line-height:1.6;}
 @media print{.batch-warn,.batch-banner{display:none !important;}}
 </style>
 </head>
@@ -420,7 +421,7 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
     <div class="section-title">交通費・宿泊費</div>
     <div id="tvCostList"></div>
     <button class="btn-add" id="addCostBtn">＋ 費用を追加</button>
-    <div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;margin-top:8px;margin-bottom:16px;">
+    <div style="background:#E3ECEB;border:1px solid #B2CBCA;border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;margin-top:8px;margin-bottom:16px;">
       <span style="font-size:13px;color:var(--in);font-weight:600;">交通費・宿泊費 合計</span>
       <span style="font-family:'DM Mono',monospace;font-size:16px;color:var(--in);font-weight:700;" id="tvCostTotal">¥ 0</span>
     </div>
@@ -445,7 +446,7 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {getFirestore,doc,setDoc as fsSetDoc,getDoc,collection,getDocs,deleteDoc as fsDeleteDoc,updateDoc as fsUpdateDoc,query,where} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import {prevYm,monthEnded,closingApplies,closingBannerHTML,closingDeadline,fmtDeadline,ymLabel,CLOSING_CSS} from "./hr-common.js?v=2026101803";  // hr-common.js を変えたら3画面ともこの番号を上げる（古いファイルが残ると画面が動かなくなる）
+import {prevYm,monthEnded,closingApplies,closingBannerHTML,closingDeadline,fmtDeadline,ymLabel,CLOSING_CSS} from "./hr-common.js?v=2026110501";  // hr-common.js を変えたら3画面ともこの番号を上げる（古いファイルが残ると画面が動かなくなる）
 {const st=document.createElement("style");st.textContent=CLOSING_CSS;document.head.appendChild(st);}
 
 const FB={apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",authDomain:"kintai-dubstock.firebaseapp.com",projectId:"kintai-dubstock",storageBucket:"kintai-dubstock.firebasestorage.app",messagingSenderId:"1030065146975",appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"};
@@ -464,8 +465,8 @@ const updateDoc=(...a)=>VIEW_AS?viewBlock():fsUpdateDoc(...a);
 const deleteDoc=(...a)=>VIEW_AS?viewBlock():fsDeleteDoc(...a);
 if(VIEW_AS){
   const bar=document.createElement("div");bar.id="viewBar";
-  bar.style.cssText="position:sticky;top:0;z-index:300;background:#7C3AED;color:#fff;font-size:13px;font-weight:600;padding:9px 16px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;";
-  bar.innerHTML="<span>👁 閲覧モード：<span id=\"viewName\">社員</span>さんの画面（操作しても保存されません）</span><button id=\"viewClose\" style=\"background:#fff;color:#7C3AED;border:none;border-radius:6px;padding:4px 12px;font-weight:700;cursor:pointer;\">閉じる</button>";
+  bar.style.cssText="position:sticky;top:0;z-index:300;background:#6A4C93;color:#fff;font-size:13px;font-weight:600;padding:9px 16px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;";
+  bar.innerHTML="<span>👁 閲覧モード：<span id=\"viewName\">社員</span>さんの画面（操作しても保存されません）</span><button id=\"viewClose\" style=\"background:#FBFAF7;color:#6A4C93;border:none;border-radius:6px;padding:4px 12px;font-weight:700;cursor:pointer;\">閉じる</button>";
   document.body.prepend(bar);
   document.getElementById("viewClose").addEventListener("click",()=>{window.close();setTimeout(()=>{location.href="admin.html";},200);});
   // 勤怠⇔経費の切り替えでも閲覧モードを保つ
@@ -587,12 +588,12 @@ async function renderExpenses(){
     tr.innerHTML=
       "<td class='td-date'>"+item.date.slice(5)+"</td>"+
       "<td>"+item.desc+(isBatch(item)?"<span class='batch-warn'>⚠ 1日ずつに分けてください</span>":"")+"</td>"+
-      "<td style='font-size:12px;color:#64748B;'>"+( item.payee||"")+"</td>"+
+      "<td style='font-size:12px;color:#6E6C66;'>"+( item.payee||"")+"</td>"+
       "<td class='td-method'>"+item.method+"</td>"+
       "<td class='td-receipt'>"+(item.receipt?"&#x2713;":"")+"</td>"+
       "<td class='td-amount'>"+Number(item.amount||0).toLocaleString()+"</td>"+
-      "<td style='font-size:12px;color:#64748B;'>"+( item.note||"")+"</td>"+
-      "<td class='td-action'><button class='del-btn' style='background:transparent;border:none;color:#94A3B8;cursor:pointer;font-size:16px;'>&times;</button></td>";
+      "<td style='font-size:12px;color:#6E6C66;'>"+( item.note||"")+"</td>"+
+      "<td class='td-action'><button class='del-btn' style='background:transparent;border:none;color:#99968F;cursor:pointer;font-size:16px;'>&times;</button></td>";
 
     // 確定済みの月は編集・削除できない
     if(expLocked(pfx)){tr.querySelector(".del-btn").remove();tbody.appendChild(tr);return;}
@@ -653,7 +654,7 @@ function renderExpSubmit(items,pfx){
   if(!items.length){el.innerHTML="";return;}
   const submitted=items.some(i=>i.submitted);
   if(submitted){
-    el.innerHTML="<div style='text-align:center;padding:16px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;color:var(--in);font-weight:600;'>&#x2705; 提出済み</div>";
+    el.innerHTML="<div style='text-align:center;padding:16px;background:#E3ECEB;border:1px solid #B2CBCA;border-radius:10px;color:var(--in);font-weight:600;'>&#x2705; 提出済み</div>";
   } else {
     el.innerHTML="<button class='btn-submit' id='submitExpBtn'>&#x1F4E4; この月の経費を提出する</button>";
     document.getElementById("submitExpBtn").addEventListener("click",async()=>{

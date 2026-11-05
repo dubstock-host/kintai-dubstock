@@ -9,13 +9,14 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=hr4">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#F7F8FA;--surface:#fff;--s2:#F0F2F5;--bdr:#E2E5EA;--bdr2:#D0D5DD;--acc:#3B82F6;--acc2:#1D4ED8;--tx:#1E293B;--tx2:#64748B;--tx3:#94A3B8;--in:#059669;--out:#DC2626;--warn:#F59E0B;--lv:#7C3AED;}
+/* dubstock ブランドガイドライン v1.9 の配色（Paper/Ink/Stone/Teal、機能色 Error）。警告・有給・振替はガイドラインに無いため、彩度を落とした色で判別性を残す */
+:root{--bg:#F5F3EE;--surface:#FBFAF7;--s2:#EFECE5;--bdr:#E7E4DC;--bdr2:#C9C6BE;--acc:#00534E;--acc2:#00403C;--tx:#2A2927;--tx2:#6E6C66;--tx3:#99968F;--in:#00534E;--out:#BB4136;--warn:#A8731A;--lv:#6A4C93;}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:"Noto Sans JP",sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;}
 #loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
-.lcard{background:var(--surface);border:1px solid var(--bdr);border-radius:20px;padding:40px 32px;width:100%;max-width:360px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.08);}
+.lcard{background:var(--surface);border:1px solid var(--bdr);border-radius:20px;padding:40px 32px;width:100%;max-width:360px;text-align:center;box-shadow:0 4px 24px rgba(26,25,24,0.08);}
 .llogo{font-size:26px;font-weight:700;color:var(--acc);letter-spacing:2px;margin-bottom:16px;}
-.lbadge{display:inline-block;background:#EFF6FF;color:var(--acc);border:1px solid #BFDBFE;border-radius:100px;padding:4px 16px;font-size:12px;font-weight:600;margin-bottom:24px;}
+.lbadge{display:inline-block;background:#E3ECEB;color:var(--acc);border:1px solid #B2CBCA;border-radius:100px;padding:4px 16px;font-size:12px;font-weight:600;margin-bottom:24px;}
 .ltitle{font-size:22px;font-weight:700;margin-bottom:8px;}
 .lsub{font-size:13px;color:var(--tx3);margin-bottom:32px;}
 .lfield{margin-bottom:16px;text-align:left;}
@@ -40,20 +41,20 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .tbadge.show{display:block;}
 .tab-content{display:none;}
 .tab-content.active{display:block;}
-.req-card{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:20px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.04);}
+.req-card{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:20px;margin-bottom:12px;box-shadow:0 1px 4px rgba(26,25,24,0.04);}
 .req-name{font-size:16px;font-weight:700;margin-bottom:4px;}
 .req-date{font-family:"DM Mono",monospace;font-size:14px;color:var(--tx2);margin-bottom:8px;}
-.req-type{display:inline-block;background:#F5F3FF;color:var(--lv);border:1px solid #DDD6FE;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:600;margin-bottom:12px;}
+.req-type{display:inline-block;background:#EEE8F6;color:var(--lv);border:1px solid #D9CDEA;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:600;margin-bottom:12px;}
 .req-reason{font-size:13px;color:var(--tx2);margin-bottom:8px;line-height:1.6;}
 .req-applied{font-size:11px;color:var(--tx3);margin-bottom:16px;}
 .req-btns{display:flex;gap:10px;}
 .rbtn{flex:1;padding:11px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;}
-.rbtn-approve{background:#ECFDF5;color:var(--in);border:1.5px solid #A7F3D0;}
-.rbtn-reject{background:#FEF2F2;color:var(--out);border:1.5px solid #FECACA;}
+.rbtn-approve{background:#E3ECEB;color:var(--in);border:1.5px solid #B2CBCA;}
+.rbtn-reject{background:#F8ECEA;color:var(--out);border:1.5px solid #E5B5AF;}
 .sbadge{display:inline-block;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;}
-.s-pending{background:#FFFBEB;color:#92400E;border:1px solid #FDE68A;}
-.s-approved{background:#ECFDF5;color:var(--in);border:1px solid #A7F3D0;}
-.s-rejected{background:#FEF2F2;color:var(--out);border:1px solid #FECACA;}
+.s-pending{background:#F8EDD8;color:#7A5212;border:1px solid #E8D2A6;}
+.s-approved{background:#E3ECEB;color:var(--in);border:1px solid #B2CBCA;}
+.s-rejected{background:#F8ECEA;color:var(--out);border:1px solid #E5B5AF;}
 .s-cancelled{background:var(--s2);color:var(--tx3);border:1px solid var(--bdr);}
 .mnav{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
 .mbtn{background:var(--surface);border:1px solid var(--bdr);color:var(--tx2);width:32px;height:32px;border-radius:6px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;}
@@ -73,42 +74,42 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .expbtn{background:var(--acc);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;}
 .emp-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:24px;}
 .emp-card{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:20px;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
-.emp-card:hover{border-color:var(--acc);box-shadow:0 2px 10px rgba(59,130,246,.12);}
+.emp-card:hover{border-color:var(--acc);box-shadow:0 2px 10px rgba(0,83,78,.12);}
 .emp-card-go{font-size:11px;color:var(--acc);margin-top:12px;text-align:right;}
 .cp{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:16px;margin-bottom:16px;}
-.cp.cp-over{border-color:#FCA5A5;background:#FFFBFB;}
+.cp.cp-over{border-color:#E5B5AF;background:#FBF4F3;}
 .cp-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
 .cp-t{font-weight:700;font-size:15px;}
 .cp-sub{font-size:12px;color:var(--tx3);}
 .cp-st{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:2px 8px;}
-.cp-ok{background:#DCFCE7;color:#166534;}.cp-ng{background:#FEE2E2;color:#B91C1C;}
+.cp-ok{background:#D5E3E2;color:#00534E;}.cp-ng{background:#F4E1DE;color:#9A342B;}
 .cp-nav{background:var(--s2);border:1px solid var(--bdr);border-radius:6px;width:26px;height:26px;cursor:pointer;color:var(--tx2);margin:0 4px;}
 .cp-nav:disabled{opacity:.35;cursor:default;}
 .cp-st{margin-right:4px;white-space:nowrap;}
 .cp .ltable th,.cp .ltable td{white-space:nowrap;vertical-align:middle;}
 .cp-btn{white-space:nowrap;}
 .cp-btn{background:var(--s2);border:1px solid var(--bdr);color:var(--tx2);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;margin:2px 4px 2px 0;}
-.cp-btn.cp-urge{background:#DC2626;border-color:#DC2626;color:#fff;font-weight:700;}
+.cp-btn.cp-urge{background:#BB4136;border-color:#BB4136;color:#fff;font-weight:700;}
 /* シフト表（社員画面のシフトタブと同じ見た目） */
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;padding:8px;}
 .cal-h{text-align:center;font-size:10px;color:var(--tx3);font-weight:600;padding:2px 0 4px;}
-.cal-h.sun,.cal-n.sun{color:#DC2626;}.cal-h.sat,.cal-n.sat{color:#2563EB;}
+.cal-h.sun,.cal-n.sun{color:#BB4136;}.cal-h.sat,.cal-n.sat{color:#00534E;}
 .cal-c{min-height:58px;border-radius:6px;padding:3px 2px;background:var(--surface);border:1px solid transparent;cursor:pointer;text-align:center;overflow:hidden;}
 .cal-empty{cursor:default;}
 .cal-n{font-size:11px;font-weight:600;color:var(--tx2);}
 .cal-t{font-family:"DM Mono",monospace;font-size:9.5px;line-height:1.25;margin-top:2px;font-weight:600;}
 .cal-lv{font-size:9px;margin-top:2px;color:var(--lv);font-weight:600;}
-.cal-c.has,.cal-c.c-plan{background:#EFF6FF;}.cal-c.has .cal-t{color:#1D4ED8;}
-.cal-c.c-done{background:#DCFCE7;}.cal-c.c-done .cal-t{color:#166534;}
-.cal-c.c-miss{background:#FEE2E2;}.cal-c.c-miss .cal-t{color:#DC2626;}
-.cal-c.c-open{background:#FEF9C3;}.cal-c.c-open .cal-t{color:#92400E;}
-.cal-c.c-leave{background:#F5F3FF;}.cal-c.c-leave .cal-t{color:#A78BFA;text-decoration:line-through;}
-.st-leave{background:#F5F3FF;color:#7C3AED;}
-.cal-c.c-today{border-color:#2563EB;}
-.cal-c.c-sel{box-shadow:0 0 0 2px #0F172A inset;}
+.cal-c.has,.cal-c.c-plan{background:#E7E4DC;}.cal-c.has .cal-t{color:#00403C;}
+.cal-c.c-done{background:#D5E3E2;}.cal-c.c-done .cal-t{color:#00534E;}
+.cal-c.c-miss{background:#F4E1DE;}.cal-c.c-miss .cal-t{color:#BB4136;}
+.cal-c.c-open{background:#F8EDD8;}.cal-c.c-open .cal-t{color:#7A5212;}
+.cal-c.c-leave{background:#EEE8F6;}.cal-c.c-leave .cal-t{color:#A58DC4;text-decoration:line-through;}
+.st-leave{background:#EEE8F6;color:#6A4C93;}
+.cal-c.c-today{border-color:#00534E;}
+.cal-c.c-sel{box-shadow:0 0 0 2px #1A1918 inset;}
 .cal-legend{font-size:10px;color:var(--tx3);padding:2px 10px 10px;display:flex;gap:4px;align-items:center;flex-wrap:wrap;}
 .lg{display:inline-block;width:10px;height:10px;border-radius:3px;margin-left:6px;}
-.lg-plan{background:#EFF6FF;border:1px solid #BFDBFE;}.lg-done{background:#DCFCE7;}.lg-miss{background:#FEE2E2;}.lg-leave{background:#F5F3FF;border:1px solid #DDD6FE;}
+.lg-plan{background:#E7E4DC;border:1px solid #C9C6BE;}.lg-done{background:#D5E3E2;}.lg-miss{background:#F4E1DE;}.lg-leave{background:#EEE8F6;border:1px solid #D9CDEA;}
 .cal-detail{border-top:1px solid var(--bdr);padding:12px 14px;font-size:13px;line-height:1.7;}
 .cal-dh{font-weight:700;font-size:14px;margin-bottom:4px;}
 .cal-dr{display:flex;gap:10px;align-items:baseline;}
@@ -117,11 +118,11 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .shift-time{font-family:"DM Mono",monospace;font-weight:600;white-space:nowrap;}
 .shift-title{display:block;font-size:11px;color:var(--tx3);}
 .shift-st{font-size:11px;font-weight:600;border-radius:4px;padding:2px 7px;white-space:nowrap;}
-.st-done{background:#DCFCE7;color:#166534;}.st-miss{background:#FEE2E2;color:#DC2626;}.st-open{background:#FEF9C3;color:#92400E;}
-.st-today{background:#DBEAFE;color:#1D4ED8;}.st-plan{background:var(--s2);color:var(--tx3);}
+.st-done{background:#D5E3E2;color:#00534E;}.st-miss{background:#F4E1DE;color:#BB4136;}.st-open{background:#F8EDD8;color:#7A5212;}
+.st-today{background:#00534E;color:#FBFAF7;}.st-plan{background:var(--s2);color:var(--tx3);}
 .dash-cal{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;margin-bottom:16px;overflow:hidden;}
 .dash-cal .dash-sec-h{padding:14px 16px 0;}
-.tax-card{background:var(--surface);border:1.5px solid #BFDBFE;border-radius:12px;padding:16px;margin-bottom:12px;}
+.tax-card{background:var(--surface);border:1.5px solid #B2CBCA;border-radius:12px;padding:16px;margin-bottom:12px;}
 .tax-h{font-weight:700;font-size:15px;margin-bottom:4px;}
 .tax-sub{font-size:12px;color:var(--tx2);line-height:1.6;margin-bottom:10px;}
 .tax-in{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:10px;}
@@ -130,7 +131,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .tax-btn:disabled{background:var(--tx3);}
 .tax-text{width:100%;min-height:220px;margin-top:12px;font-size:13px;line-height:1.7;font-family:"Noto Sans JP",sans-serif;}
 .tax-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12px;}
-.tax-copy{background:#ECFDF5;color:var(--in);border:1.5px solid #A7F3D0;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;}
+.tax-copy{background:#E3ECEB;color:var(--in);border:1.5px solid #B2CBCA;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;}
 /* 税理士用PDF（html2pdf）：用紙の幅に収める。列幅は印刷用と同じ */
 .pdfmode .exp-doc table{table-layout:fixed;font-size:10.5px;}
 .pdfmode .exp-doc th,.pdfmode .exp-doc td{white-space:normal;word-break:break-word;overflow-wrap:anywhere;padding:4px 5px;}
@@ -160,7 +161,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .pdfmode .exp-doc .t-exp th:nth-child(6),.pdfmode .exp-doc .t-exp td:nth-child(6){width:10%;}
 .pdfmode .exp-doc .t-exp th:nth-child(7),.pdfmode .exp-doc .t-exp td:nth-child(7){width:14%;}
 .dash-top{position:relative;}
-.view-btn{margin-left:auto;background:#7C3AED;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.view-btn{margin-left:auto;background:#6A4C93;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;}
 .dash-back{background:none;border:none;color:var(--acc);font-size:13px;cursor:pointer;padding:0;margin-bottom:12px;}
 .dash-head{background:var(--surface);border:1px solid var(--bdr);border-radius:12px;padding:20px;margin-bottom:16px;}
 .dash-top{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
@@ -205,9 +206,9 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .emp-selector{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
 .emp-btn{padding:8px 18px;background:var(--surface);border:1px solid var(--bdr);border-radius:100px;font-size:13px;cursor:pointer;font-weight:500;color:var(--tx2);}
 .emp-btn.active{background:var(--acc);border-color:var(--acc);color:#fff;}
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.overlay{display:none;position:fixed;inset:0;background:rgba(26,25,24,0.4);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
 .overlay.open{display:flex;}
-.modal{background:var(--surface);border:1px solid var(--bdr);border-radius:16px;padding:28px;width:100%;max-width:420px;margin:16px;animation:sup 0.2s ease;box-shadow:0 8px 32px rgba(0,0,0,0.12);}
+.modal{background:var(--surface);border:1px solid var(--bdr);border-radius:16px;padding:28px;width:100%;max-width:420px;margin:16px;animation:sup 0.2s ease;box-shadow:0 8px 32px rgba(26,25,24,0.12);}
 @keyframes sup{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
 .mtitle{font-size:16px;font-weight:700;margin-bottom:4px;}
 .msub{font-size:12px;color:var(--tx3);margin-bottom:20px;}
@@ -228,7 +229,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .exp-item-row:last-child{border-bottom:none;}
 .exp-date{font-family:"DM Mono",monospace;font-size:12px;color:var(--tx3);min-width:48px;}
 .exp-amount{font-family:"DM Mono",monospace;font-size:13px;color:var(--out);font-weight:600;margin-left:auto;white-space:nowrap;}
-.exp-total{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;margin-top:12px;}
+.exp-total{background:#E3ECEB;border:1px solid #B2CBCA;border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;margin-top:12px;}
 .exp-total-amount{font-family:"DM Mono",monospace;font-size:20px;color:var(--acc);font-weight:700;}
 .travel-info{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0;}
 .ti-item{background:var(--s2);border-radius:8px;padding:10px 12px;}
@@ -254,15 +255,15 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .exp-chk input{width:16px;height:16px;cursor:pointer;}
 .emp-chk{display:flex;align-items:center;gap:8px;font-size:14px;padding:8px 10px;border:1px solid var(--bdr);border-radius:8px;margin-bottom:6px;cursor:pointer;}
 .emp-chk input{width:16px;height:16px;cursor:pointer;}
-.emp-chk:has(input:checked){background:#EFF6FF;border-color:var(--acc);}
+.emp-chk:has(input:checked){background:#E3ECEB;border-color:var(--acc);}
 #exportDoc{margin-top:20px;}
-.exp-doc{background:#fff;border:1px solid var(--bdr);border-radius:12px;padding:24px;margin-bottom:20px;}
+.exp-doc{background:#FBFAF7;border:1px solid var(--bdr);border-radius:12px;padding:24px;margin-bottom:20px;}
 .exp-doc h2{font-size:17px;font-weight:700;margin:0 0 6px;}
 .exp-doc .doc-meta{font-size:12px;color:var(--tx2);margin-bottom:18px;display:flex;gap:18px;flex-wrap:wrap;}
 .exp-doc .doc-sec{font-size:13px;font-weight:700;border-left:4px solid var(--acc);padding-left:8px;margin:20px 0 10px;}
 .exp-doc table{width:100%;border-collapse:collapse;font-size:11px;}
-.exp-doc th{background:#F1F5F9;border:1px solid #CBD5E1;padding:5px 6px;font-weight:600;text-align:left;white-space:nowrap;}
-.exp-doc td{border:1px solid #CBD5E1;padding:5px 6px;}
+.exp-doc th{background:#EFECE5;border:1px solid #C9C6BE;padding:5px 6px;font-weight:600;text-align:left;white-space:nowrap;}
+.exp-doc td{border:1px solid #C9C6BE;padding:5px 6px;}
 .exp-doc .num{text-align:right;font-family:"DM Mono",monospace;white-space:nowrap;}
 .exp-doc .sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px;margin-bottom:12px;}
 .exp-doc tr.wn td{font-size:10px;color:var(--tx2);text-align:left;padding-top:0;white-space:pre-line;}
@@ -276,7 +277,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
   /* A4縦1ページに1か月分（勤怠24行＋経費19行程度）が収まるよう各サイズを詰める */
   @page{size:A4 portrait;margin:10mm;}
   header,.tab-nav,.no-print,.overlay,.toast{display:none !important;}
-  body{background:#fff;padding:0;margin:0;}
+  body{background:#FBFAF7;padding:0;margin:0;}
   .wrap{max-width:100%;width:100%;padding:0;margin:0;}
   .tab-content{display:none !important;}
   .export-tab{display:block !important;}
@@ -432,7 +433,7 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
   </div>
 
   <div class="tab-content" id="tab-打刻">
-    <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#1D4ED8;">&#x1F512; 閲覧専用です。</div>
+    <div style="background:#E3ECEB;border:1px solid #B2CBCA;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#00403C;">&#x1F512; 閲覧専用です。</div>
     <div class="emp-selector" id="stampEmpSel"></div>
     <div class="mnav">
       <button class="mbtn" id="stampPrevBtn">&#8249;</button>
@@ -458,7 +459,7 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
   <!-- 月次書き出しタブ：経理提出用の資料をまとめて作る -->
   <div class="tab-content export-tab" id="tab-書出">
     <div class="no-print">
-      <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#1D4ED8;line-height:1.7;">
+      <div style="background:#E3ECEB;border:1px solid #B2CBCA;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#00403C;line-height:1.7;">
         &#x1F4C4; 経理提出用の資料をまとめて作成します。「資料を作成」で内容を確認してから「PDF出力」を押し、<br>
         印刷ダイアログで<strong>保存先を「PDFとして保存」</strong>に変更してください。
       </div>
@@ -491,7 +492,7 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
         <label class="exp-chk"><input type="checkbox" id="optTravel" checked> 出張報告（回数・明細）</label>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="rbtn rbtn-approve" id="exportBuildBtn" style="flex:1;min-width:160px;padding:12px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:#ECFDF5;color:var(--in);border:1.5px solid #A7F3D0;">資料を作成</button>
+        <button class="rbtn rbtn-approve" id="exportBuildBtn" style="flex:1;min-width:160px;padding:12px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:#E3ECEB;color:var(--in);border:1.5px solid #B2CBCA;">資料を作成</button>
         <button class="rbtn" id="exportPrintBtn" style="display:none;flex:1;min-width:160px;padding:12px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:var(--acc);color:#fff;border:1.5px solid var(--acc);">&#x1F5A8; PDF出力</button>
       </div>
       <div class="merr" id="exportErr" style="color:var(--out);font-size:13px;min-height:18px;margin-top:8px;"></div>
@@ -578,7 +579,7 @@ button,a,.cal-c{touch-action:manipulation;-webkit-tap-highlight-color:transparen
 import {initializeApp,deleteApp} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged,createUserWithEmailAndPassword,updatePassword} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {getFirestore,doc,collection,getDocs,getDoc,setDoc,updateDoc,query,where,documentId,deleteField} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import {reflectHTML,REFLECT_CSS,HOLIDAYS,prevYm,ymOf,CLOSING_START_YM,monthEnded,closingApplies,closingTodo,closingDeadline,fmtDeadline,isOverdue,ymLabel} from "./hr-common.js?v=2026101803";  // hr-common.js を変えたら3画面ともこの番号を上げる（古いファイルが残ると画面が動かなくなる）
+import {reflectHTML,REFLECT_CSS,HOLIDAYS,prevYm,ymOf,CLOSING_START_YM,monthEnded,closingApplies,closingTodo,closingDeadline,fmtDeadline,isOverdue,ymLabel} from "./hr-common.js?v=2026110501";  // hr-common.js を変えたら3画面ともこの番号を上げる（古いファイルが残ると画面が動かなくなる）
 
 const FB={apiKey:"AIzaSyBOugWhkAkv5xvbV9bhXvAd-NdVpOIzv7k",authDomain:"kintai-dubstock.firebaseapp.com",projectId:"kintai-dubstock",storageBucket:"kintai-dubstock.firebasestorage.app",messagingSenderId:"1030065146975",appId:"1:1030065146975:web:cc5f4fcbb17402ed9cdfea"};
 // 名前付きアプリにして、社員画面（index / keihitsu）とログイン状態を分ける。
@@ -810,18 +811,18 @@ async function renderEmpDash(sync=true){
       wd++;const b=brkMs(sh.in,sh.out),w=Math.max(0,sh.out-sh.in-b),o=Math.max(0,w-EIGHT);tw+=w;to+=o;tn+=nightMs(sh.in,sh.out);
       if(isPart&&!sh.workNote)noNote++;
       rows+="<div class=\"dash-row\"><span class=\"d\">"+label+"</span><span class=\"m\">"+ts2hm(sh.in)+"〜"+ts2hm(sh.out)
-        +(sh.workNote?"<div style=\"margin-top:4px;\">"+reflectHTML(sh,true)+"</div>":isPart?"<div class=\"dash-note\" style=\"color:#D97706;\">業務内容 未記入</div>":"")
+        +(sh.workNote?"<div style=\"margin-top:4px;\">"+reflectHTML(sh,true)+"</div>":isPart?"<div class=\"dash-note\" style=\"color:#8F6216;\">業務内容 未記入</div>":"")
         +"</span><span class=\"r\">"+hm(w)+(o>0?" <span style=\"color:var(--out);\">+"+hm(o)+"</span>":"")+"</span></div>";
     }else if(sh&&sh.in){
-      rows+="<div class=\"dash-row\" style=\"background:#FFFBEB;\"><span class=\"d\">"+label+"</span><span class=\"m\">"+ts2hm(sh.in)+"〜 <span class=\"dash-badge\" style=\"background:#FEF9C3;color:#92400E;\">退勤未打刻</span></span><span class=\"r\">―</span></div>";
+      rows+="<div class=\"dash-row\" style=\"background:#F8EDD8;\"><span class=\"d\">"+label+"</span><span class=\"m\">"+ts2hm(sh.in)+"〜 <span class=\"dash-badge\" style=\"background:#F8EDD8;color:#7A5212;\">退勤未打刻</span></span><span class=\"r\">―</span></div>";
     }else if(lv){
-      rows+="<div class=\"dash-row\"><span class=\"d\">"+label+"</span><span class=\"m\"><span class=\"dash-badge\" style=\"background:#F5F3FF;color:var(--lv);\">"+esc(leaveLabel(lv))+"</span></span><span class=\"r\">―</span></div>";
+      rows+="<div class=\"dash-row\"><span class=\"d\">"+label+"</span><span class=\"m\"><span class=\"dash-badge\" style=\"background:#EEE8F6;color:var(--lv);\">"+esc(leaveLabel(lv))+"</span></span><span class=\"r\">―</span></div>";
     }else{
       // 勤務予定日：正社員は平日（祝日を除く）、パートはシフトのある日
       const planned=isPart?!!plans[date]:(dt.getDay()>=1&&dt.getDay()<=5&&!HOLIDAYS.has(date));
       const afterHire=!emp.hireDate||date>=emp.hireDate;
       if(planned&&date<today&&afterHire){miss++;
-        rows+="<div class=\"dash-row\" style=\"background:#FFF1F2;\"><span class=\"d\">"+label+"</span><span class=\"m\"><span class=\"dash-badge\" style=\"background:#FEE2E2;color:var(--out);\">未打刻</span></span><span class=\"r\">―</span></div>";}
+        rows+="<div class=\"dash-row\" style=\"background:#F8ECEA;\"><span class=\"d\">"+label+"</span><span class=\"m\"><span class=\"dash-badge\" style=\"background:#F4E1DE;color:var(--out);\">未打刻</span></span><span class=\"r\">―</span></div>";}
     }
   }
   const mLvs=lvs.filter(l=>l.status==="approved"&&String(l.date).startsWith(pfx));
@@ -832,8 +833,8 @@ async function renderEmpDash(sync=true){
 
   // ── 申請 ──
   const pend=lvs.filter(l=>l.status==="pending").sort((a,b)=>String(a.date).localeCompare(String(b.date)));
-  const lvRows=pend.map(l=>"<div class=\"dash-row\"><span class=\"d\">"+esc(String(l.date).slice(5).replace("-","/"))+"</span><span class=\"m\">"+esc(leaveLabel(l))+(l.reason?"<div class=\"dash-note\">"+esc(l.reason)+"</div>":"")+"</span><span class=\"r\"><span class=\"dash-badge\" style=\"background:#FFFBEB;color:#92400E;\">承認待ち</span></span></div>").join("")
-    +lvs.filter(l=>l.status!=="pending"&&String(l.date).startsWith(pfx)).map(l=>"<div class=\"dash-row\"><span class=\"d\">"+esc(String(l.date).slice(5).replace("-","/"))+"</span><span class=\"m\">"+esc(leaveLabel(l))+"</span><span class=\"r\">"+(l.status==="approved"?"<span class=\"dash-badge\" style=\"background:#ECFDF5;color:var(--in);\">承認済</span>":"<span class=\"dash-badge\" style=\"background:#FEF2F2;color:var(--out);\">却下</span>")+"</span></div>").join("");
+  const lvRows=pend.map(l=>"<div class=\"dash-row\"><span class=\"d\">"+esc(String(l.date).slice(5).replace("-","/"))+"</span><span class=\"m\">"+esc(leaveLabel(l))+(l.reason?"<div class=\"dash-note\">"+esc(l.reason)+"</div>":"")+"</span><span class=\"r\"><span class=\"dash-badge\" style=\"background:#F8EDD8;color:#7A5212;\">承認待ち</span></span></div>").join("")
+    +lvs.filter(l=>l.status!=="pending"&&String(l.date).startsWith(pfx)).map(l=>"<div class=\"dash-row\"><span class=\"d\">"+esc(String(l.date).slice(5).replace("-","/"))+"</span><span class=\"m\">"+esc(leaveLabel(l))+"</span><span class=\"r\">"+(l.status==="approved"?"<span class=\"dash-badge\" style=\"background:#E3ECEB;color:var(--in);\">承認済</span>":"<span class=\"dash-badge\" style=\"background:#F8ECEA;color:var(--out);\">却下</span>")+"</span></div>").join("");
 
   // ── 経費 ──
   const exps=allExp.filter(e=>e.userId===emp.uid&&e.date&&String(e.date).startsWith(pfx)).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
@@ -857,9 +858,9 @@ async function renderEmpDash(sync=true){
     "<button class=\"dash-back\" id=\"dashBack\">‹ 全社員概要にもどる</button>"
    +"<div class=\"dash-head\"><div class=\"dash-top\"><div class=\"emp-avatar\">"+esc(emp.avatar)+"</div><div>"
    +"<div class=\"dash-name\">"+esc(emp.name)+"</div><div style=\"margin-top:4px;\">"
-   +(isPart?tag("パート","#FEF9C3","#92400E"):tag("正社員","#EFF6FF","var(--acc)"))
-   +(emp.active?tag("在職","#ECFDF5","var(--in)"):tag("退職","#F1F5F9","var(--tx2)"))
-   +(pend.length?tag("承認待ち "+pend.length+"件","#FEF2F2","var(--out)"):"")+"</div></div>"
+   +(isPart?tag("パート","#F8EDD8","#7A5212"):tag("正社員","#E3ECEB","var(--acc)"))
+   +(emp.active?tag("在職","#E3ECEB","var(--in)"):tag("退職","#EFECE5","var(--tx2)"))
+   +(pend.length?tag("承認待ち "+pend.length+"件","#F8ECEA","var(--out)"):"")+"</div></div>"
    +"<button class=\"view-btn\" id=\"dashView\">👁 この人の画面を見る</button></div>"
    +"<div class=\"dash-meta\">"
    +meta("入社日",emp.hireDate?esc(emp.hireDate.replace(/-/g,"/"))+"（"+tenure(emp.hireDate)+"）":"未設定")
@@ -887,7 +888,7 @@ async function renderEmpDash(sync=true){
       +SC.html+"<div id=\"dashSyncSt\" style=\"font-size:11px;color:var(--tx3);padding:0 16px 12px;\">"+(sync?"":"✓ Googleカレンダーと同期しました（"+new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})+"）")+"</div></div>":"")
    +"<div class=\"dash-grid\">"
    +sec("📋 勤怠","<button class=\"dash-link\" data-go=\"勤怠\">勤怠確認で開く</button>",
-        isPart&&noNote?"<div class=\"dash-sum\" style=\"color:#D97706;\">業務内容の未記入 "+noNote+" 日</div>":"",rows,"この月の記録はありません")
+        isPart&&noNote?"<div class=\"dash-sum\" style=\"color:#8F6216;\">業務内容の未記入 "+noNote+" 日</div>":"",rows,"この月の記録はありません")
    +sec("📅 休日申請","<button class=\"dash-link\" data-go=\"申請\">休日申請で開く</button>",
         "<div class=\"dash-sum\"><span>承認待ち <b>"+pend.length+"</b> 件</span><span>今月の取得 <b>"+fmtDays(sumLeaveDays(mLvs)).replace(" 日","")+"</b> 日</span></div>",lvRows,"承認待ちや今月の申請はありません")
    +sec("💰 経費","<button class=\"dash-link\" data-go=\"経費\">経費精算で開く</button>",
@@ -1075,9 +1076,9 @@ async function renderKintai(){
       const dow=DOW[new Date(date).getDay()];
       const isSwap=lvOn.type==="振替休日";
       const badge=isSwap
-        ?"<span style=\"background:#ECFEFF;color:#0E7490;border:1px solid #A5F3FC;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;\">🔄 振替休日</span>"
+        ?"<span style=\"background:#EAF1F0;color:#3E716D;border:1px solid #B2CBCA;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;\">🔄 振替休日</span>"
          +(lvOn.workDate?"<span style=\"font-size:10px;color:var(--tx3);margin-left:6px;\">"+lvOn.workDate.slice(5).replace("-","/")+" の振替</span>":"")
-        :"<span style=\"background:#F5F3FF;color:var(--lv);border:1px solid #DDD6FE;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;\">有給休暇</span>"
+        :"<span style=\"background:#EEE8F6;color:var(--lv);border:1px solid #D9CDEA;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;\">有給休暇</span>"
          +(lvOn.type!=="全日"?"<span style=\"font-size:10px;color:var(--tx3);margin-left:6px;\">"+typeLabel(lvOn.type)+"</span>":"");
       tb+="<tr><td>"+date.slice(5)+"("+dow+")</td><td colspan=\"4\" style=\"text-align:center;\">"+badge+"</td><td>―</td></tr>";
       continue;
@@ -1137,8 +1138,8 @@ async function renderStamp(){
     // 退勤未打刻の行：⚠️マークで表示
     if(shiftsMissing.length&&!shiftsComplete.length){
       const sm=shiftsMissing[0];
-      tb+="<tr style=\"background:#FFFBEB;\">"+
-        "<td>"+date.slice(5)+"("+dow+") <span style=\"display:inline-block;background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;\">⚠️ 退勤未打刻</span></td>"+
+      tb+="<tr style=\"background:#F8EDD8;\">"+
+        "<td>"+date.slice(5)+"("+dow+") <span style=\"display:inline-block;background:#F8EDD8;color:#7A5212;border:1px solid #E8D2A6;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;\">⚠️ 退勤未打刻</span></td>"+
         "<td>"+ts2hm(sm.in)+"</td><td>―</td><td>―</td><td>―</td><td>―</td>"+
         "</tr>";
       continue;
@@ -1151,9 +1152,9 @@ async function renderStamp(){
        +"&#10;修正者: "+(s.editedBy||"不明")
       :"";
     const editedMark=s.edited
-      ?"<span class=\"edited-badge\" style=\"position:relative;display:inline-block;background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;margin-left:4px;cursor:pointer;\">"
+      ?"<span class=\"edited-badge\" style=\"position:relative;display:inline-block;background:#F8EDD8;color:#7A5212;border:1px solid #E8D2A6;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;margin-left:4px;cursor:pointer;\">"
        +"修正済"
-       +"<span class=\"edited-tooltip\" style=\"display:none;position:absolute;left:0;top:20px;background:#1E293B;color:#fff;padding:6px 10px;border-radius:6px;font-size:11px;white-space:nowrap;z-index:100;line-height:1.7;font-weight:400;\">"
+       +"<span class=\"edited-tooltip\" style=\"display:none;position:absolute;left:0;top:20px;background:#2A2927;color:#fff;padding:6px 10px;border-radius:6px;font-size:11px;white-space:nowrap;z-index:100;line-height:1.7;font-weight:400;\">"
        +"修正日時: "+(s.editedAt?new Date(s.editedAt).toLocaleString("ja-JP"):"不明")+"<br>"
        +"修正者: "+(s.editedBy||"不明")
        +"</span></span>"
@@ -1179,7 +1180,7 @@ async function renderExportTab(){
   el.innerHTML=EMPLOYEES.map(e=>{const c=cls?(cls[e.uid]||{}):null;
     return "<label class=\"emp-chk\"><input type=\"checkbox\" class=\"exp-emp\" value=\""+esc(e.uid)+"\" checked> "
     +esc(e.name)+(e.active?"":"（退職）")+(c?" "+st(c.kintaiAt,"勤怠")+st(c.expenseAt,c.expenseNone?"経費（なし）":"経費"):"")+"</label>";}).join("")
-    +(cls&&EMPLOYEES.some(e=>closingTodo(cls[e.uid]).length)?"<div class=\"cp-sub\" style=\"margin-top:6px;color:#B45309;\">⚠ 確定していない人がいます。確定前の数字は、あとで変わることがあります。</div>":"");
+    +(cls&&EMPLOYEES.some(e=>closingTodo(cls[e.uid]).length)?"<div class=\"cp-sub\" style=\"margin-top:6px;color:#8F6216;\">⚠ 確定していない人がいます。確定前の数字は、あとで変わることがあります。</div>":"");
 }
 
 // 社員1名・1か月分の文書を組み立てる
@@ -1317,7 +1318,7 @@ async function savePdfLocal(name,html){
   // 外枠だけ画面の外に置き、撮影するのは位置指定のない中身（中身ごと画面外に置くと白紙になる）
   const outer=document.createElement("div");outer.style.cssText="position:fixed;left:-10000px;top:0;";
   // 幅は指定しない（html2pdf が用紙の印刷範囲＝約733pxの枠に入れるので、それに合わせて折り返す）
-  const box=document.createElement("div");box.className="pdfmode";box.style.cssText="background:#fff;";
+  const box=document.createElement("div");box.className="pdfmode";box.style.cssText="background:#FBFAF7;";
   box.innerHTML=html;const d=box.querySelector(".exp-doc");if(d)d.style.cssText="border:none;border-radius:0;margin:0;padding:8px;";
   outer.appendChild(box);document.body.appendChild(outer);
   try{
@@ -1384,8 +1385,8 @@ function renderMembers(){
   el.innerHTML="<div class=\"twrap\"><table class=\"ltable\"><thead><tr><th>氏名</th><th>雇用形態</th><th>入社日</th><th>週の勤務</th><th>時給</th><th>チャットワーク</th><th>状態</th><th></th></tr></thead><tbody>"
     +EMPLOYEES.map(e=>{
       const type=e.employmentType==="part"
-        ?"<span class=\"mem-tag\" style=\"background:#FEF9C3;color:#92400E;\">パート</span>"
-        :"<span class=\"mem-tag\" style=\"background:#EFF6FF;color:var(--acc);\">正社員</span>";
+        ?"<span class=\"mem-tag\" style=\"background:#F8EDD8;color:#7A5212;\">パート</span>"
+        :"<span class=\"mem-tag\" style=\"background:#E3ECEB;color:var(--acc);\">正社員</span>";
       const week=e.employmentType==="part"?(e.weeklyDays?e.weeklyDays+"日":"―")+" / "+(e.weeklyHours?e.weeklyHours+"h":"―"):"―";
       return "<tr class=\""+(e.active?"":"mem-off")+"\"><td>"+esc(e.name)+"<div style=\"font-size:11px;color:var(--tx3);\">"+esc(e.email)+"</div></td>"
         +"<td>"+type+"</td><td>"+esc(e.hireDate||"―")+"</td><td>"+week+"</td>"
@@ -1552,7 +1553,7 @@ function showTab(name){
 
 // ══ 経費精算 管理 ══
 function fmtYen(n){return "¥ "+Number(n||0).toLocaleString();}
-const statusMap={draft:"<span style=\"display:inline-block;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;background:#F1F5F9;color:var(--tx2);border:1px solid var(--bdr)\">下書き</span>",pending:"<span style=\"display:inline-block;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;background:#FFFBEB;color:#92400E;border:1px solid #FDE68A\">提出済</span>",approved:"<span style=\"display:inline-block;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;background:#ECFDF5;color:var(--in);border:1px solid #A7F3D0\">承認済</span>",rejected:"<span style=\"display:inline-block;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;background:#FEF2F2;color:var(--out);border:1px solid #FECACA\">差し戻し</span>"};
+const statusMap={draft:"<span style=\"display:inline-block;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;background:#EFECE5;color:var(--tx2);border:1px solid var(--bdr)\">下書き</span>",pending:"<span style=\"display:inline-block;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;background:#F8EDD8;color:#7A5212;border:1px solid #E8D2A6\">提出済</span>",approved:"<span style=\"display:inline-block;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;background:#E3ECEB;color:var(--in);border:1px solid #B2CBCA\">承認済</span>",rejected:"<span style=\"display:inline-block;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;background:#F8ECEA;color:var(--out);border:1px solid #E5B5AF\">差し戻し</span>"};
 
 async function getAllDocs(col){
   const sn=await getDocs(collection(db,col));
@@ -1598,8 +1599,8 @@ async function renderExpAdmin(){
       "<div class=\"exp-total\"><span style=\"font-weight:600;color:var(--acc2);\">合計</span><span class=\"exp-total-amount\">"+fmtYen(total)+"</span></div>"+
       (status==="pending"?
         "<div style=\"display:flex;gap:8px;margin-top:12px;\">"+
-        "<button class=\"rbtn-approve rbtn\" style=\"flex:1;padding:10px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#ECFDF5;color:var(--in);border:1.5px solid #A7F3D0;\">&#x2705; 承認する</button>"+
-        "<button class=\"rbtn-reject rbtn\" style=\"flex:1;padding:10px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#FEF2F2;color:var(--out);border:1.5px solid #FECACA;\">&#x274C; 差し戻す</button>"+
+        "<button class=\"rbtn-approve rbtn\" style=\"flex:1;padding:10px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#E3ECEB;color:var(--in);border:1.5px solid #B2CBCA;\">&#x2705; 承認する</button>"+
+        "<button class=\"rbtn-reject rbtn\" style=\"flex:1;padding:10px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#F8ECEA;color:var(--out);border:1.5px solid #E5B5AF;\">&#x274C; 差し戻す</button>"+
         "</div>":"");
     if(status==="pending"){
       div.querySelector(".rbtn-approve").addEventListener("click",async()=>{
@@ -1639,8 +1640,8 @@ async function renderTravelAdmin(){
       "</div>"+
       (t.status==="pending"?
         "<div style=\"display:flex;gap:8px;margin-top:12px;\">"+
-        "<button class=\"rbtn-approve\" style=\"flex:1;padding:10px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#ECFDF5;color:var(--in);border:1.5px solid #A7F3D0;\">&#x2705; 承認する</button>"+
-        "<button class=\"rbtn-reject\" style=\"flex:1;padding:10px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#FEF2F2;color:var(--out);border:1.5px solid #FECACA;\">&#x274C; 差し戻す</button>"+
+        "<button class=\"rbtn-approve\" style=\"flex:1;padding:10px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#E3ECEB;color:var(--in);border:1.5px solid #B2CBCA;\">&#x2705; 承認する</button>"+
+        "<button class=\"rbtn-reject\" style=\"flex:1;padding:10px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#F8ECEA;color:var(--out);border:1.5px solid #E5B5AF;\">&#x274C; 差し戻す</button>"+
         "</div>":"");
     if(t.status==="pending"){
       div.querySelector(".rbtn-approve").addEventListener("click",async e=>{
@@ -1698,7 +1699,7 @@ function openDetailModal(mode,group,travel){
       "<div class=\"twrap\" style=\"margin-bottom:12px;\"><table class=\"ltable\"><thead><tr><th>日付</th><th>区間・内容</th><th>交通手段</th><th>領収書</th><th>金額</th><th>備考</th></tr></thead><tbody>"+
       (travel.costs||[]).map(c=>"<tr><td>"+(c.date||"")+"</td><td>"+(c.route||"")+"</td><td>"+(c.transport||"")+"</td><td>"+(c.receipt?"有":"―")+"</td><td style=\"color:var(--out);font-weight:600;font-family:'DM Mono',monospace;\">"+fmtYen(c.amount)+"</td><td>"+(c.note||"")+"</td></tr>").join("")+
       "</tbody></table></div>"+
-      "<div style=\"background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;margin-bottom:12px;\"><span style=\"font-weight:600;color:var(--in);\">合計</span><span style=\"font-family:'DM Mono',monospace;font-size:18px;color:var(--in);font-weight:700;\">"+fmtYen(totalCost)+"</span></div>"+
+      "<div style=\"background:#E3ECEB;border:1px solid #B2CBCA;border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;margin-bottom:12px;\"><span style=\"font-weight:600;color:var(--in);\">合計</span><span style=\"font-family:'DM Mono',monospace;font-size:18px;color:var(--in);font-weight:700;\">"+fmtYen(totalCost)+"</span></div>"+
       (travel.report?"<div style=\"font-size:11px;color:var(--tx3);letter-spacing:2px;text-transform:uppercase;font-weight:600;margin-bottom:8px;\">所見・報告事項</div><div style=\"background:var(--s2);border-radius:8px;padding:12px 16px;font-size:13px;color:var(--tx);line-height:1.8;\">"+travel.report+"</div>":"");
     btns.innerHTML="<button class=\"mbtn2 mb-cancel\" id=\"dcb\">閉じる</button>";
   }

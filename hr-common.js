@@ -74,20 +74,20 @@ export function closingBannerHTML(ym,c,today=new Date()){
     +"</div>";
 }
 export const CLOSING_CSS=`
-.cl-banner{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:14px 16px;margin-bottom:16px;}
-.cl-banner.cl-over{background:#FEF2F2;border-color:#FCA5A5;}
+.cl-banner{background:#E3ECEB;border:1px solid #B2CBCA;border-radius:12px;padding:14px 16px;margin-bottom:16px;}
+.cl-banner.cl-over{background:#F8ECEA;border-color:#E5B5AF;}
 .cl-title{font-weight:700;font-size:14px;margin-bottom:8px;}
-.cl-over .cl-title{color:#B91C1C;}
-.cl-row{display:flex;gap:10px;align-items:center;padding:6px 0;border-top:1px solid rgba(0,0,0,.06);}
+.cl-over .cl-title{color:#9A342B;}
+.cl-row{display:flex;gap:10px;align-items:center;padding:6px 0;border-top:1px solid rgba(26,25,24,.06);}
 .cl-st{font-size:11px;font-weight:700;border-radius:4px;padding:2px 7px;flex-shrink:0;}
-.cl-todo{background:#FEE2E2;color:#B91C1C;}.cl-done{background:#DCFCE7;color:#166534;}
+.cl-todo{background:#F4E1DE;color:#9A342B;}.cl-done{background:#D5E3E2;color:#00534E;}
 .cl-body{flex:1;font-size:13px;min-width:0;}
-.cl-how{font-size:11px;color:#64748B;margin-top:1px;}
-.cl-go{background:#2563EB;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;}
-.cl-lock{display:flex;gap:8px;align-items:center;background:#F0FDF4;border:1px solid #BBF7D0;color:#166534;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:12px;}
-.cl-confirm{background:#fff;border:1px solid #BFDBFE;border-radius:12px;padding:14px 16px;margin-bottom:12px;}
-.cl-confirm .cl-btn{background:#2563EB;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;}
-.cl-warn{font-size:12px;color:#B45309;margin-top:4px;line-height:1.6;}
+.cl-how{font-size:11px;color:#6E6C66;margin-top:1px;}
+.cl-go{background:#00534E;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;}
+.cl-lock{display:flex;gap:8px;align-items:center;background:#E3ECEB;border:1px solid #B2CBCA;color:#00534E;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:12px;}
+.cl-confirm{background:#FBFAF7;border:1px solid #B2CBCA;border-radius:12px;padding:14px 16px;margin-bottom:12px;}
+.cl-confirm .cl-btn{background:#00534E;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;}
+.cl-warn{font-size:12px;color:#8F6216;margin-top:4px;line-height:1.6;}
 `;
 
 // ── 振り返り（パートの業務内容）の表示 ──
@@ -118,22 +118,22 @@ export function reflectHTML(sh,collapsible){
   return "<details class=\"rf rf-d\"><summary><span class=\"rf-arrow\">▸</span><span class=\"rf-sum\">"+escH(first)+"</span>"+tags+"</summary>"+body+"</details>";
 }
 export const REFLECT_CSS=`
-.rf{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px;font-family:"Noto Sans JP",sans-serif;}
+.rf{background:#F5F3EE;border:1px solid #E7E4DC;border-radius:8px;padding:8px 10px;font-family:"Noto Sans JP",sans-serif;}
 .rf-sec{display:flex;gap:8px;align-items:flex-start;padding:4px 0;}
-.rf-sec+.rf-sec{border-top:1px dashed #E2E8F0;}
+.rf-sec+.rf-sec{border-top:1px dashed #E7E4DC;}
 .rf-lb{flex-shrink:0;width:64px;text-align:center;font-size:10.5px;font-weight:700;border-radius:4px;padding:2px 0;margin-top:1px;}
-.rf-done{background:#DBEAFE;color:#1D4ED8;}.rf-good{background:#DCFCE7;color:#166534;}.rf-next{background:#FEF3C7;color:#92400E;}
-.rf-tx{flex:1;min-width:0;font-size:12px;line-height:1.65;color:#1E293B;white-space:pre-line;word-break:break-word;}
-.rf-d summary{list-style:none;display:flex;gap:6px;align-items:center;cursor:pointer;font-size:12px;color:#1E293B;}
+.rf-done{background:#E7E4DC;color:#45433F;}.rf-good{background:#D5E3E2;color:#00534E;}.rf-next{background:#F8EDD8;color:#7A5212;}
+.rf-tx{flex:1;min-width:0;font-size:12px;line-height:1.65;color:#2A2927;white-space:pre-line;word-break:break-word;}
+.rf-d summary{list-style:none;display:flex;gap:6px;align-items:center;cursor:pointer;font-size:12px;color:#2A2927;}
 .rf-d summary::-webkit-details-marker{display:none;}
-.rf-arrow{color:#94A3B8;font-size:11px;transition:transform .15s;}
+.rf-arrow{color:#99968F;font-size:11px;transition:transform .15s;}
 .rf-d[open] .rf-arrow{transform:rotate(90deg);}
 .rf-sum{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.rf-d[open] .rf-sum{white-space:normal;color:#64748B;}
+.rf-d[open] .rf-sum{white-space:normal;color:#6E6C66;}
 .rf-chip{flex-shrink:0;font-size:10px;font-weight:700;border-radius:4px;padding:1px 6px;}
 .rf-d[open] summary{margin-bottom:6px;}
 .rf-tools{margin:0 0 8px;}
-.rf-note{font-size:11.5px;line-height:1.7;color:#475569;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px 12px;margin-bottom:6px;}
+.rf-note{font-size:11.5px;line-height:1.7;color:#45433F;background:#F5F3EE;border:1px solid #E7E4DC;border-radius:8px;padding:8px 12px;margin-bottom:6px;}
 .rf-btns{display:flex;justify-content:flex-end;gap:6px;}
-.rf-tools button{background:#fff;border:1px solid #CBD5E1;color:#475569;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;}
+.rf-tools button{background:#FBFAF7;border:1px solid #C9C6BE;color:#45433F;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;}
 `;
