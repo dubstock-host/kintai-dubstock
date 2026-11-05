@@ -133,6 +133,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .tax-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12px;}
 .tax-copy{background:#E3ECEB;color:var(--in);border:1.5px solid #B2CBCA;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;}
 /* 税理士用PDF（html2pdf）：用紙の幅に収める。列幅は印刷用と同じ */
+.pdfmode .exp-doc{background:#fff;}
 .pdfmode .exp-doc table{table-layout:fixed;font-size:10.5px;}
 .pdfmode .exp-doc th,.pdfmode .exp-doc td{white-space:normal;word-break:break-word;overflow-wrap:anywhere;padding:4px 5px;}
 .pdfmode .exp-doc .sum{grid-template-columns:repeat(5,1fr);}
@@ -1222,7 +1223,7 @@ async function buildEmpDoc(emp,y,m,pfx,opts,allExp,allTrv,out={}){
     +"<span>出力日："+new Date().toLocaleDateString("ja-JP")+"</span></div>";
 
   if(opts.kintai){
-    h+="<div class=\"doc-sec\">勤怠サマリー</div>"
+    h+="<div class=\"doc-keep\"><div class=\"doc-sec\">勤怠サマリー</div>"
       +"<div class=\"sum\">"
       +"<div><div class=\"k\">出勤日数</div><div class=\"v\">"+wd+" 日</div></div>"
       +"<div><div class=\"k\">実労働時間</div><div class=\"v\">"+hm(tw)+"</div></div>"
@@ -1233,7 +1234,7 @@ async function buildEmpDoc(emp,y,m,pfx,opts,allExp,allTrv,out={}){
           return "<div><div class=\"k\">時給</div><div class=\"v\">"+(w?w.toLocaleString()+" 円":"未設定")+"</div></div>"
             +"<div><div class=\"k\">支給見込み</div><div class=\"v\">"+(w?yen(payOf(tw,to,tn,w)):"―")+"</div></div>"
             +(tn>0?"<div><div class=\"k\">深夜時間</div><div class=\"v\">"+hm(tn)+"</div></div>":"");})():"")
-      +"</div>"
+      +"</div></div>"
       +"<table class=\"t-kin\"><thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実労働</th><th>残業</th></tr></thead>"
       +"<tbody>"+(rows||"<tr><td colspan=\"6\">記録なし</td></tr>")+"</tbody></table>";
   }
@@ -1243,9 +1244,9 @@ async function buildEmpDoc(emp,y,m,pfx,opts,allExp,allTrv,out={}){
                      .sort((a,b)=>String(a.date).localeCompare(String(b.date)));
     const total=exps.reduce((a,e)=>a+(Number(e.amount)||0),0);
     Object.assign(out,{expCount:exps.length,expTotal:total});
-    h+="<div class=\"doc-sec\">立替精算書</div>";
-    if(!exps.length)h+="<div class=\"none\">この月の経費明細はありません。</div>";
-    else h+="<table class=\"t-exp\"><thead><tr><th>日付</th><th>内容・目的</th><th>支払先</th><th>支払方法</th><th>領収書・<br>レシート</th><th>金額</th><th>備考</th></tr></thead><tbody>"
+    h+="<div class=\"doc-keep\"><div class=\"doc-sec\">立替精算書</div>"
+      +(exps.length?"":"<div class=\"none\">この月の経費明細はありません。</div>")+"</div>";
+    if(exps.length)h+="<table class=\"t-exp\"><thead><tr><th>日付</th><th>内容・目的</th><th>支払先</th><th>支払方法</th><th>領収書・<br>レシート</th><th>金額</th><th>備考</th></tr></thead><tbody>"
       +exps.map(e=>"<tr><td>"+esc(String(e.date).slice(5))+"</td><td>"+esc(e.desc)+"</td><td>"+esc(e.payee)+"</td>"
         +"<td>"+esc(e.method)+"</td><td>"+(e.receipt?"有":"―")+"</td>"
         +"<td class=\"num\">"+Number(e.amount||0).toLocaleString()+"</td><td>"+esc(e.note)+"</td></tr>").join("")
@@ -1259,11 +1260,11 @@ async function buildEmpDoc(emp,y,m,pfx,opts,allExp,allTrv,out={}){
                      .sort((a,b)=>String(td(a)).localeCompare(String(td(b))));
     const cost=trvs.reduce((a,t)=>a+(t.costs||[]).reduce((b,c)=>b+(Number(c.amount)||0),0),0);
     Object.assign(out,{trvCount:trvs.length,trvCost:cost});
-    h+="<div class=\"doc-sec\">出張</div>"
+    h+="<div class=\"doc-keep\"><div class=\"doc-sec\">出張</div>"
       +"<div class=\"sum\"><div><div class=\"k\">出張回数</div><div class=\"v\">"+trvs.length+" 回</div></div>"
-      +"<div><div class=\"k\">交通費・宿泊費合計</div><div class=\"v\">"+fmtYen(cost)+"</div></div></div>";
-    if(!trvs.length)h+="<div class=\"none\">この月の出張報告はありません。</div>";
-    else h+="<table class=\"t-trv\"><thead><tr><th>期間</th><th>出張先</th><th>目的</th><th>交通手段</th><th>同行者</th><th>費用</th><th>状態</th></tr></thead><tbody>"
+      +"<div><div class=\"k\">交通費・宿泊費合計</div><div class=\"v\">"+fmtYen(cost)+"</div></div></div>"
+      +(trvs.length?"":"<div class=\"none\">この月の出張報告はありません。</div>")+"</div>";
+    if(trvs.length)h+="<table class=\"t-trv\"><thead><tr><th>期間</th><th>出張先</th><th>目的</th><th>交通手段</th><th>同行者</th><th>費用</th><th>状態</th></tr></thead><tbody>"
       +trvs.map(t=>{
         const c=(t.costs||[]).reduce((a,x)=>a+(Number(x.amount)||0),0);
         const per=esc(t.from||"")+(t.to&&t.to!==t.from?" 〜 "+esc(t.to):"");
@@ -1318,13 +1319,13 @@ async function savePdfLocal(name,html){
   // 外枠だけ画面の外に置き、撮影するのは位置指定のない中身（中身ごと画面外に置くと白紙になる）
   const outer=document.createElement("div");outer.style.cssText="position:fixed;left:-10000px;top:0;";
   // 幅は指定しない（html2pdf が用紙の印刷範囲＝約733pxの枠に入れるので、それに合わせて折り返す）
-  const box=document.createElement("div");box.className="pdfmode";box.style.cssText="background:#FBFAF7;";
+  const box=document.createElement("div");box.className="pdfmode";box.style.cssText="background:#fff;";   // PDF は紙なので白地
   box.innerHTML=html;const d=box.querySelector(".exp-doc");if(d)d.style.cssText="border:none;border-radius:0;margin:0;padding:8px;";
   outer.appendChild(box);document.body.appendChild(outer);
   try{
     await window.html2pdf().set({margin:8,filename:name+".pdf",image:{type:"jpeg",quality:0.95},
       html2canvas:{scale:2,backgroundColor:"#ffffff"},jsPDF:{unit:"mm",format:"a4",orientation:"portrait"},
-      pagebreak:{mode:["css","legacy"],avoid:["tr",".sum"]}}).from(box).save();
+      pagebreak:{mode:["css","legacy"],avoid:["tr",".sum",".doc-keep",".tot"]}}).from(box).save();   // 見出しと集計（.doc-keep）はページをまたがせない
   }finally{outer.remove();}
 }
 async function taxExport(){
