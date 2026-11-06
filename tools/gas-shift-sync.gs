@@ -173,7 +173,7 @@ function notify_(p) {
       if (n === 'leave' && d.notifiedAt) return { ok: true, skipped: 'already' };
       if (n === 'leave' && d.status !== 'pending') return { ok: true, skipped: 'status' };
       if (n === 'travel' && d.status !== 'pending') return { ok: true, skipped: 'status' };
-      const body = n === 'leave' ? leaveMsg_(d) : travelMsg_(d);
+      const body = n === 'leave' ? leaveMsg_(d, id) : travelMsg_(d, id);
       postChatwork_(body);
       fsPatch_(col + '/' + id, { notifiedAt: new Date().toISOString(), notifiedFor: key });
       return { ok: true };
@@ -188,7 +188,7 @@ function notify_(p) {
       const logId = 'expense_' + uid + '_' + ym;
       const log = fsGet_('notifyLog/' + logId);
       if (log && log.submittedAt === last) return { ok: true, skipped: 'already' };
-      postChatwork_(expenseMsg_(items, ym));
+      postChatwork_(expenseMsg_(items, ym, uid));
       fsPatch_('notifyLog/' + logId, { submittedAt: last, notifiedAt: new Date().toISOString() });
       return { ok: true };
     }
@@ -203,30 +203,30 @@ function cw_(s) { return String(s == null ? '' : s).replace(/\[/g, '［').replac
 function md_(s) { s = String(s || ''); return s ? s.slice(0, 4) + '/' + s.slice(5, 7) + '/' + s.slice(8, 10) : ''; }
 function yen_(n) { return Number(n || 0).toLocaleString('ja-JP') + ' 円'; }
 
-function leaveMsg_(d) {
+function leaveMsg_(d, id) {
   const lines = ['申請者：' + cw_(d.userName), '種別：' + cw_(LEAVE_LABELS[d.type] || d.type), '日付：' + md_(d.date)];
   if (d.type === '振替休日' && d.workDate) lines.push('振替元（出勤する休日）：' + md_(d.workDate));
   if (d.reason) lines.push('理由：' + cw_(d.reason));
-  lines.push('', '承認はこちら：' + ADMIN_URL);
+  lines.push('', '承認はこちら：' + ADMIN_URL + '#go=leave&id=' + encodeURIComponent(id));
   return '[info][title]📅 休日申請が届きました（きん太）[/title]' + lines.join('\n') + '[/info]';
 }
 
-function expenseMsg_(items, ym) {
+function expenseMsg_(items, ym, uid) {
   const total = items.reduce((a, x) => a + (Number(x.amount) || 0), 0);
   items.sort((a, b) => String(a.date).localeCompare(String(b.date)));
   const lines = ['申請者：' + cw_(items[0].userName), '対象月：' + ym.replace('-', '年') + '月', '件数：' + items.length + ' 件', '合計：' + yen_(total), ''];
   items.slice(0, 10).forEach(x => lines.push('・' + md_(x.date).slice(5) + '　' + cw_(x.desc) + '　' + yen_(x.amount)));
   if (items.length > 10) lines.push('ほか ' + (items.length - 10) + ' 件');
-  lines.push('', '確認はこちら：' + ADMIN_URL);
+  lines.push('', '確認はこちら：' + ADMIN_URL + '#go=exp&uid=' + encodeURIComponent(uid) + '&ym=' + ym);
   return '[info][title]💰 経費精算が提出されました（きん太）[/title]' + lines.join('\n') + '[/info]';
 }
 
-function travelMsg_(d) {
+function travelMsg_(d, id) {
   const cost = (d.costs || []).reduce((a, c) => a + (Number(c.amount) || 0), 0);
   const lines = ['申請者：' + cw_(d.userName), '出張先：' + cw_(d.dest),
     '期間：' + md_(d.from) + (d.to && d.to !== d.from ? ' 〜 ' + md_(d.to) : '')];
   if (d.purpose) lines.push('目的：' + cw_(d.purpose));
-  lines.push('費用：' + yen_(cost), '', '確認はこちら：' + ADMIN_URL);
+  lines.push('費用：' + yen_(cost), '', '確認はこちら：' + ADMIN_URL + '#go=trv&id=' + encodeURIComponent(id));
   return '[info][title]✈ 出張報告が提出されました（きん太）[/title]' + lines.join('\n') + '[/info]';
 }
 

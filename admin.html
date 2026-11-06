@@ -83,6 +83,8 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .cp-sub{font-size:12px;color:var(--tx3);}
 .cp-st{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:2px 8px;}
 .cp-ok{background:#D5E3E2;color:#00534E;}.cp-ng{background:#F4E1DE;color:#9A342B;}
+button.cp-st{border:none;cursor:pointer;font-family:inherit;}button.cp-st:hover{text-decoration:underline;}
+.jump-hl{outline:3px solid var(--acc);outline-offset:3px;border-radius:12px;}
 .cp-nav{background:var(--s2);border:1px solid var(--bdr);border-radius:6px;width:26px;height:26px;cursor:pointer;color:var(--tx2);margin:0 4px;}
 .cp-nav:disabled{opacity:.35;cursor:default;}
 .cp-st{margin-right:4px;white-space:nowrap;}
@@ -742,6 +744,36 @@ function tenure(hire){
 }
 let dashUid=null,dashMonth=new Date();
 function openEmpDash(uid){dashUid=uid;dashMonth=new Date();showTab("個人");window.scrollTo(0,0);}
+
+// ── 該当の画面へ飛ぶ（チャットワークの通知のリンク admin.html#go=… と、確定状況の欄から）──
+//   #go=kintai&uid=…&ym=YYYY-MM … その人のダッシュボード（その月）
+//   #go=exp&uid=…&ym=YYYY-MM    … 経費精算のその人・その月
+//   #go=trv&id=…                … 出張報告のその1件
+//   #go=leave&id=…              … 休日申請（承認待ちのその1件）
+async function flashEl(id){
+  for(let i=0;i<40;i++){
+    const el=document.getElementById(id);
+    if(el){el.scrollIntoView({behavior:"smooth",block:"center"});el.classList.add("jump-hl");setTimeout(()=>el.classList.remove("jump-hl"),2600);return true;}
+    await new Promise(r=>setTimeout(r,150));
+  }
+  return false;
+}
+function goTo(p){
+  const okId=v=>/^[A-Za-z0-9_-]{1,100}$/.test(v||""),okYm=v=>/^\d{4}-\d{2}$/.test(v||"");
+  if(p.go==="kintai"&&okId(p.uid)){
+    dashUid=p.uid;dashMonth=okYm(p.ym)?new Date(+p.ym.slice(0,4),+p.ym.slice(5,7)-1,1):new Date();
+    showTab("個人");window.scrollTo(0,0);return;
+  }
+  if(p.go==="exp"&&okId(p.uid)&&okYm(p.ym)){showTab("経費");flashEl("exp-"+p.uid+"_"+p.ym);return;}
+  if(p.go==="trv"&&okId(p.id)){showTab("出張");flashEl("trv-"+p.id);return;}
+  if(p.go==="leave"){showTab("申請");if(okId(p.id))flashEl("lv-"+p.id);return;}
+}
+function goFromHash(){
+  const h=location.hash.slice(1);if(!h.startsWith("go="))return;
+  const p=Object.fromEntries(new URLSearchParams(h));
+  history.replaceState(null,"",location.pathname+location.search);   // 再読み込みでまた飛ばないように消す
+  goTo(p);
+}
 // パートのシフト表（社員画面のシフトタブと同じ形のカレンダー）
 function shiftCalHTML(y,m,plans,recs,lvs,today){
   const days=new Date(y,m+1,0).getDate(),first=new Date(y,m,1).getDay(),cal={};
@@ -939,7 +971,12 @@ async function renderClosingPanel(){
   const ended=monthEnded(ym),over=ended&&isOverdue(ym),dl=fmtDeadline(closingDeadline(ym));
   const done=targets.filter(e=>!closingTodo(cls[e.uid]).length).length;
   // 列の見出しが「勤怠」「経費」なので、中は短く
-  const st=(at,none)=>"<span class=\"cp-st "+(at?"cp-ok\">✓ "+(none?"なしで":"")+"確定 "+fmtMD(at):"cp-ng\">未確定")+"</span>";
+  // 押すと中身へ飛ぶ（勤怠と「なしで確定」・未確定はその人のダッシュボード、確定した経費は経費精算のその月）
+  const st=(at,none,uid,kind)=>{
+    const go=kind==="exp"&&at&&!none?"exp":"kintai";
+    return "<button class=\"cp-st "+(at?"cp-ok\"":"cp-ng\"")+" data-go=\""+go+"\" data-uid=\""+esc(uid)+"\" title=\"開く\">"
+      +(at?"✓ "+(none?"なしで":"")+"確定 "+fmtMD(at):"未確定")+"</button>";
+  };
   el.innerHTML="<div class=\"cp"+(over&&done<targets.length?" cp-over":"")+"\"><div class=\"cp-h\">"
     +"<span class=\"cp-t\"><button class=\"cp-nav\" id=\"cpPrev\""+(ym<=CLOSING_START_YM?" disabled":"")+">‹</button> 📋 "+ym.slice(0,4)+"年"+ymLabel(ym)+"分の確定状況（"+done+" / "+targets.length+" 人 完了）<button class=\"cp-nav\" id=\"cpNext\""+(ym>=nowYm?" disabled":"")+">›</button></span>"
     +"<span class=\"cp-sub\">"+(ended?"期限 "+dl+(over?"・<b style=\"color:var(--out);\">期限を過ぎています</b>":""):"月が終わると本人が確定できます（期限 "+dl+"）")+"</span></div>"
@@ -952,7 +989,7 @@ async function renderClosingPanel(){
         :"<span class=\"cp-sub\">チャットワークID未登録</span>");
       if(c.kintaiAt)btns.push("<button class=\"cp-btn\" data-undo=\"kintai\" data-uid=\""+esc(e.uid)+"\">勤怠を差し戻す</button>");
       if(c.expenseAt)btns.push("<button class=\"cp-btn\" data-undo=\"expense\" data-uid=\""+esc(e.uid)+"\">経費を差し戻す</button>");
-      return "<tr><td>"+esc(e.name)+"</td><td>"+st(c.kintaiAt)+"</td><td>"+st(c.expenseAt,c.expenseNone)+"</td><td>"+btns.join("")+"</td></tr>";
+      return "<tr><td>"+esc(e.name)+"</td><td>"+st(c.kintaiAt,false,e.uid,"kintai")+"</td><td>"+st(c.expenseAt,c.expenseNone,e.uid,"exp")+"</td><td>"+btns.join("")+"</td></tr>";
     }).join("")+"</tbody></table></div></div>";
   const shift=k=>{const [y,m]=cpYm.split("-").map(Number);cpYm=ymOf(new Date(y,m-1+k,1));renderClosingPanel();};
   document.getElementById("cpPrev").addEventListener("click",()=>shift(-1));
@@ -967,6 +1004,7 @@ async function renderClosingPanel(){
     }catch(x){showToast("送れませんでした（通信エラー）");}
     b.disabled=false;b.textContent="催促する";
   }));
+  el.querySelectorAll("button.cp-st[data-go]").forEach(b=>b.addEventListener("click",()=>goTo({go:b.dataset.go,uid:b.dataset.uid,ym})));
   el.querySelectorAll("[data-undo]").forEach(b=>b.addEventListener("click",async()=>{
     const e=EMPLOYEES.find(x=>x.uid===b.dataset.uid),k=b.dataset.undo;
     const what=k==="kintai"?"勤怠":"経費";
@@ -1021,7 +1059,7 @@ async function renderPending(){
     const at=new Date(lv.appliedAt);
     const atStr=at.getFullYear()+"/"+p2(at.getMonth()+1)+"/"+p2(at.getDate())+" "+p2(at.getHours())+":"+p2(at.getMinutes());
     const empName=lv.userName||(EMPLOYEES.find(e=>e.uid===lv.userId)||{name:lv.userId}).name;
-    const card=document.createElement("div");card.className="req-card";
+    const card=document.createElement("div");card.className="req-card";if(lv.id)card.id="lv-"+lv.id;
     card.innerHTML=
       "<div class=\"req-name\">"+empName+"</div>"+
       "<div class=\"req-date\">"+lv.date.slice(5)+"("+dow+")</div>"+
@@ -1581,7 +1619,7 @@ async function renderExpAdmin(){
   sorted.forEach(g=>{
     const total=g.items.reduce((s,e)=>s+(Number(e.amount)||0),0);
     const status=g.approved?"approved":g.rejected?"rejected":g.submitted?"pending":"draft";
-    const div=document.createElement("div");div.className="exp-card";
+    const div=document.createElement("div");div.className="exp-card";div.id="exp-"+g.userId+"_"+g.month;
     div.innerHTML=
       "<div style=\"display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;\">"+
       "<div><div style=\"font-size:16px;font-weight:700;\">"+g.userName+"　<span style=\"font-family:'DM Mono',monospace;font-size:13px;color:var(--tx2);\">"+g.month+"</span></div>"+
@@ -1627,7 +1665,7 @@ async function renderTravelAdmin(){
   el.innerHTML="";
   visible.forEach(t=>{
     const totalCost=(t.costs||[]).reduce((s,c)=>s+(Number(c.amount)||0),0);
-    const div=document.createElement("div");div.className="exp-card";div.style.cursor="pointer";
+    const div=document.createElement("div");div.className="exp-card";div.style.cursor="pointer";div.id="trv-"+t.id;
     div.innerHTML=
       "<div style=\"display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;\">"+
       "<div><div style=\"font-size:16px;font-weight:700;\">"+(t.userName||t.userId)+"　"+t.dest+"出張</div>"+
@@ -1819,6 +1857,8 @@ onAuthStateChanged(auth,async function(user){
   await renderEmpCards();
   renderClosingPanel();
   await renderPending();
+  // 通知のリンク（#go=…）から開いたときは、その画面へ
+  goFromHash();window.addEventListener("hashchange",goFromHash);
   // 自動更新は画面を見ているときだけ・5分おき。別のタブやアプリから戻ってきたときは、1分以上たっていれば更新する。
   // （以前は30秒ごとに全員の全記録を読み直していて、Firestore の1日の無料枠を使い切った）
   let lastRefresh=Date.now();
